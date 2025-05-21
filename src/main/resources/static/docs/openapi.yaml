@@ -1,0 +1,458 @@
+openapi: 3.0.4
+info:
+  title: Gene Inference - OpenAPI 3.0
+  description: |-
+    A Spring Boot application that simulates sheep breeding to help visualize how genes are passed from parents to offspring. The app calculates and updates the probabilities of each sheep's genetic makeup to illustrate how hidden alleles can be inferred and refined over time.
+  version: 1.0.12
+servers:
+  - url: https://sheepstore3.swagger.io/api/v3
+tags:
+  - name: sheep
+    description: Everything about your Sheep
+    externalDocs:
+      description: Find out more
+      url: https://swagger.io
+  - name: breed
+    description: Everything about breeding Sheep
+paths:
+  /sheep:
+    post:
+      tags:
+        - sheep
+      summary: Add a new sheep to the herd.
+      description: Add a new sheep to the herd.
+      operationId: addsheep
+      requestBody:
+        description: Create a new sheep in the herd
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/sheep'
+          application/xml:
+            schema:
+              $ref: '#/components/schemas/sheep'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/sheep'
+        required: true
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/sheep'
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/sheep'
+        '400':
+          description: Invalid input
+        '422':
+          description: Validation exception
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /sheep/findByGrades:
+    get:
+      tags:
+        - sheep
+      summary: Finds sheeps by status.
+      description: Multiple grade values can be provided with comma separated strings.
+      operationId: findsheepsByStatus
+      parameters:
+        - name: grade
+          in: query
+          description: Grade values that need to be considered for filter
+          required: false
+          explode: true
+          schema:
+            type: array
+            items:
+              type: string
+              default: C
+              enum:
+                - S
+                - A
+                - B
+                - C
+                - D
+                - E
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/sheep'
+            application/xml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/sheep'
+        '400':
+          description: Invalid status value
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /sheep/{sheepId}/children:
+    get:
+      tags:
+        - sheep
+      summary: Finds children of this sheep.
+      description: Finds all direct children of this sheep.
+      operationId: findsheepsChildren
+      parameters:
+        - name: sheepId
+          in: path
+          description: ID of sheep to search for children
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/sheep'
+            application/xml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/sheep'
+        '400':
+          description: Invalid status value
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /sheep/{sheepId}/partners:
+    get:
+      tags:
+        - sheep
+      summary: Finds partners of this sheep.
+      description: Finds all direct partners of this sheep.
+      operationId: findsheepsPartners
+      parameters:
+        - name: sheepId
+          in: path
+          description: ID of sheep to search for partners
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/sheep'
+            application/xml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/sheep'
+        '400':
+          description: Invalid status value
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /sheep/{sheepId}/parents:
+    get:
+      tags:
+        - sheep
+      summary: Finds parents of this sheep.
+      description: Finds the parents of this sheep.
+      operationId: findsheepsParents
+      parameters:
+        - name: sheepId
+          in: path
+          description: ID of sheep to search for parents
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/sheep'
+            application/xml:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/sheep'
+        '400':
+          description: Invalid status value
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /sheep/{sheepId}:
+    get:
+      tags:
+        - sheep
+      summary: Find sheep by ID.
+      description: Returns a single sheep.
+      operationId: getsheepById
+      parameters:
+        - name: sheepId
+          in: path
+          description: ID of sheep to return
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/sheep'
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/sheep'
+        '400':
+          description: Invalid ID supplied
+        '404':
+          description: sheep not found
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      tags:
+        - sheep
+      summary: Updates a sheep in the store with form data.
+      description: Updates a sheep resource based on the form data.
+      operationId: updatesheepWithForm
+      parameters:
+        - name: sheepId
+          in: path
+          description: ID of sheep that needs to be updated
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: name
+          in: query
+          description: Name of sheep that needs to be updated
+          schema:
+            type: string
+        - name: status
+          in: query
+          description: Status of sheep that needs to be updated
+          schema:
+            type: string
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/sheep'
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/sheep'
+        '400':
+          description: Invalid input
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      tags:
+        - sheep
+      summary: Deletes a sheep.
+      description: Delete a sheep.
+      operationId: deletesheep
+      parameters:
+        - name: api_key
+          in: header
+          description: ''
+          required: false
+          schema:
+            type: string
+        - name: sheepId
+          in: path
+          description: sheep id to delete
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: sheep deleted
+        '400':
+          description: Invalid sheep value
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /breed/{sheep1Id}/{sheep2Id}:
+    post:
+      tags:
+        - breed
+      summary: breed two sheep and create a new offspring.
+      description: Creates/Updates a partnership between these two sheep.
+      operationId: breedSheepById
+      parameters:
+        - name: sheep1Id
+          in: path
+          description: ID of first sheep to breed
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: sheep2Id
+          in: path
+          description: ID of second sheep to breed
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/partners'
+            application/xml:
+              schema:
+                $ref: '#/components/schemas/partners'
+        '400':
+          description: Invalid ID supplied
+        '404':
+          description: sheep not found
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+components:
+  schemas:
+    partners:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 10
+        parent1:
+          type: integer
+          format: int64
+          example: 7
+        parent2:
+          type: integer
+          format: int32
+          example: 198772
+        hiddenJointDistribution:
+          description: Joint distribution of all pairs of hidden grades between both parents.
+          type: array
+          items:
+            type: number
+            format: double
+        offspringPhenotypeFrequency:
+          type: array
+          description: Frequency each grade has appeared in the offspring of these two parents
+          items:
+            type: number
+            format: integer
+      xml:
+        name: order
+    sheep:
+      required:
+        - name
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 10
+        name:
+          type: string
+          example: doggie
+        phenotype:
+          type: string
+          description: observable sheep grade
+          enum:
+            - S
+            - A
+            - B
+            - C
+            - D
+            - E
+        hiddenAllele:
+          type: string
+          description: hidden sheep grade
+          enum:
+            - S
+            - A
+            - B
+            - C
+            - D
+            - E
+        hiddenDistribution:
+          type: array
+          description: hidden grade probabilities
+          items:
+            type: number
+            format: double
+        parents:
+          $ref: '#/components/schemas/partners'
+      xml:
+        name: sheep
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      required:
+        - code
+        - message
+  requestBodies:
+    sheep:
+      description: sheep object that needs to be added to the store
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/sheep'
+        application/xml:
+          schema:
+            $ref: '#/components/schemas/sheep'
