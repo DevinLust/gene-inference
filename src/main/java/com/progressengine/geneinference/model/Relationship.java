@@ -1,9 +1,9 @@
 package com.progressengine.geneinference.model;
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.progressengine.geneinference.model.enums.Grade;
 import jakarta.persistence.*;
 
-import java.util.List;
 import java.util.Map;
 
 @Entity
@@ -20,13 +20,14 @@ public class Relationship {
     @JoinColumn(name = "parent2_id")
     private Sheep parent2; // foreign key to Sheep
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "relationship_hidden_pairs_distribution", joinColumns = @JoinColumn(name = "relationship_id"))
     @MapKeyClass(GradePair.class)
     @Column(name = "probability")
+    @JsonDeserialize(keyUsing = GradePairKeyDeserializer.class)
     private Map<GradePair, Double> hiddenPairsDistribution;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @MapKeyEnumerated(EnumType.STRING)
     @MapKeyColumn(name = "grade")         // Name of the key column (for Grade enum)
     @Column(name = "frequency")           // Name of the value column (Integer)

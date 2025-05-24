@@ -70,9 +70,15 @@
 
 		<dependency>
 			<groupId>io.github.cdimascio</groupId>
-			<artifactId>dotenv-kotlin</artifactId>
-			<version>6.5.1</version>
+			<artifactId>dotenv-java</artifactId>
+			<version>3.0.0</version>
 		</dependency>
+
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-databind</artifactId>
+		</dependency>
+
 
 	</dependencies>
 

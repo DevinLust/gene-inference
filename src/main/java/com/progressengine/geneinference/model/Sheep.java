@@ -14,11 +14,14 @@ public class Sheep {
     private String name;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "phenotype")
     private Grade phenotype;
+
     @Enumerated(EnumType.STRING)
+    @Column(name = "hidden_allele")
     private Grade hiddenAllele;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @MapKeyEnumerated(EnumType.STRING)
     @MapKeyColumn(name = "grade")         // Name of the key column (for Grade enum)
     @Column(name = "probability")           // Name of the value column (Integer)

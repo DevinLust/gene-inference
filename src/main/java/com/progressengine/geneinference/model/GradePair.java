@@ -24,6 +24,11 @@ public class GradePair implements Serializable {
         this.grade2 = second;
     }
 
+    public GradePair(String first, String second) {
+        this.grade1 = Grade.valueOf(first);
+        this.grade2 = Grade.valueOf(second);
+    }
+
     public Grade getFirst() {
         return grade1;
     }
