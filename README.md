@@ -16,9 +16,10 @@ A Spring Boot application that simulates sheep breeding to help visualize how ge
 
 ## 🛠️ Tech Stack
 
-- **Language:** Java 24
+- **Language:** Java 21
 - **Framework:** Spring Boot
 - **Build Tool:** Maven
+- **Database:** PostgreSQL
 
 ---
 
@@ -26,7 +27,7 @@ A Spring Boot application that simulates sheep breeding to help visualize how ge
 
 ### Prerequisites
 
-- Java 17+ (tested on Java 24.0.1)
+- Java 17+ (tested on Java 21.0.7)
 - Maven 3.8+
 
 ### Clone the Repository
