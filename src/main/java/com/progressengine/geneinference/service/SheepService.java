@@ -7,10 +7,10 @@ import com.progressengine.geneinference.model.Sheep;
 import com.progressengine.geneinference.model.enums.Grade;
 import com.progressengine.geneinference.repository.RelationshipRepository;
 import com.progressengine.geneinference.repository.SheepRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class SheepService {
@@ -21,6 +21,17 @@ public class SheepService {
     public SheepService(RelationshipRepository relationshipRepository, SheepRepository sheepRepository) {
         this.relationshipRepository = relationshipRepository;
         this.sheepRepository = sheepRepository;
+    }
+
+    public Sheep findById(Integer id) {
+        Sheep sheep = null;
+
+        Optional<Sheep> possibleSheep = sheepRepository.findById(id);
+        if (possibleSheep.isPresent()) {
+            sheep = possibleSheep.get();
+        }
+
+        return sheep;
     }
 
     public Sheep saveSheep(Sheep sheep) {
