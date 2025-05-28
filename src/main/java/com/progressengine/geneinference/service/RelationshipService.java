@@ -2,6 +2,7 @@ package com.progressengine.geneinference.service;
 
 import com.progressengine.geneinference.model.Relationship;
 import com.progressengine.geneinference.model.Sheep;
+import com.progressengine.geneinference.model.enums.Grade;
 import com.progressengine.geneinference.repository.RelationshipRepository;
 import org.springframework.stereotype.Service;
 
@@ -42,5 +43,26 @@ public class RelationshipService {
         // set other fields as needed
 
         return relationshipRepository.save(newRelationship);
+    }
+
+    // assumes uniform distribution for child
+    public Sheep breedNewSheep(Relationship relationship) {
+        Sheep child = new Sheep();
+
+        Sheep parent1 = relationship.getParent1();
+        Sheep parent2 = relationship.getParent2();
+
+        // TODO - make the genotype random
+        Grade newPhenotype = parent1.getPhenotype();
+        Grade newHiddenAllele = parent2.getHiddenAllele();
+
+        child.setPhenotype(newPhenotype);
+        child.setHiddenAllele(newHiddenAllele);
+
+        child.setHiddenDistribution(SheepService.createUniformDistribution());
+
+        child.setParentRelationship(relationship);
+
+        return child;
     }
 }
