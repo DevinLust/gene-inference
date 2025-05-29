@@ -7,6 +7,7 @@ import com.progressengine.geneinference.repository.RelationshipRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
+import java.util.Random;
 
 @Service
 public class RelationshipService {
@@ -46,15 +47,20 @@ public class RelationshipService {
     }
 
     // assumes uniform distribution for child
-    public Sheep breedNewSheep(Relationship relationship) {
+    public static Sheep breedNewSheep(Relationship relationship) {
         Sheep child = new Sheep();
 
         Sheep parent1 = relationship.getParent1();
         Sheep parent2 = relationship.getParent2();
 
-        // TODO - make the genotype random
-        Grade newPhenotype = parent1.getPhenotype();
-        Grade newHiddenAllele = parent2.getHiddenAllele();
+        // random genotype from the two parents, one allele from each parent
+        Random random = new Random();
+        Grade newPhenotype = random.nextBoolean() ? parent2.getPhenotype() : parent2.getHiddenAllele();
+        Grade newHiddenAllele = random.nextBoolean() ? parent1.getPhenotype() : parent1.getHiddenAllele();
+        if (random.nextBoolean()) {
+            newPhenotype = random.nextBoolean() ? parent1.getPhenotype() : parent1.getHiddenAllele();
+            newHiddenAllele =  random.nextBoolean() ? parent2.getPhenotype() : parent2.getHiddenAllele();
+        }
 
         child.setPhenotype(newPhenotype);
         child.setHiddenAllele(newHiddenAllele);

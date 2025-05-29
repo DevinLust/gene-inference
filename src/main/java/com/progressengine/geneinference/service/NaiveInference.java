@@ -36,8 +36,27 @@ public class NaiveInference implements InferenceEngine {
     public Map<Grade, Double> inferChildHiddenDistribution(Relationship relationship, Grade childPhenotype) {
         Map<Grade, Double> childHiddenDistribution = new EnumMap<>(Grade.class);
 
+        // find the probability distribution of the hidden allele given a both genotypes
+        Map<GradePair, Map<Grade, Double>> conditionalDistributions = findConditionalDistributions(relationship, childPhenotype);
+
+        // sum all conditional distributions from each genotype multiplied by the joint probability of that genotype
+        Map<GradePair, Double> jointDistribution = relationship.getHiddenPairsDistribution();
+        for (Map.Entry<GradePair, Double> entry : jointDistribution.entrySet()) {
+            GradePair gradePair = entry.getKey();
+            double jointProbability =  entry.getValue();
+            Map<Grade, Double> genotypeDistribution = conditionalDistributions.get(gradePair);
+
+            // merge each conditional distribution
+            for (Map.Entry<Grade, Double> genotypeDistributionEntry : genotypeDistribution.entrySet()) {
+                Grade grade = genotypeDistributionEntry.getKey();
+                double conditionalProbability = genotypeDistributionEntry.getValue();
+                childHiddenDistribution.merge(grade, conditionalProbability * jointProbability, Double::sum);
+            }
+        }
+
+        // fill any missing probabilities with 0.0
         for (Grade grade : Grade.values()) {
-            childHiddenDistribution.putIfAbsent(grade, 1.0 / 6.0);
+            childHiddenDistribution.putIfAbsent(grade, 0.0);
         }
 
         return childHiddenDistribution;
@@ -76,6 +95,63 @@ public class NaiveInference implements InferenceEngine {
         sheep.setHiddenDistribution(newDistribution);
     }
 
+    private Map<GradePair, Map<Grade, Double>> findConditionalDistributions(Relationship relationship, Grade childPhenotype) {
+        Sheep parent1 = relationship.getParent1();
+        Sheep parent2 = relationship.getParent2();
+        Map<GradePair, Double> jointDistribution = relationship.getHiddenPairsDistribution();
+
+        // find the probability distribution of the hidden allele given a both genotypes
+        Map<GradePair, Map<Grade, Double>> conditionalDistributions = new HashMap<>();
+        for (GradePair gradePair : jointDistribution.keySet()) {
+            // find the probability the phenotype came from each parent
+            double[] parentProbabilities = probabilityAlleleFromParents(gradePair, parent1, parent2, childPhenotype);
+
+            // get the distribution of the hidden child allele from the current genotypes
+            Map<Grade, Double> genotypeDistribution = new EnumMap<>(Grade.class);
+            genotypeDistribution.merge(parent1.getPhenotype(), 0.5 * parentProbabilities[1], Double::sum);
+            genotypeDistribution.merge(gradePair.getFirst(), 0.5 * parentProbabilities[1], Double::sum);
+            genotypeDistribution.merge(parent2.getPhenotype(), 0.5 * parentProbabilities[0], Double::sum);
+            genotypeDistribution.merge(gradePair.getSecond(), 0.5 * parentProbabilities[0], Double::sum);
+
+            conditionalDistributions.put(gradePair, genotypeDistribution);
+        }
+
+        return conditionalDistributions;
+    }
+
+    private double[] probabilityAlleleFromParents(GradePair gradePair, Sheep parent1, Sheep parent2, Grade allele) {
+        double[] probabilities = new double[2];
+
+        double totalProbabilityOfAllele = 0.0;
+        double probabilityOfAlleleGivenParent1 = 0.0;
+        if (parent1.getPhenotype().equals(allele)) {
+            probabilityOfAlleleGivenParent1 += 0.5;
+            totalProbabilityOfAllele += 0.25;
+        }
+        if (gradePair.getFirst().equals(allele)) {
+            probabilityOfAlleleGivenParent1 += 0.5;
+            totalProbabilityOfAllele += 0.25;
+        }
+
+        double probabilityOfAlleleGivenParent2 = 0.0;
+        if (parent2.getPhenotype().equals(allele)) {
+            probabilityOfAlleleGivenParent2 += 0.5;
+            totalProbabilityOfAllele += 0.25;
+        }
+        if (gradePair.getSecond().equals(allele)) {
+            probabilityOfAlleleGivenParent2 += 0.5;
+            totalProbabilityOfAllele += 0.25;
+        }
+
+        if (totalProbabilityOfAllele == 0) {
+            return probabilities;
+        }
+
+        probabilities[0] = (0.5 * probabilityOfAlleleGivenParent1) /  totalProbabilityOfAllele;
+        probabilities[1] = (0.5 * probabilityOfAlleleGivenParent2) /  totalProbabilityOfAllele;
+        return probabilities;
+    }
+
     private double multinomialScore(GradePair hiddenPair, Grade phenotype1, Grade phenotype2, Map<Grade, Integer> phenotypeFrequency) {
         double score = 1.0;
 
@@ -88,7 +164,7 @@ public class NaiveInference implements InferenceEngine {
 
         for (Grade grade : Grade.values()) {
             Double probability = probabilityToDraw.getOrDefault(grade, 0.0);
-            Integer frequency = phenotypeFrequency.get(grade);
+            Integer frequency = phenotypeFrequency.getOrDefault(grade, 0);
             if (probability == 0.0 && frequency > 0) {
                 score = 0.0;
             } else if (frequency > 0) {

@@ -33,7 +33,7 @@ public class BreedController {
         Relationship relationship = relationshipService.findOrCreateRelationship(sheep1, sheep2);
 
         // create a new child from the two sheep
-        Sheep newChild = relationshipService.breedNewSheep(relationship);
+        Sheep newChild = RelationshipService.breedNewSheep(relationship);
 
         // update the offspring phenotype frequency in the relationship
         Grade childPhenotype = newChild.getPhenotype();
