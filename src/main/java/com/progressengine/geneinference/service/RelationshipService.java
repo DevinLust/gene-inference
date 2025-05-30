@@ -18,6 +18,8 @@ public class RelationshipService {
         this.relationshipRepository = relationshipRepository;
     }
 
+    public Relationship saveRelationship(Relationship relationship) { return relationshipRepository.save(relationship); }
+
     /**
      * Finds or creates a Relationship for the two sheep.
      */
@@ -64,6 +66,7 @@ public class RelationshipService {
 
         child.setPhenotype(newPhenotype);
         child.setHiddenAllele(newHiddenAllele);
+        relationship.updateOffspringPhenotypeFrequency(newPhenotype, 1);
 
         child.setHiddenDistribution(SheepService.createUniformDistribution());
 

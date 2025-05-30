@@ -72,4 +72,8 @@ public class Relationship {
     public void setOffspringPhenotypeFrequency(Map<Grade, Integer> offspringPhenotypeFrequency) {
         this.offspringPhenotypeFrequency = offspringPhenotypeFrequency;
     }
+
+    public void updateOffspringPhenotypeFrequency(Grade grade, int additionalOccurrences) {
+        this.offspringPhenotypeFrequency.merge(grade, additionalOccurrences, Integer::sum);
+    }
 }

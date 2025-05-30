@@ -34,10 +34,7 @@ public class BreedController {
 
         // create a new child from the two sheep
         Sheep newChild = RelationshipService.breedNewSheep(relationship);
-
-        // update the offspring phenotype frequency in the relationship
         Grade childPhenotype = newChild.getPhenotype();
-        relationship.getOffspringPhenotypeFrequency().merge(childPhenotype, 1, Integer::sum);
 
         // get the new joint distribution from the additional offspring data
         inferenceEngine.findJointDistribution(relationship);
@@ -48,10 +45,13 @@ public class BreedController {
         // infer child hidden distribution
         newChild.setHiddenDistribution(inferenceEngine.inferChildHiddenDistribution(relationship,  childPhenotype));
 
+        // save relationship and new child
+        Relationship savedRelationship = relationshipService.saveRelationship(relationship);
+        Sheep savedChild = sheepService.saveSheep(newChild);
+
         // optional - propagate probability to other partners and children
 
-        sheepService.saveSheep(newChild);
-        return "new child bred";
+        return String.format("Sheep has been bred with id: %s%nIn relationship with id: %s", savedChild.getId(), savedRelationship.getId());
     }
 
 }
