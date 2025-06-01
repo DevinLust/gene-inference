@@ -13,6 +13,7 @@ import java.util.Map;
 @Service
 public class NaiveInference implements InferenceEngine {
 
+    // Updates the relationship with a new joint distribution using naive bayes and multinomial distributions
     public void findJointDistribution(Relationship relationship) {
         Map<GradePair, Double> intermediateScores = new HashMap<>();
         Map<Grade, Integer> phenotypeFrequency = relationship.getOffspringPhenotypeFrequency();
@@ -33,10 +34,11 @@ public class NaiveInference implements InferenceEngine {
         relationship.setHiddenPairsDistribution(intermediateScores);
     }
 
+    // Returns a new Map of grades to probability given the relationship and observed phenotype of the child
     public Map<Grade, Double> inferChildHiddenDistribution(Relationship relationship, Grade childPhenotype) {
         Map<Grade, Double> childHiddenDistribution = new EnumMap<>(Grade.class);
 
-        // find the probability distribution of the hidden allele given a both genotypes
+        // find the probability distribution of the hidden allele given both genotypes
         Map<GradePair, Map<Grade, Double>> conditionalDistributions = findConditionalDistributions(relationship, childPhenotype);
 
         // sum all conditional distributions from each genotype multiplied by the joint probability of that genotype
@@ -62,6 +64,7 @@ public class NaiveInference implements InferenceEngine {
         return childHiddenDistribution;
     }
 
+    // updates the hidden distributions of each parent in the relationship
     public void updateMarginalProbabilities(Relationship relationship) {
         Sheep parent1 = relationship.getParent1();
         Sheep parent2 = relationship.getParent2();
@@ -78,8 +81,10 @@ public class NaiveInference implements InferenceEngine {
             parent2NewMarginalProbabilities.merge(gradePair.getSecond(), jointProbability, Double::sum);
         }
 
-        productOfExperts(parent1, parent1NewMarginalProbabilities);
-        productOfExperts(parent2, parent2NewMarginalProbabilities);
+        // productOfExperts(parent1, parent1NewMarginalProbabilities);
+        // productOfExperts(parent2, parent2NewMarginalProbabilities);
+        parent1.setHiddenDistribution(parent1NewMarginalProbabilities);
+        parent2.setHiddenDistribution(parent2NewMarginalProbabilities);
     }
 
     // combine existing distribution with new distribution
@@ -95,12 +100,13 @@ public class NaiveInference implements InferenceEngine {
         sheep.setHiddenDistribution(newDistribution);
     }
 
+    // Maps a pair of hidden alleles to a conditional distribution based on the observed phenotype
     private Map<GradePair, Map<Grade, Double>> findConditionalDistributions(Relationship relationship, Grade childPhenotype) {
         Sheep parent1 = relationship.getParent1();
         Sheep parent2 = relationship.getParent2();
         Map<GradePair, Double> jointDistribution = relationship.getHiddenPairsDistribution();
 
-        // find the probability distribution of the hidden allele given a both genotypes
+        // find the probability distribution of the hidden allele given both genotypes
         Map<GradePair, Map<Grade, Double>> conditionalDistributions = new HashMap<>();
         for (GradePair gradePair : jointDistribution.keySet()) {
             // find the probability the phenotype came from each parent
@@ -153,7 +159,7 @@ public class NaiveInference implements InferenceEngine {
     }
 
     private double multinomialScore(GradePair hiddenPair, Grade phenotype1, Grade phenotype2, Map<Grade, Integer> phenotypeFrequency) {
-        double score = 1.0;
+        double score = 1000000.0;
 
         // each occurrence of a grade adds 1/4 to the probability of that grade
         Map<Grade, Double> probabilityToDraw = new EnumMap<>(Grade.class);

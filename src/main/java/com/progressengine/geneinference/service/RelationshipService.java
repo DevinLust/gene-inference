@@ -6,6 +6,7 @@ import com.progressengine.geneinference.model.enums.Grade;
 import com.progressengine.geneinference.repository.RelationshipRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.EnumMap;
 import java.util.Optional;
 import java.util.Random;
 
@@ -28,8 +29,14 @@ public class RelationshipService {
         Integer sheepId1 = sheep1.getId();
         Integer sheepId2 = sheep2.getId();
 
+        if (sheep1 == sheep2 || sheepId1.equals(sheepId2)) {
+            throw new IllegalArgumentException("Cannot breed a sheep with itself!");
+        }
+
         Integer parent1Id = Math.min(sheepId1, sheepId2);
+        Sheep parent1 = sheepId1 < sheepId2 ? sheep1 : sheep2;
         Integer parent2Id = Math.max(sheepId1, sheepId2);
+        Sheep parent2 = sheepId1 < sheepId2 ? sheep2 : sheep1;
 
         // Find existing relationship
         Optional<Relationship> existingRelationship = relationshipRepository
@@ -41,9 +48,11 @@ public class RelationshipService {
 
         // Otherwise, create new
         Relationship newRelationship = new Relationship();
-        newRelationship.setParent1(sheep1);
-        newRelationship.setParent2(sheep2);
+        newRelationship.setParent1(parent1);
+        newRelationship.setParent2(parent2);
+
         // set other fields as needed
+        newRelationship.setOffspringPhenotypeFrequency(new EnumMap<>(Grade.class));
 
         return relationshipRepository.save(newRelationship);
     }

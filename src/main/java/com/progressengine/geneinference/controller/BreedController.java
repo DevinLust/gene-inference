@@ -6,10 +6,8 @@ import com.progressengine.geneinference.model.enums.Grade;
 import com.progressengine.geneinference.service.InferenceEngine;
 import com.progressengine.geneinference.service.RelationshipService;
 import com.progressengine.geneinference.service.SheepService;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import jakarta.transaction.Transactional;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping(value = "/breed")
@@ -25,8 +23,9 @@ public class BreedController {
         this.inferenceEngine = inferenceEngine;
     }
 
+    @Transactional
     @PostMapping(value = "/{sheep1Id}/{sheep2Id}")
-    public String breed(@PathVariable Integer sheep1Id, @PathVariable Integer sheep2Id) {
+    public String breed(@PathVariable Integer sheep1Id, @PathVariable Integer sheep2Id, @RequestParam(name = "saveChild", defaultValue = "true") boolean saveChild) {
         // find/create the relationship of these two sheep
         Sheep sheep1 = sheepService.findById(sheep1Id);
         Sheep sheep2 = sheepService.findById(sheep2Id);
@@ -40,18 +39,28 @@ public class BreedController {
         inferenceEngine.findJointDistribution(relationship);
 
         // update the marginal distributions of the parents' using the joint distribution and product of experts
-        inferenceEngine.updateMarginalProbabilities(relationship);
+        // updates only every 5 children this relationship has
+        int totalChildren = relationship.getOffspringPhenotypeFrequency().values().stream().mapToInt(Integer::intValue).sum();
+        int updateInterval = 1;
+        if (totalChildren % updateInterval == 0) {
+            inferenceEngine.updateMarginalProbabilities(relationship);
+            sheepService.saveSheep(sheep1);
+            sheepService.saveSheep(sheep2);
+        }
+
 
         // infer child hidden distribution
         newChild.setHiddenDistribution(inferenceEngine.inferChildHiddenDistribution(relationship,  childPhenotype));
 
         // save relationship and new child
         Relationship savedRelationship = relationshipService.saveRelationship(relationship);
-        Sheep savedChild = sheepService.saveSheep(newChild);
+        if (saveChild) {
+            sheepService.saveSheep(newChild);
+        }
 
-        // optional - propagate probability to other partners and children
+        // TODO - propagate probability to other partners and children
 
-        return String.format("Sheep has been bred with id: %s%nIn relationship with id: %s", savedChild.getId(), savedRelationship.getId());
+        return String.format("Sheep has been bred with id: %s%nIn relationship with id: %s", newChild.getId(), savedRelationship.getId());
     }
 
 }
