@@ -38,16 +38,10 @@ public class BreedController {
         // get the new joint distribution from the additional offspring data
         inferenceEngine.findJointDistribution(relationship);
 
-        // update the marginal distributions of the parents' using the joint distribution and product of experts
-        // updates only every 5 children this relationship has
-        int totalChildren = relationship.getOffspringPhenotypeFrequency().values().stream().mapToInt(Integer::intValue).sum();
-        int updateInterval = 1;
-        if (totalChildren % updateInterval == 0) {
-            inferenceEngine.updateMarginalProbabilities(relationship);
-            sheepService.saveSheep(sheep1);
-            sheepService.saveSheep(sheep2);
-        }
-
+        // update the marginal distributions of the parents' using the joint distribution
+        inferenceEngine.updateMarginalProbabilities(relationship);
+        sheepService.saveSheep(sheep1);
+        sheepService.saveSheep(sheep2);
 
         // infer child hidden distribution
         newChild.setHiddenDistribution(inferenceEngine.inferChildHiddenDistribution(relationship,  childPhenotype));
