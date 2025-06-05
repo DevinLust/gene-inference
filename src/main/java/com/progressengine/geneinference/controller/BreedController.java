@@ -7,6 +7,7 @@ import com.progressengine.geneinference.service.InferenceEngine;
 import com.progressengine.geneinference.service.RelationshipService;
 import com.progressengine.geneinference.service.SheepService;
 import jakarta.transaction.Transactional;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -17,7 +18,7 @@ public class BreedController {
     private final RelationshipService relationshipService;
     private final InferenceEngine inferenceEngine;
 
-    public BreedController(SheepService sheepService, RelationshipService relationshipService, InferenceEngine inferenceEngine) {
+    public BreedController(SheepService sheepService, RelationshipService relationshipService, @Qualifier("ensemble") InferenceEngine inferenceEngine) {
         this.sheepService = sheepService;
         this.relationshipService = relationshipService;
         this.inferenceEngine = inferenceEngine;
@@ -54,7 +55,7 @@ public class BreedController {
 
         // TODO - propagate probability to other partners and children
 
-        return String.format("Sheep has been bred with id: %s%nIn relationship with id: %s", newChild.getId(), savedRelationship.getId());
+        return String.format("Sheep has been bred with phenotype: %s%nIn relationship with id: %s", newChild.getPhenotype(), savedRelationship.getId());
     }
 
 }

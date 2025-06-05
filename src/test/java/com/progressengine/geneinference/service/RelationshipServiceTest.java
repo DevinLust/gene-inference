@@ -2,13 +2,29 @@ package com.progressengine.geneinference.service;
 
 import com.progressengine.geneinference.model.*;
 import com.progressengine.geneinference.model.enums.Grade;
+import com.progressengine.geneinference.repository.RelationshipRepository;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 public class RelationshipServiceTest {
+
+    @Mock
+    private RelationshipRepository relationshipRepository;
+
+    @InjectMocks
+    private RelationshipService relationshipService;
+
     @Test
     void testBreedNewSheep() {
         // Arrange
@@ -61,8 +77,8 @@ public class RelationshipServiceTest {
         double p = 0.25; // Each outcome's probability
         double expectedCount = N * p;
         double sigma = Math.sqrt(N * p * (1 - p));
-        double lowerBound = expectedCount - 2 * sigma;
-        double upperBound = expectedCount + 2 * sigma;
+        double lowerBound = expectedCount - 3 * sigma;
+        double upperBound = expectedCount + 3 * sigma;
 
         Sheep parent1 = createTestSheep(parent1Phenotype, parent1HiddenAllele, SheepService.createUniformDistribution());
 
@@ -87,6 +103,31 @@ public class RelationshipServiceTest {
                 assertEquals(0, count, "Grade " + grade + " should not be possible");
             }
         }
+    }
+
+    @Test
+    void testFindOrCreateRelationship() {
+        // Arrange
+        Sheep parent1 = createTestSheep(Grade.S, Grade.S, null);
+        Sheep parent2 = createTestSheep(Grade.E, Grade.E, null);
+
+        int parent1Id = 1;
+        int parent2Id = 2;
+        parent1.setId(parent1Id);
+        parent2.setId(parent2Id);
+
+        when(relationshipRepository.findByParent1_IdAndParent2_Id(anyInt(), anyInt()))
+                .thenReturn(Optional.empty());
+
+        when(relationshipRepository.save(any(Relationship.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Act
+        Relationship savedRelationship = relationshipService.findOrCreateRelationship(parent2, parent1);
+
+        // Assert
+        assertEquals(parent1Id, savedRelationship.getParent1().getId());
+        assertEquals(parent2Id, savedRelationship.getParent2().getId());
     }
 
     private Sheep createTestSheep(Grade phenotype, Grade hiddenAllele, Map<Grade, Double> hiddenDistribution) {

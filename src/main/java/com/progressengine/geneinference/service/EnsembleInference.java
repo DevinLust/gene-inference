@@ -6,14 +6,18 @@ import com.progressengine.geneinference.model.Sheep;
 import com.progressengine.geneinference.model.enums.Grade;
 import org.springframework.stereotype.Service;
 
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
-@Service("naive")
-public class NaiveInference extends BaseInferenceEngine {
+@Service("ensemble")
+public class EnsembleInference extends BaseInferenceEngine {
+    private final RelationshipService relationshipService;
 
-    // Updates the relationship with a new joint distribution using naive bayes and multinomial distributions
+    public EnsembleInference(RelationshipService relationshipService) {
+        this.relationshipService = relationshipService;
+    }
+
+
+    // Updates the relationship with a new joint distribution using purely multinomial distributions
     public void findJointDistribution(Relationship relationship) {
         Map<GradePair, Double> intermediateScores = new HashMap<>();
         Map<Grade, Integer> phenotypeFrequency = relationship.getOffspringPhenotypeFrequency();
@@ -26,7 +30,7 @@ public class NaiveInference extends BaseInferenceEngine {
             for (Grade grade2 : Grade.values()) {
                 GradePair gradePair = new GradePair(grade1, grade2);
                 double multiScore = multinomialScore(gradePair, phenotype1, phenotype2, phenotypeFrequency);
-                intermediateScores.put(gradePair, multiScore * parent1.getHiddenDistribution().get(grade1) * parent2.getHiddenDistribution().get(grade2));
+                intermediateScores.put(gradePair, multiScore);
             }
         }
 
@@ -68,23 +72,42 @@ public class NaiveInference extends BaseInferenceEngine {
     public void updateMarginalProbabilities(Relationship relationship) {
         Sheep parent1 = relationship.getParent1();
         Sheep parent2 = relationship.getParent2();
-        Map<GradePair, Double> jointDistribution = relationship.getHiddenPairsDistribution();
 
-        Map<Grade, Double> parent1NewMarginalProbabilities = new EnumMap<>(Grade.class);
-        Map<Grade, Double> parent2NewMarginalProbabilities = new EnumMap<>(Grade.class);
+        Map<Grade, Double> parent1NewMarginalProbabilities = ensembleMarginalProbability(parent1);
+        Map<Grade, Double> parent2NewMarginalProbabilities = ensembleMarginalProbability(parent2);
 
-        for (Map.Entry<GradePair, Double> entry : jointDistribution.entrySet()) {
-            GradePair gradePair = entry.getKey();
-            double jointProbability = entry.getValue();
-
-            parent1NewMarginalProbabilities.merge(gradePair.getFirst(), jointProbability, Double::sum);
-            parent2NewMarginalProbabilities.merge(gradePair.getSecond(), jointProbability, Double::sum);
-        }
-
-        // productOfExperts(parent1, parent1NewMarginalProbabilities);
-        // productOfExperts(parent2, parent2NewMarginalProbabilities);
         parent1.setHiddenDistribution(parent1NewMarginalProbabilities);
         parent2.setHiddenDistribution(parent2NewMarginalProbabilities);
+    }
+
+    private Map<Grade, Double> ensembleMarginalProbability(Sheep parent) {
+        List<Relationship> allRelationships = relationshipService.findRelationshipsByParent(parent);
+        List<Map<Grade, Double>> marginalProbabilities = new ArrayList<>();
+
+        for (Relationship relationship : allRelationships) {
+            boolean firstParent = relationship.getParent1().equals(parent);
+            Map<GradePair, Double> jointDistribution = relationship.getHiddenPairsDistribution();
+            Map<Grade, Double> newMarginalProbabilities = new EnumMap<>(Grade.class);
+
+            for (Map.Entry<GradePair, Double> entry : jointDistribution.entrySet()) {
+                GradePair gradePair = entry.getKey();
+                double newProbability = entry.getValue();
+                if (firstParent) {
+                    newMarginalProbabilities.merge(gradePair.getFirst(), newProbability, Double::sum);
+                } else {
+                    newMarginalProbabilities.merge(gradePair.getSecond(), newProbability, Double::sum);
+                }
+            }
+
+            marginalProbabilities.add(newMarginalProbabilities);
+        }
+
+        Map<Grade, Double> ensembleProbabilities = parent.getHiddenDistribution();
+        for (Map<Grade, Double> marginalProbability : marginalProbabilities) {
+            productOfExperts(ensembleProbabilities, marginalProbability);
+        }
+
+        return ensembleProbabilities;
     }
 
 }

@@ -7,6 +7,7 @@ import com.progressengine.geneinference.repository.RelationshipRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Optional;
 import java.util.Random;
 
@@ -55,6 +56,14 @@ public class RelationshipService {
         newRelationship.setOffspringPhenotypeFrequency(new EnumMap<>(Grade.class));
 
         return relationshipRepository.save(newRelationship);
+    }
+
+    public List<Relationship> findRelationshipsByParent(Sheep parent) {
+        return findRelationshipsByParent(parent.getId());
+    }
+
+    public List<Relationship> findRelationshipsByParent(Integer parentId) {
+        return relationshipRepository.findByParentId(parentId);
     }
 
     // assumes uniform distribution for child
