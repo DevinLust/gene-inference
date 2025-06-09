@@ -112,4 +112,10 @@ public abstract class BaseInferenceEngine implements InferenceEngine {
             entry.setValue(entry.getValue() / sum);
         }
     }
+
+    protected void fillMissingValuesWithZero(Map<Grade, Double> scores) {
+        for (Grade grade : Grade.values()) {
+            scores.putIfAbsent(grade, 0.0);
+        }
+    }
 }

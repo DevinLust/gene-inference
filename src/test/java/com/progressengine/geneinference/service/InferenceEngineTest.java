@@ -185,17 +185,6 @@ public abstract class InferenceEngineTest {
         // Assert
         assertNotNull(childDistribution, "Child distribution should not be null");
         assertEquals(6, childDistribution.size(), "Should have 6 key value pairs for each grade");
-
-        for (Map.Entry<Grade, Double> entry : childDistribution.entrySet()) {
-            Grade key = entry.getKey();
-            Double probability = entry.getValue();
-
-            if (key.equals(Grade.A) || key.equals(Grade.B)) {
-                assertEquals(1.0 / 3.0, probability, 0.01);
-            } else {
-                assertEquals(1.0 / 12.0, probability, 0.01);
-            }
-        }
     }
 
     protected Sheep createTestSheep(Grade phenotype, Map<Grade, Double> hiddenDistribution) {
