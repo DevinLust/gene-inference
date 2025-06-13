@@ -96,13 +96,16 @@ public class EnsembleInferenceTest extends InferenceEngineTest {
                 Map.entry(Grade.D, 23)
         ));
 
+        Sheep child = createTestSheep(Grade.D, SheepService.createUniformDistribution());
+
         inferenceEngine.findJointDistribution(relationship);
 
         when(relationshipService.findRelationshipsByParent(any(Sheep.class))).thenReturn(List.of(relationship));
         inferenceEngine.updateMarginalProbabilities(relationship);
 
         // Act
-        Map<Grade, Double> childDistribution = inferenceEngine.inferChildHiddenDistribution(relationship, Grade.D);
+        inferenceEngine.inferChildHiddenDistribution(relationship, child);
+        Map<Grade, Double> childDistribution = child.getPriorDistribution();
 
         // Assert
         assertNotNull(childDistribution, "Child distribution should not be null");
@@ -132,13 +135,16 @@ public class EnsembleInferenceTest extends InferenceEngineTest {
                 Map.entry(Grade.C, 1)
         ));
 
+        Sheep child = createTestSheep(Grade.C, SheepService.createUniformDistribution());
+
         inferenceEngine.findJointDistribution(relationship);
 
         when(relationshipService.findRelationshipsByParent(any(Sheep.class))).thenReturn(List.of(relationship));
         inferenceEngine.updateMarginalProbabilities(relationship);
 
         // Act
-        Map<Grade, Double> childDistribution = inferenceEngine.inferChildHiddenDistribution(relationship, Grade.C);
+        inferenceEngine.inferChildHiddenDistribution(relationship, child);
+        Map<Grade, Double> childDistribution = child.getPriorDistribution();
 
         // Assert
         assertNotNull(childDistribution, "Child distribution should not be null");

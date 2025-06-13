@@ -10,6 +10,8 @@ import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.EnumMap;
+
 @RestController
 @RequestMapping(value = "/breed")
 public class BreedController {
@@ -34,7 +36,6 @@ public class BreedController {
 
         // create a new child from the two sheep
         Sheep newChild = RelationshipService.breedNewSheep(relationship);
-        Grade childPhenotype = newChild.getPhenotype();
 
         // get the new joint distribution from the additional offspring data
         inferenceEngine.findJointDistribution(relationship);
@@ -45,7 +46,8 @@ public class BreedController {
         sheepService.saveSheep(sheep2);
 
         // infer child hidden distribution
-        newChild.setHiddenDistribution(inferenceEngine.inferChildHiddenDistribution(relationship,  childPhenotype));
+        inferenceEngine.inferChildHiddenDistribution(relationship,  newChild);
+        newChild.setHiddenDistribution(new EnumMap<>(newChild.getPriorDistribution()));
 
         // save relationship and new child
         Relationship savedRelationship = relationshipService.saveRelationship(relationship);

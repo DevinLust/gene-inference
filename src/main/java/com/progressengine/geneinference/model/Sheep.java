@@ -27,6 +27,13 @@ public class Sheep {
     @Column(name = "probability")           // Name of the value column (Integer)
     private Map<Grade, Double> hiddenDistribution;
 
+    @ElementCollection
+    @CollectionTable(name = "sheep_prior_distribution", joinColumns = @JoinColumn(name = "sheep_id"))
+    @MapKeyEnumerated(EnumType.STRING)
+    @MapKeyColumn(name = "grade")
+    @Column(name = "probability")
+    private Map<Grade, Double> priorDistribution;
+
     @OneToOne
     @JoinColumn(name = "parent_relationship_id")
     private Relationship parentRelationship; // foreign key to Relationship
@@ -72,6 +79,14 @@ public class Sheep {
 
     public void setHiddenDistribution(Map<Grade, Double> hiddenDistribution) {
         this.hiddenDistribution = hiddenDistribution;
+    }
+
+    public Map<Grade, Double> getPriorDistribution() {
+        return priorDistribution;
+    }
+
+    public void setPriorDistribution(Map<Grade, Double> priorDistribution) {
+        this.priorDistribution = priorDistribution;
     }
 
     public Relationship getParentRelationship() {

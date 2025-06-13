@@ -38,9 +38,11 @@ public class EnsembleInference extends BaseInferenceEngine {
         relationship.setHiddenPairsDistribution(intermediateScores);
     }
 
+    // TODO - need to change the way prior child distribution is stored since its dependent on observed phenotype and not actually shared among all children
     // Returns a new Map of grades to probability given the relationship and observed phenotype of the child
-    public Map<Grade, Double> inferChildHiddenDistribution(Relationship relationship, Grade childPhenotype) {
+    public void inferChildHiddenDistribution(Relationship relationship, Sheep child) {
         Map<Grade, Double> childHiddenDistribution = new EnumMap<>(Grade.class);
+        Grade childPhenotype = child.getPhenotype();
 
         // find the probability distribution of the hidden allele given both genotypes
         Map<GradePair, Map<Grade, Double>> conditionalDistributions = findConditionalDistributions(relationship, childPhenotype);
@@ -72,9 +74,11 @@ public class EnsembleInference extends BaseInferenceEngine {
         // fill any missing probabilities with 0.0
         fillMissingValuesWithZero(childHiddenDistribution);
 
-        return childHiddenDistribution;
+        child.setPriorDistribution(childHiddenDistribution);
     }
 
+    // TODO - parents can sometimes lose context from previous relationship ex. (B, B) & (A, S). P2 should guarantee S but loses context in other relationships (assuming P1 knows it can't have an S)
+    // TODO - low data marginals are a bit extreme due to product of experts
     // updates the hidden distributions of each parent in the relationship
     public void updateMarginalProbabilities(Relationship relationship) {
         Sheep parent1 = relationship.getParent1();
@@ -99,18 +103,8 @@ public class EnsembleInference extends BaseInferenceEngine {
 
         for (Relationship relationship : allRelationships) {
             boolean firstParent = relationship.getParent1().equals(parent);
-            Map<GradePair, Double> jointDistribution = relationship.getHiddenPairsDistribution();
-            Map<Grade, Double> newMarginalProbabilities = new EnumMap<>(Grade.class);
 
-            for (Map.Entry<GradePair, Double> entry : jointDistribution.entrySet()) {
-                GradePair gradePair = entry.getKey();
-                double newProbability = entry.getValue();
-                if (firstParent) {
-                    newMarginalProbabilities.merge(gradePair.getFirst(), newProbability, Double::sum);
-                } else {
-                    newMarginalProbabilities.merge(gradePair.getSecond(), newProbability, Double::sum);
-                }
-            }
+            Map<Grade, Double> newMarginalProbabilities = qualifiedJointContextMarginal(relationship, firstParent);
 
             fillMissingValuesWithZero(newMarginalProbabilities);
             marginalProbabilities.add(newMarginalProbabilities);
@@ -121,7 +115,10 @@ public class EnsembleInference extends BaseInferenceEngine {
             productOfExperts(ensembleProbabilities, marginalProbabilities.get(i));
         }
 
-        // TODO - if the sheep has parents then product of experts with prior child probabilities
+        Map<Grade, Double> priorProbabilities = parent.getPriorDistribution();
+        if (priorProbabilities != null && priorProbabilities.size() == Grade.values().length) {
+            productOfExperts(ensembleProbabilities, parent.getPriorDistribution());
+        }
 
         return ensembleProbabilities;
     }
@@ -148,4 +145,39 @@ public class EnsembleInference extends BaseInferenceEngine {
         }
     }
 
+    // builds a marginal distribution purely from the multinomial probabilities of the jointDistribution for the specified parent
+    private Map<Grade, Double> noJointContextMarginal(Map<GradePair, Double> jointDistribution, boolean firstParent) {
+        Map<Grade, Double> partialMarginals = new EnumMap<>(Grade.class);
+
+        for (Map.Entry<GradePair, Double> entry : jointDistribution.entrySet()) {
+            GradePair gradePair = entry.getKey();
+            double newProbability = entry.getValue();
+            if (firstParent) {
+                partialMarginals.merge(gradePair.getFirst(), newProbability, Double::sum);
+            } else {
+                partialMarginals.merge(gradePair.getSecond(), newProbability, Double::sum);
+            }
+        }
+
+        return partialMarginals;
+    }
+
+    private Map<Grade, Double> qualifiedJointContextMarginal(Relationship relationship, boolean firstParent) {
+        Map<Grade, Double> partialMarginals = new EnumMap<>(Grade.class);
+        Map<GradePair, Double> jointDistribution = relationship.getHiddenPairsDistribution();
+        Map<Grade, Double> qualifiedMarginal = firstParent ? relationship.getParent2().getHiddenDistribution() : relationship.getParent1().getHiddenDistribution();
+
+        for (Map.Entry<GradePair, Double> entry : jointDistribution.entrySet()) {
+            GradePair gradePair = entry.getKey();
+            double newProbability = entry.getValue();
+            if (firstParent && qualifiedMarginal.get(gradePair.getSecond()) > 0.0) {
+                partialMarginals.merge(gradePair.getFirst(), newProbability, Double::sum);
+            } else if (qualifiedMarginal.get(gradePair.getFirst()) > 0.0) {
+                partialMarginals.merge(gradePair.getSecond(), newProbability, Double::sum);
+            }
+        }
+        normalizeScores(partialMarginals);
+
+        return partialMarginals;
+    }
 }

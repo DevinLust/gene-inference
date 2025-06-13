@@ -35,8 +35,9 @@ public class NaiveInference extends BaseInferenceEngine {
     }
 
     // Returns a new Map of grades to probability given the relationship and observed phenotype of the child
-    public Map<Grade, Double> inferChildHiddenDistribution(Relationship relationship, Grade childPhenotype) {
+    public void inferChildHiddenDistribution(Relationship relationship, Sheep child) {
         Map<Grade, Double> childHiddenDistribution = new EnumMap<>(Grade.class);
+        Grade childPhenotype = child.getPhenotype();
 
         // find the probability distribution of the hidden allele given both genotypes
         Map<GradePair, Map<Grade, Double>> conditionalDistributions = findConditionalDistributions(relationship, childPhenotype);
@@ -61,7 +62,7 @@ public class NaiveInference extends BaseInferenceEngine {
             childHiddenDistribution.putIfAbsent(grade, 0.0);
         }
 
-        return childHiddenDistribution;
+        child.setPriorDistribution(childHiddenDistribution);
     }
 
     // updates the hidden distributions of each parent in the relationship

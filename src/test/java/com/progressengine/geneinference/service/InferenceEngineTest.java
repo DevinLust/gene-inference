@@ -145,10 +145,13 @@ public abstract class InferenceEngineTest {
                 Map.entry(Grade.D, 23)
         ));
 
+        Sheep child = createTestSheep(Grade.D, SheepService.createUniformDistribution());
+
         inferenceEngine.findJointDistribution(relationship);
 
         // Act
-        Map<Grade, Double> childDistribution = inferenceEngine.inferChildHiddenDistribution(relationship, Grade.D);
+        inferenceEngine.inferChildHiddenDistribution(relationship, child);
+        Map<Grade, Double> childDistribution = child.getPriorDistribution();
 
         // Assert
         assertNotNull(childDistribution, "Child distribution should not be null");
@@ -177,12 +180,15 @@ public abstract class InferenceEngineTest {
                 Map.entry(Grade.C, 1)
         ));
 
+        Sheep child = createTestSheep(Grade.C, SheepService.createUniformDistribution());
+
         inferenceEngine.findJointDistribution(relationship);
 
         // Act
-        Map<Grade, Double> childDistribution = inferenceEngine.inferChildHiddenDistribution(relationship, Grade.C);
+        inferenceEngine.inferChildHiddenDistribution(relationship, child);
+        Map<Grade, Double> childDistribution = child.getPriorDistribution();
 
-        // Assert
+                // Assert
         assertNotNull(childDistribution, "Child distribution should not be null");
         assertEquals(6, childDistribution.size(), "Should have 6 key value pairs for each grade");
     }

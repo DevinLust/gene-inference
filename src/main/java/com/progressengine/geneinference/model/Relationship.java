@@ -33,7 +33,6 @@ public class Relationship {
     @Column(name = "frequency")           // Name of the value column (Integer)
     private Map<Grade, Integer> offspringPhenotypeFrequency;
 
-    // TODO - add a Map for prior child distribution since they all share the same
 
     public Integer getId() {
         return id;
