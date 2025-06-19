@@ -58,9 +58,7 @@ public class NaiveInference extends BaseInferenceEngine {
         }
 
         // fill any missing probabilities with 0.0
-        for (Grade grade : Grade.values()) {
-            childHiddenDistribution.putIfAbsent(grade, 0.0);
-        }
+        fillMissingValuesWithZero(childHiddenDistribution);
 
         child.setPriorDistribution(childHiddenDistribution);
     }
