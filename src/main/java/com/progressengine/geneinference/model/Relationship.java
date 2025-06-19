@@ -33,6 +33,7 @@ public class Relationship {
     @Column(name = "frequency")           // Name of the value column (Integer)
     private Map<Grade, Integer> offspringPhenotypeFrequency;
 
+
     public Integer getId() {
         return id;
     }
@@ -71,5 +72,9 @@ public class Relationship {
 
     public void setOffspringPhenotypeFrequency(Map<Grade, Integer> offspringPhenotypeFrequency) {
         this.offspringPhenotypeFrequency = offspringPhenotypeFrequency;
+    }
+
+    public void updateOffspringPhenotypeFrequency(Grade grade, int additionalOccurrences) {
+        this.offspringPhenotypeFrequency.merge(grade, additionalOccurrences, Integer::sum);
     }
 }
