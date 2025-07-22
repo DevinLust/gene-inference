@@ -10,7 +10,7 @@ import java.util.*;
 
 @Service("ensemble")
 public class EnsembleInference extends BaseInferenceEngine {
-    private final RelationshipService relationshipService;
+    protected final RelationshipService relationshipService;
 
     public EnsembleInference(RelationshipService relationshipService) {
         this.relationshipService = relationshipService;

@@ -13,30 +13,30 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-public class EnsembleInferenceTest extends InferenceEngineTest {
-    @Mock
-    protected RelationshipService relationshipService;
-
+public class LoopyInferenceTest extends EnsembleInferenceTest {
     @BeforeEach
     public void setUp() {
-        inferenceEngine = new EnsembleInference(relationshipService);
+        inferenceEngine = new LoopyInference(relationshipService);
     }
 
     @Override
     @Test
     void testUpdateMarginalDistribution() {
         // Arrange
-        Sheep parent1 = createTestSheep(Grade.A, SheepService.createUniformDistribution());
+        Sheep parent1 = createTestSheep(Grade.A, SheepService.createUniformDistribution(), 1);
 
-        Sheep parent2 = createTestSheep(Grade.B, SheepService.createUniformDistribution());
+        Sheep parent2 = createTestSheep(Grade.B, SheepService.createUniformDistribution(), 2);
 
         Relationship relationship = createTestRelationship(parent1, parent2, Map.ofEntries(
                 Map.entry(Grade.C, 1)
-        ));
+        ), 1);
 
         inferenceEngine.findJointDistribution(relationship);
 
@@ -86,15 +86,15 @@ public class EnsembleInferenceTest extends InferenceEngineTest {
     @Test
     void testInferChildDistributionChild1() {
         // Arrange
-        Sheep parent1 = createTestSheep(Grade.B, SheepService.createUniformDistribution());
+        Sheep parent1 = createTestSheep(Grade.B, SheepService.createUniformDistribution(), 1);
 
-        Sheep parent2 = createTestSheep(Grade.B, SheepService.createUniformDistribution());
+        Sheep parent2 = createTestSheep(Grade.B, SheepService.createUniformDistribution(), 2);
 
         Relationship relationship = createTestRelationship(parent1, parent2, Map.ofEntries(
                 Map.entry(Grade.B, 53),
                 Map.entry(Grade.C, 24),
                 Map.entry(Grade.D, 23)
-        ));
+        ), 1);
 
         Sheep child = createTestSheep(Grade.D, SheepService.createUniformDistribution());
 
@@ -127,13 +127,13 @@ public class EnsembleInferenceTest extends InferenceEngineTest {
     @Test
     void testInferChildDistributionChild2() {
         // Arrange
-        Sheep parent1 = createTestSheep(Grade.A, SheepService.createUniformDistribution());
+        Sheep parent1 = createTestSheep(Grade.A, SheepService.createUniformDistribution(), 1);
 
-        Sheep parent2 = createTestSheep(Grade.B, SheepService.createUniformDistribution());
+        Sheep parent2 = createTestSheep(Grade.B, SheepService.createUniformDistribution(), 2);
 
         Relationship relationship = createTestRelationship(parent1, parent2, Map.ofEntries(
                 Map.entry(Grade.C, 1)
-        ));
+        ), 1);
 
         Sheep child = createTestSheep(Grade.C, SheepService.createUniformDistribution());
 
