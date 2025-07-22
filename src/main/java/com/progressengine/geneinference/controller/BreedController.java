@@ -20,7 +20,7 @@ public class BreedController {
     private final RelationshipService relationshipService;
     private final InferenceEngine inferenceEngine;
 
-    public BreedController(SheepService sheepService, RelationshipService relationshipService, @Qualifier("ensemble") InferenceEngine inferenceEngine) {
+    public BreedController(SheepService sheepService, RelationshipService relationshipService, @Qualifier("loopy") InferenceEngine inferenceEngine) {
         this.sheepService = sheepService;
         this.relationshipService = relationshipService;
         this.inferenceEngine = inferenceEngine;

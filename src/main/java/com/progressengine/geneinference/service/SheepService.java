@@ -64,6 +64,7 @@ public class SheepService {
             throw new IllegalArgumentException("hiddenDistribution must include all grades");
         }
         sheep.setHiddenDistribution(dto.getHiddenDistribution());
+        sheep.setPriorDistribution(new EnumMap<>(dto.getHiddenDistribution()));
 
         if (dto.getParentRelationshipId() != null) {
             Relationship relationship = relationshipRepository.findById(dto.getParentRelationshipId())

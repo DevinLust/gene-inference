@@ -197,6 +197,12 @@ public abstract class InferenceEngineTest {
         Sheep sheep = new Sheep();
         sheep.setPhenotype(phenotype);
         sheep.setHiddenDistribution(hiddenDistribution);
+        sheep.setPriorDistribution(SheepService.createUniformDistribution());
+        return sheep;
+    }
+    protected Sheep createTestSheep(Grade phenotype, Map<Grade, Double> hiddenDistribution, int sheepId) {
+        Sheep sheep = createTestSheep(phenotype, hiddenDistribution);
+        sheep.setId(sheepId);
         return sheep;
     }
 
@@ -205,6 +211,12 @@ public abstract class InferenceEngineTest {
         relationship.setParent1(parent1);
         relationship.setParent2(parent2);
         relationship.setOffspringPhenotypeFrequency(offspringPhenotypeFrequency);
+        return relationship;
+    }
+
+    protected Relationship createTestRelationship(Sheep parent1, Sheep parent2, Map<Grade, Integer> offspringPhenotypeFrequency, int relationshipId) {
+        Relationship relationship = createTestRelationship(parent1, parent2, offspringPhenotypeFrequency);
+        relationship.setId(relationshipId);
         return relationship;
     }
 }
