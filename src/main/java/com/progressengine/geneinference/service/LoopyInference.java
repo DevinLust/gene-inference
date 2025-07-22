@@ -35,7 +35,7 @@ public class LoopyInference extends EnsembleInference {
         parent2.setHiddenDistribution(parent2NewMarginalProbabilities);
     }
 
-    // TODO - parents forget their own previous relationships
+    // Uses the principal of loopy belief propagation to pass messages from immediate partners to the relationship in question
     private Map<Grade, Double> loopMarginalProbability(Sheep parent, List<Relationship> relationships, List<Relationship> otherParentsRelationships, Relationship currentRelationship, Sheep otherParent) {
         // calculate the message to the current relationship
         Map<Grade, Double> messageToRelationship = otherParent.getPriorDistribution() != null && !otherParent.getPriorDistribution().isEmpty() ? new EnumMap<>(otherParent.getPriorDistribution()) : SheepService.createUniformDistribution();
@@ -43,6 +43,7 @@ public class LoopyInference extends EnsembleInference {
             if (!relationship.getId().equals(currentRelationship.getId())) {
                 Sheep secondaryParent = relationship.getParent1().getId().equals(otherParent.getId()) ? relationship.getParent2() : relationship.getParent1();
                 boolean firstParent = relationship.getParent1().getId().equals(secondaryParent.getId()); // whether the secondary parent is the first or not
+                // the message to the current relationship is the product of the messages from all other relationships
                 productOfExperts(messageToRelationship, halfJointMarginal(relationship, secondaryParent.getHiddenDistribution(), firstParent));
             }
         }
