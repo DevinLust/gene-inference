@@ -46,7 +46,8 @@ public abstract class BaseInferenceEngine implements InferenceEngine {
         return conditionalDistributions;
     }
 
-    protected double[] probabilityAlleleFromParents(GradePair gradePair, Sheep parent1, Sheep parent2, Grade allele) {
+    // Returns the probability the given allele came from each parent given the assumed hidden alleles
+    protected double[] probabilityAlleleFromParents(GradePair hiddenAlleles, Sheep parent1, Sheep parent2, Grade allele) {
         double[] probabilities = new double[2];
 
         double totalProbabilityOfAllele = 0.0;
@@ -55,7 +56,7 @@ public abstract class BaseInferenceEngine implements InferenceEngine {
             probabilityOfAlleleGivenParent1 += 0.5;
             totalProbabilityOfAllele += 0.25;
         }
-        if (gradePair.getFirst().equals(allele)) {
+        if (hiddenAlleles.getFirst().equals(allele)) {
             probabilityOfAlleleGivenParent1 += 0.5;
             totalProbabilityOfAllele += 0.25;
         }
@@ -65,7 +66,7 @@ public abstract class BaseInferenceEngine implements InferenceEngine {
             probabilityOfAlleleGivenParent2 += 0.5;
             totalProbabilityOfAllele += 0.25;
         }
-        if (gradePair.getSecond().equals(allele)) {
+        if (hiddenAlleles.getSecond().equals(allele)) {
             probabilityOfAlleleGivenParent2 += 0.5;
             totalProbabilityOfAllele += 0.25;
         }
@@ -74,13 +75,15 @@ public abstract class BaseInferenceEngine implements InferenceEngine {
             return probabilities;
         }
 
+        // multiply each ratio by 0.5 as the probability that each parent is chosen
         probabilities[0] = (0.5 * probabilityOfAlleleGivenParent1) /  totalProbabilityOfAllele;
         probabilities[1] = (0.5 * probabilityOfAlleleGivenParent2) /  totalProbabilityOfAllele;
         return probabilities;
     }
 
+    // Returns a relative multinomial score based on the given hidden alleles, phenotypes, and phenotype frequency seen in the relationship
     protected double multinomialScore(GradePair hiddenPair, Grade phenotype1, Grade phenotype2, Map<Grade, Integer> phenotypeFrequency) {
-        double score = 1000000.0;
+        double score = 1000000.0; // A multiplicative constant to help keep scores from getting too small quickly
 
         // each occurrence of a grade adds 1/4 to the probability of that grade
         Map<Grade, Double> probabilityToDraw = new EnumMap<>(Grade.class);
