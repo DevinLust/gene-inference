@@ -2,6 +2,8 @@ package com.progressengine.geneinference.controller;
 
 import com.progressengine.geneinference.model.Relationship;
 import com.progressengine.geneinference.model.Sheep;
+import com.progressengine.geneinference.model.enums.Category;
+import com.progressengine.geneinference.model.enums.DistributionType;
 import com.progressengine.geneinference.model.enums.Grade;
 import com.progressengine.geneinference.service.InferenceEngine;
 import com.progressengine.geneinference.service.RelationshipService;
@@ -48,6 +50,10 @@ public class BreedController {
         // infer child hidden distribution
         inferenceEngine.inferChildHiddenDistribution(relationship,  newChild);
         newChild.setHiddenDistribution(new EnumMap<>(newChild.getPriorDistribution()));
+
+        // testing new distribution
+        newChild.setDistribution(Category.SWIM, DistributionType.INFERRED, newChild.getHiddenDistribution());
+        // ----------------------------------
 
         // save relationship and new child
         Relationship savedRelationship = relationshipService.saveRelationship(relationship);

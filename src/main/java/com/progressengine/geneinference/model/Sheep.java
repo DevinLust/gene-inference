@@ -1,9 +1,12 @@
 package com.progressengine.geneinference.model;
 
+import com.progressengine.geneinference.model.enums.Category;
+import com.progressengine.geneinference.model.enums.DistributionType;
 import jakarta.persistence.*;
 import com.progressengine.geneinference.model.enums.Grade;
 
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Entity
 public class Sheep {
@@ -33,6 +36,15 @@ public class Sheep {
     @MapKeyColumn(name = "grade")
     @Column(name = "probability")
     private Map<Grade, Double> priorDistribution;
+
+    @OneToMany(mappedBy = "sheep", cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
+    private List<SheepDistribution> distributions = new ArrayList<>();
+
+    @Transient
+    private Map<Category, Map<DistributionType, Map<Grade, SheepDistribution>>> distributionsByCategory = new EnumMap<>(Category.class);
+
+    @Transient
+    private boolean organized = false;
 
     @OneToOne
     @JoinColumn(name = "parent_relationship_id")
@@ -87,6 +99,99 @@ public class Sheep {
 
     public void setPriorDistribution(Map<Grade, Double> priorDistribution) {
         this.priorDistribution = priorDistribution;
+    }
+
+    // experimental List of SheepDistribution
+    @PostLoad
+    public void organizeDistributions() {
+        if (distributions == null) return;
+
+        distributionsByCategory = new EnumMap<>(Category.class);
+
+        System.out.println(distributions.size());
+
+        for (SheepDistribution dist : distributions) {
+            distributionsByCategory
+                    .computeIfAbsent(dist.getCategory(), k -> new EnumMap<>(DistributionType.class))
+                    .computeIfAbsent(dist.getDistributionType(), k -> new EnumMap<>(Grade.class))
+                    .put(dist.getGrade(), dist);
+        }
+        organized = true;
+    }
+
+    private Map<Grade, SheepDistribution> getDistributionByCategoryAndType(Category category,  DistributionType distributionType) {
+        Map<DistributionType, Map<Grade, SheepDistribution>> typeMap = distributionsByCategory.get(category);
+
+        if (typeMap == null || !typeMap.containsKey(distributionType)) {
+            throw new IllegalStateException("Distribution not initialized for category " + category + " and type " + distributionType);
+        }
+
+        return typeMap.get(distributionType);
+    }
+
+    public Map<Grade, Double> getDistribution(Category category, DistributionType distributionType) {
+        if (!organized) {
+            organizeDistributions();
+        }
+
+        Map<Grade, SheepDistribution> distMap = getDistributionByCategoryAndType(category, distributionType);
+
+        return distMap.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getProbability()));
+    }
+
+    public Map<Grade, Double> getDistribution(String categoryStr, String distributionTypeStr) {
+        return getDistribution(Category.valueOf(categoryStr), DistributionType.valueOf(distributionTypeStr));
+    }
+
+    private Map<Grade, SheepDistribution> createIfAbsentDistributionByCategoryAndType(Category category, DistributionType distributionType) {
+        return distributionsByCategory
+                .computeIfAbsent(category, k -> new EnumMap<>(DistributionType.class))
+                .computeIfAbsent(distributionType, k -> new EnumMap<>(Grade.class));
+    }
+
+    public void setDistribution(Category category, DistributionType distributionType, Map<Grade, Double> distribution) {
+        if (!organized) {
+            organizeDistributions();
+        }
+
+        // Validate all Grades are present
+        Set<Grade> missingGrades = EnumSet.allOf(Grade.class);
+        missingGrades.removeAll(distribution.keySet());
+
+        if (!missingGrades.isEmpty()) {
+            throw new IllegalArgumentException("Missing grades in distribution: " + missingGrades);
+        }
+
+        // Validate sum ≈ 1.0
+        double total = distribution.values().stream()
+                .mapToDouble(Double::doubleValue)
+                .sum();
+
+        if (Math.abs(total - 1.0) > 1e-6) {
+            throw new IllegalArgumentException("Distribution probabilities must sum to 1.0 (±1e-6). Actual sum: " + total);
+        }
+
+        Map<Grade, SheepDistribution> distMap = createIfAbsentDistributionByCategoryAndType(category, distributionType);
+
+        // set the associated SheepDistribution to the new probability
+        for  (Map.Entry<Grade, Double> entry : distribution.entrySet()) {
+            Grade key = entry.getKey();
+            Double value = entry.getValue();
+            SheepDistribution sheepDistribution = distMap.computeIfAbsent(
+                    key,
+                    k -> {
+                        SheepDistribution newDist = new SheepDistribution(this, category, distributionType, k);
+                        distributions.add(newDist); // Ensure it's part of the entity list
+                        return newDist;
+                    }
+            );
+            sheepDistribution.setProbability(value);
+        }
+    }
+
+    public void setDistribution(String categoryStr, String distributionTypeStr, Map<Grade, Double> distribution) {
+        setDistribution(Category.valueOf(categoryStr), DistributionType.valueOf(distributionTypeStr), distribution);
     }
 
     public Relationship getParentRelationship() {
