@@ -53,6 +53,8 @@ public class BreedController {
 
         // testing new distribution
         newChild.setDistribution(Category.SWIM, DistributionType.INFERRED, newChild.getHiddenDistribution());
+        sheep1.setDistribution(Category.SWIM, DistributionType.INFERRED, sheep1.getHiddenDistribution());
+        sheep2.setDistribution(Category.SWIM, DistributionType.INFERRED, sheep2.getHiddenDistribution());
         // ----------------------------------
 
         // save relationship and new child

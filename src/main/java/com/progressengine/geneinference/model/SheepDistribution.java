@@ -5,6 +5,8 @@ import com.progressengine.geneinference.model.enums.DistributionType;
 import com.progressengine.geneinference.model.enums.Grade;
 import jakarta.persistence.*;
 
+import java.util.Objects;
+
 @Entity
 @IdClass(SheepDistributionKey.class)  // <-- Tells JPA to use the key class
 @Table(name = "sheep_distribution")
@@ -76,5 +78,20 @@ public class SheepDistribution {
 
     public void setProbability(double probability) {
         this.probability = probability;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof SheepDistribution that)) return false;
+        return Objects.equals(sheep.getId(), that.sheep.getId()) &&
+                category == that.category &&
+                distributionType == that.distributionType &&
+                grade == that.grade;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(sheep != null ? sheep.getId() : null, category, distributionType, grade);
     }
 }

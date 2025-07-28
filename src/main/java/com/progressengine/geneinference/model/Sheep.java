@@ -1,5 +1,6 @@
 package com.progressengine.geneinference.model;
 
+import com.progressengine.geneinference.dto.SheepGenotypeDTO;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.DistributionType;
 import jakarta.persistence.*;
@@ -23,6 +24,9 @@ public class Sheep {
     @Enumerated(EnumType.STRING)
     @Column(name = "hidden_allele")
     private Grade hiddenAllele;
+
+    @OneToMany(mappedBy = "sheep", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<SheepGenotype> genotypes = new ArrayList<>();
 
     @ElementCollection(fetch = FetchType.EAGER)
     @MapKeyEnumerated(EnumType.STRING)
@@ -83,6 +87,71 @@ public class Sheep {
 
     public void setHiddenAllele(Grade hiddenAllele) {
         this.hiddenAllele = hiddenAllele;
+    }
+
+    // experimental List of Genotypes
+    public Map<Category, SheepGenotypeDTO> getGenotypes() {
+        Map<Category, SheepGenotypeDTO> genotypesByCategory = new EnumMap<>(Category.class);
+
+        for (SheepGenotype genotype : this.genotypes) {
+            genotypesByCategory.put(
+                    genotype.getCategory(),
+                    new SheepGenotypeDTO(genotype.getPhenotype(), genotype.getHiddenAllele())
+            );
+        }
+
+        return genotypesByCategory;
+    }
+
+    private SheepGenotype findSheepGenotype(Category category) {
+        for (SheepGenotype genotype : this.genotypes) {
+            if (genotype.getCategory().equals(category)) {
+                return genotype;
+            }
+        }
+        throw new IllegalStateException("No genotype found for category: " + category);
+    }
+
+    public GradePair getGenotype(Category category) {
+        return findSheepGenotype(category).getGenotype();
+    }
+    public GradePair getGenotype(String categoryStr) {
+        return getGenotype(Category.valueOf(categoryStr));
+    }
+
+    public void setGenotype(Category category, GradePair genotype) {
+        findSheepGenotype(category).setGenotype(genotype);
+    }
+    public void setGenotype(String categoryStr, GradePair genotype) {
+        setGenotype(Category.valueOf(categoryStr), genotype);
+    }
+
+    public Grade getPhenotype(Category category) {
+        return findSheepGenotype(category).getPhenotype();
+    }
+    public Grade getPhenotype(String categoryStr) {
+        return getPhenotype(Category.valueOf(categoryStr));
+    }
+
+    public void setPhenotype(Category category, Grade phenotype) {
+        findSheepGenotype(category).setPhenotype(phenotype);
+    }
+    public void setPhenotype(String categoryStr, Grade phenotype) {
+        setPhenotype(Category.valueOf(categoryStr), phenotype);
+    }
+
+    public Grade getHiddenAllele(Category category) {
+        return findSheepGenotype(category).getHiddenAllele();
+    }
+    public Grade getHiddenAllele(String categoryStr) {
+        return getHiddenAllele(Category.valueOf(categoryStr));
+    }
+
+    public void setHiddenAllele(Category category, Grade hiddenAllele) {
+        findSheepGenotype(category).setHiddenAllele(hiddenAllele);
+    }
+    public void setHiddenAllele(String categoryStr, Grade hiddenAllele) {
+        setHiddenAllele(Category.valueOf(categoryStr), hiddenAllele);
     }
 
     public Map<Grade, Double> getHiddenDistribution() {

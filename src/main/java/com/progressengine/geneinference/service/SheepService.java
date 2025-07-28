@@ -81,6 +81,7 @@ public class SheepService {
         responseDTO.setName(sheep.getName());
         responseDTO.setPhenotype(sheep.getPhenotype());
         responseDTO.setHiddenAllele(sheep.getHiddenAllele());
+        responseDTO.setGenotypes(sheep.getGenotypes());
         responseDTO.setHiddenDistribution(sheep.getHiddenDistribution());
 
         if (sheep.getParentRelationship() != null) {
