@@ -57,6 +57,10 @@ public class BreedController {
         sheep2.setDistribution(Category.SWIM, DistributionType.INFERRED, sheep2.getHiddenDistribution());
         // ----------------------------------
 
+        // testing new joint distribution
+        relationship.setJointDistribution(Category.SWIM, relationship.getHiddenPairsDistribution());
+        // ----------------------------------
+
         // save relationship and new child
         Relationship savedRelationship = relationshipService.saveRelationship(relationship);
         if (saveChild) {

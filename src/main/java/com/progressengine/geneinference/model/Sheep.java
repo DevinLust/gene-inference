@@ -177,8 +177,6 @@ public class Sheep {
 
         distributionsByCategory = new EnumMap<>(Category.class);
 
-        System.out.println(distributions.size());
-
         for (SheepDistribution dist : distributions) {
             distributionsByCategory
                     .computeIfAbsent(dist.getCategory(), k -> new EnumMap<>(DistributionType.class))
