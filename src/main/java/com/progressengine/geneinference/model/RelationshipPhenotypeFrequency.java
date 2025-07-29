@@ -25,11 +25,10 @@ public class RelationshipPhenotypeFrequency {
 
     public RelationshipPhenotypeFrequency() {}
 
-    public RelationshipPhenotypeFrequency(Relationship relationship, Category category, Grade allele, Integer frequency) {
+    public RelationshipPhenotypeFrequency(Relationship relationship, Category category, Grade allele) {
         this.relationship = relationship;
         this.category = category;
         this.allele = allele;
-        this.frequency = frequency;
     }
 
     // getters and setters
@@ -64,6 +63,11 @@ public class RelationshipPhenotypeFrequency {
 
     public void setFrequency(Integer frequency) {
         this.frequency = frequency;
+    }
+
+    public void addFrequency(Integer additionalOccurrences) {
+        if (this.frequency == null) { setFrequency(additionalOccurrences); }
+        this.frequency += additionalOccurrences;
     }
 }
 

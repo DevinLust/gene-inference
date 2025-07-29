@@ -228,7 +228,7 @@ public class Relationship {
             RelationshipPhenotypeFrequency freq = freqMap.computeIfAbsent(
                     grade,
                     key -> {
-                        RelationshipPhenotypeFrequency newFreq = new RelationshipPhenotypeFrequency(this, category, key, phenotypeFrequency);
+                        RelationshipPhenotypeFrequency newFreq = new RelationshipPhenotypeFrequency(this, category, key);
                         this.phenotypeFrequencies.add(newFreq);
                         return newFreq;
                     }
@@ -238,5 +238,14 @@ public class Relationship {
     }
     public void setPhenotypeFrequencies(String categoryStr, Map<Grade, Integer> phenotypeFrequencies) {
         setPhenotypeFrequencies(Category.valueOf(categoryStr), phenotypeFrequencies);
+    }
+
+    public void updatePhenotypeFrequency(Category category, Grade grade, int additionalOccurrences) {
+        Map<Grade, RelationshipPhenotypeFrequency> freqMap = createIfAbsentPhenotypeFrequencies(category);
+        freqMap.computeIfAbsent(grade, k -> {
+            RelationshipPhenotypeFrequency newFreq = new RelationshipPhenotypeFrequency(this, category, k);
+            this.phenotypeFrequencies.add(newFreq);
+            return newFreq;
+        }).addFrequency(additionalOccurrences);
     }
 }

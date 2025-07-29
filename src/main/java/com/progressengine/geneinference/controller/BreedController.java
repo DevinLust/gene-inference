@@ -63,6 +63,7 @@ public class BreedController {
 
         // testing new phenotype frequency
         relationship.setPhenotypeFrequencies(Category.SWIM, relationship.getOffspringPhenotypeFrequency());
+        relationship.updatePhenotypeFrequency(Category.FLY, Grade.A, 5);
         // ----------------------------------
 
         // save relationship and new child
