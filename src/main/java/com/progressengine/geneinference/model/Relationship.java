@@ -36,13 +36,23 @@ public class Relationship {
     private Map<Category, Map<GradePair, RelationshipJointDistribution>> jointDistributionsByCategory = new EnumMap<>(Category.class);
 
     @Transient
-    private boolean organized = false;
+    private boolean jointDistributionsOrganized = false;
 
     @ElementCollection(fetch = FetchType.EAGER)
     @MapKeyEnumerated(EnumType.STRING)
     @MapKeyColumn(name = "grade")         // Name of the key column (for Grade enum)
     @Column(name = "frequency")           // Name of the value column (Integer)
     private Map<Grade, Integer> offspringPhenotypeFrequency;
+
+    // One-to-many mapping to phenotype frequencies
+    @OneToMany(mappedBy = "relationship", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<RelationshipPhenotypeFrequency> phenotypeFrequencies = new ArrayList<>();
+
+    @Transient
+    private Map<Category, Map<Grade, RelationshipPhenotypeFrequency>> phenotypeFrequenciesByCategory = new EnumMap<>(Category.class);
+
+    @Transient
+    private boolean phenotypeFrequenciesOrganized = false;
 
 
     public Integer getId() {
@@ -79,6 +89,11 @@ public class Relationship {
 
     // experimental List of RelationshipJointDistribution
     @PostLoad
+    private void postLoad() {
+        organizeJointDistributions();
+        organizePhenotypeFrequencies();
+    }
+
     private void organizeJointDistributions() {
         if (jointDistributions == null) return;
 
@@ -90,7 +105,20 @@ public class Relationship {
                     .computeIfAbsent(dist.getCategory(), k -> new HashMap<>())
                     .put(gradePairKey, dist);
         }
-        organized = true;
+        jointDistributionsOrganized = true;
+    }
+
+    private void organizePhenotypeFrequencies() {
+        if (phenotypeFrequencies == null) return;
+
+        phenotypeFrequenciesByCategory = new EnumMap<>(Category.class);
+
+        for (RelationshipPhenotypeFrequency freq : phenotypeFrequencies) {
+            phenotypeFrequenciesByCategory
+                    .computeIfAbsent(freq.getCategory(), k -> new EnumMap<>(Grade.class))
+                    .put(freq.getAllele(), freq);
+        }
+        phenotypeFrequenciesOrganized = true;
     }
 
     private Map<GradePair, RelationshipJointDistribution> getDistributionByCategory(Category category) {
@@ -101,7 +129,7 @@ public class Relationship {
     }
 
     public Map<GradePair, Double> getJointDistribution(Category category) {
-        if (!organized) organizeJointDistributions();
+        if (!jointDistributionsOrganized) organizeJointDistributions();
 
         Map<GradePair, RelationshipJointDistribution> jointDistMap = getDistributionByCategory(category);
 
@@ -118,7 +146,7 @@ public class Relationship {
     }
 
     public void setJointDistribution(Category category, Map<GradePair, Double> jointDistribution) {
-        if  (!organized) organizeJointDistributions();
+        if  (!jointDistributionsOrganized) organizeJointDistributions();
 
         int expectedSize = Grade.values().length * Grade.values().length;
         if (jointDistribution.size() != expectedSize) {
@@ -163,5 +191,52 @@ public class Relationship {
 
     public void updateOffspringPhenotypeFrequency(Grade grade, int additionalOccurrences) {
         this.offspringPhenotypeFrequency.merge(grade, additionalOccurrences, Integer::sum);
+    }
+
+    // experimental List of RelationshipPhenotypeFrequency
+    private Map<Grade, RelationshipPhenotypeFrequency> getPhenotypeFrequenciesByCategory(Category category) {
+        if (!phenotypeFrequenciesByCategory.containsKey(category)) {
+            throw new IllegalStateException("Phenotype frequency for category " + category + " not initialized");
+        }
+        return phenotypeFrequenciesByCategory.get(category);
+    }
+
+    public Map<Grade, Integer> getPhenotypeFrequencies(Category category) {
+        if (!phenotypeFrequenciesOrganized) organizePhenotypeFrequencies();
+
+        Map<Grade, RelationshipPhenotypeFrequency> freqMap = getPhenotypeFrequenciesByCategory(category);
+
+        return freqMap.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getFrequency()));
+    }
+    public Map<Grade, Integer> getPhenotypeFrequencies(String categoryStr) {
+        return getPhenotypeFrequencies(Category.valueOf(categoryStr));
+    }
+
+    private Map<Grade, RelationshipPhenotypeFrequency> createIfAbsentPhenotypeFrequencies(Category category) {
+        return phenotypeFrequenciesByCategory.computeIfAbsent(category, k -> new EnumMap<>(Grade.class));
+    }
+
+    public void setPhenotypeFrequencies(Category category, Map<Grade, Integer> phenotypeFrequencies) {
+         if (phenotypeFrequenciesOrganized) organizePhenotypeFrequencies();
+
+        Map<Grade, RelationshipPhenotypeFrequency> freqMap = createIfAbsentPhenotypeFrequencies(category);
+
+        for (Map.Entry<Grade, Integer> entry : phenotypeFrequencies.entrySet()) {
+            Grade grade = entry.getKey();
+            Integer phenotypeFrequency = entry.getValue();
+            RelationshipPhenotypeFrequency freq = freqMap.computeIfAbsent(
+                    grade,
+                    key -> {
+                        RelationshipPhenotypeFrequency newFreq = new RelationshipPhenotypeFrequency(this, category, key, phenotypeFrequency);
+                        this.phenotypeFrequencies.add(newFreq);
+                        return newFreq;
+                    }
+            );
+            freq.setFrequency(phenotypeFrequency);
+        }
+    }
+    public void setPhenotypeFrequencies(String categoryStr, Map<Grade, Integer> phenotypeFrequencies) {
+        setPhenotypeFrequencies(Category.valueOf(categoryStr), phenotypeFrequencies);
     }
 }

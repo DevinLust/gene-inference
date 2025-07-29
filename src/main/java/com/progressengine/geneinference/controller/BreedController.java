@@ -61,6 +61,10 @@ public class BreedController {
         relationship.setJointDistribution(Category.SWIM, relationship.getHiddenPairsDistribution());
         // ----------------------------------
 
+        // testing new phenotype frequency
+        relationship.setPhenotypeFrequencies(Category.SWIM, relationship.getOffspringPhenotypeFrequency());
+        // ----------------------------------
+
         // save relationship and new child
         Relationship savedRelationship = relationshipService.saveRelationship(relationship);
         if (saveChild) {
