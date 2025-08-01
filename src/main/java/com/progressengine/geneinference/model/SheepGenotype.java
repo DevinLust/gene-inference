@@ -52,5 +52,9 @@ public class SheepGenotype {
         this.phenotype = genotype.getFirst();
         this.hiddenAllele = genotype.getSecond();
     }
+    public void setGenotype(Grade phenotype, Grade hiddenAllele) {
+        this.phenotype = phenotype;
+        this.hiddenAllele = hiddenAllele;
+    }
 }
 

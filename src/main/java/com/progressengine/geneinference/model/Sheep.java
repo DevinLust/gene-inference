@@ -3,6 +3,7 @@ package com.progressengine.geneinference.model;
 import com.progressengine.geneinference.dto.SheepGenotypeDTO;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.DistributionType;
+import com.progressengine.geneinference.service.SheepService;
 import jakarta.persistence.*;
 import com.progressengine.geneinference.model.enums.Grade;
 
@@ -119,6 +120,37 @@ public class Sheep {
         return getGenotype(Category.valueOf(categoryStr));
     }
 
+    private SheepGenotype createIfAbsentSheepGenotype(Category category) {
+        for (SheepGenotype genotype : this.genotypes) {
+            if (genotype.getCategory().equals(category)) {
+                return genotype;
+            }
+        }
+        SheepGenotype newGenotype = new SheepGenotype(this, category);
+        this.genotypes.add(newGenotype);
+        return newGenotype;
+    }
+
+    public void setGenotypes(Map<Category, SheepGenotypeDTO> genotypesDTO) {
+        // Validate all Grades are present
+        Set<Category> missingCategories = EnumSet.allOf(Category.class);
+        missingCategories.removeAll(genotypesDTO.keySet());
+
+        if (!missingCategories.isEmpty()) {
+            throw new IllegalArgumentException("Missing categories in genotypesDTO: " + missingCategories);
+        }
+
+        for (Map.Entry<Category, SheepGenotypeDTO> entry : genotypesDTO.entrySet()) {
+            Category category = entry.getKey();
+            SheepGenotypeDTO genotypeDTO = entry.getValue();
+            if (genotypeDTO.getPhenotype() == null) {
+                throw new IllegalArgumentException("Phenotype of category " + category + " is null");
+            }
+            SheepGenotype genotype = createIfAbsentSheepGenotype(category);
+            genotype.setGenotype(genotypeDTO.getPhenotype(),  genotypeDTO.getHiddenAllele());
+        }
+    }
+
     public void setGenotype(Category category, GradePair genotype) {
         findSheepGenotype(category).setGenotype(genotype);
     }
@@ -171,6 +203,25 @@ public class Sheep {
     }
 
     // experimental List of SheepDistribution
+    private void validateDistribution(Map<Grade, Double> distribution) {
+        // Validate all Grades are present
+        Set<Grade> missingGrades = EnumSet.allOf(Grade.class);
+        missingGrades.removeAll(distribution.keySet());
+
+        if (!missingGrades.isEmpty()) {
+            throw new IllegalArgumentException("Missing grades in distribution: " + missingGrades);
+        }
+
+        // Validate sum ≈ 1.0
+        double total = distribution.values().stream()
+                .mapToDouble(Double::doubleValue)
+                .sum();
+
+        if (Math.abs(total - 1.0) > 1e-6) {
+            throw new IllegalArgumentException("Distribution probabilities must sum to 1.0 (±1e-6). Actual sum: " + total);
+        }
+    }
+
     @PostLoad
     public void organizeDistributions() {
         if (distributions == null) return;
@@ -196,6 +247,18 @@ public class Sheep {
         return typeMap.get(distributionType);
     }
 
+    public Map<Category, Map<DistributionType, Map<Grade, Double>>> getAllDistributions() {
+        Map<Category, Map<DistributionType, Map<Grade, Double>>> distributionsByCategoryDTO = new EnumMap<>(Category.class);
+
+        for (SheepDistribution dist : distributions) {
+            distributionsByCategoryDTO
+                    .computeIfAbsent(dist.getCategory(), k -> new EnumMap<>(DistributionType.class))
+                    .computeIfAbsent(dist.getDistributionType(), k -> new EnumMap<>(Grade.class))
+                    .put(dist.getGrade(), dist.getProbability());
+        }
+        return distributionsByCategoryDTO;
+    }
+
     public Map<Grade, Double> getDistribution(Category category, DistributionType distributionType) {
         if (!organized) {
             organizeDistributions();
@@ -217,28 +280,7 @@ public class Sheep {
                 .computeIfAbsent(distributionType, k -> new EnumMap<>(Grade.class));
     }
 
-    public void setDistribution(Category category, DistributionType distributionType, Map<Grade, Double> distribution) {
-        if (!organized) {
-            organizeDistributions();
-        }
-
-        // Validate all Grades are present
-        Set<Grade> missingGrades = EnumSet.allOf(Grade.class);
-        missingGrades.removeAll(distribution.keySet());
-
-        if (!missingGrades.isEmpty()) {
-            throw new IllegalArgumentException("Missing grades in distribution: " + missingGrades);
-        }
-
-        // Validate sum ≈ 1.0
-        double total = distribution.values().stream()
-                .mapToDouble(Double::doubleValue)
-                .sum();
-
-        if (Math.abs(total - 1.0) > 1e-6) {
-            throw new IllegalArgumentException("Distribution probabilities must sum to 1.0 (±1e-6). Actual sum: " + total);
-        }
-
+    private void upsertDistributionsByCategory(Category category, DistributionType distributionType, Map<Grade, Double> distribution) {
         Map<Grade, SheepDistribution> distMap = createIfAbsentDistributionByCategoryAndType(category, distributionType);
 
         // set the associated SheepDistribution to the new probability
@@ -255,6 +297,43 @@ public class Sheep {
             );
             sheepDistribution.setProbability(value);
         }
+    }
+
+    private boolean missingDistributionByCategory(Category category, DistributionType distributionType) {
+        if (distributionsByCategory == null) organizeDistributions();
+        if (distributionsByCategory.get(category) == null) return true;
+        return !distributionsByCategory.get(category).containsKey(distributionType);
+    }
+
+    // Upserts the partial distributions by categories into this sheep
+    public void upsertDistributionsFromDTO(Map<Category, Map<Grade, Double>> distributionsByCategoryDTO) {
+        // the value passed in might be null in which case follow next steps as if no category is passed
+        if (!organized) organizeDistributions();
+
+        for (Category category : Category.values()) {
+            // if a category is passed in then the prior should always be overwritten however the inferred should only be set if it's not already
+            if (distributionsByCategoryDTO != null && distributionsByCategoryDTO.containsKey(category)) {
+                Map<Grade, Double> distribution = distributionsByCategoryDTO.get(category);
+                setDistribution(category, DistributionType.PRIOR, distribution);
+                if (missingDistributionByCategory(category, DistributionType.INFERRED)) {
+                    setDistribution(category, DistributionType.INFERRED, distribution);
+                }
+            } else if (missingDistributionByCategory(category, DistributionType.PRIOR)) {
+                // if the category is not passed then it stays the same unless it is not set then it defaults to a uniform distribution
+                setDistribution(category, DistributionType.PRIOR, SheepService.createUniformDistribution());
+                setDistribution(category, DistributionType.INFERRED, SheepService.createUniformDistribution());
+            }
+        }
+    }
+
+    public void setDistribution(Category category, DistributionType distributionType, Map<Grade, Double> distribution) {
+        if (!organized) {
+            organizeDistributions();
+        }
+
+        validateDistribution(distribution);
+
+        upsertDistributionsByCategory(category, distributionType, distribution);
     }
 
     public void setDistribution(String categoryStr, String distributionTypeStr, Map<Grade, Double> distribution) {
