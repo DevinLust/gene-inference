@@ -47,19 +47,13 @@ public class EnsembleInference extends BaseInferenceEngine {
         Map<GradePair, Map<Grade, Double>> conditionalDistributions = findConditionalDistributions(relationship, childPhenotype);
 
         // get a true joint distribution by multiplying each joint probability by the respective marginals and normalizing
-        Map<GradePair, Double> jointDistribution = new HashMap<>(relationship.getHiddenPairsDistribution());
+        Map<GradePair, Double> jointDistribution = relationship.getHiddenPairsDistribution();
+        // sum all conditional distributions from each genotype multiplied by the joint probability of that genotype
         for (Map.Entry<GradePair, Double> entry : jointDistribution.entrySet()) {
             GradePair gradePair = entry.getKey();
             double marginal1 = relationship.getParent1().getHiddenDistribution().get(gradePair.getFirst());
             double marginal2 = relationship.getParent2().getHiddenDistribution().get(gradePair.getSecond());
-            entry.setValue(entry.getValue() * marginal1 * marginal2);
-        }
-        normalizeScores(jointDistribution);
-
-        // sum all conditional distributions from each genotype multiplied by the joint probability of that genotype
-        for (Map.Entry<GradePair, Double> entry : jointDistribution.entrySet()) {
-            GradePair gradePair = entry.getKey();
-            double jointProbability =  entry.getValue();
+            double jointProbability =  entry.getValue() * marginal1 * marginal2; // un-normalized
             Map<Grade, Double> genotypeDistribution = conditionalDistributions.get(gradePair);
 
             // merge each conditional distribution
@@ -72,6 +66,8 @@ public class EnsembleInference extends BaseInferenceEngine {
 
         // fill any missing probabilities with 0.0
         fillMissingValuesWithZero(childHiddenDistribution);
+        // normalize the distribution
+        normalizeScores(childHiddenDistribution);
 
         child.setPriorDistribution(childHiddenDistribution);
     }

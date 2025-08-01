@@ -59,12 +59,14 @@ public class SheepService {
         sheep.setName(dto.getName());
         sheep.setPhenotype(dto.getPhenotype());
         sheep.setHiddenAllele(dto.getHiddenAllele());
+        sheep.setGenotypes(dto.getGenotypes());
 
         if (dto.getHiddenDistribution() == null || dto.getHiddenDistribution().size() != Grade.values().length) {
             throw new IllegalArgumentException("hiddenDistribution must include all grades");
         }
         sheep.setHiddenDistribution(dto.getHiddenDistribution());
         sheep.setPriorDistribution(new EnumMap<>(dto.getHiddenDistribution()));
+        sheep.upsertDistributionsFromDTO(dto.getDistributions());
 
         if (dto.getParentRelationshipId() != null) {
             Relationship relationship = relationshipRepository.findById(dto.getParentRelationshipId())
@@ -81,7 +83,9 @@ public class SheepService {
         responseDTO.setName(sheep.getName());
         responseDTO.setPhenotype(sheep.getPhenotype());
         responseDTO.setHiddenAllele(sheep.getHiddenAllele());
+        responseDTO.setGenotypes(sheep.getGenotypes());
         responseDTO.setHiddenDistribution(sheep.getHiddenDistribution());
+        responseDTO.setDistributionsByCategory(sheep.getAllDistributions());
 
         if (sheep.getParentRelationship() != null) {
             responseDTO.setParentRelationshipId(sheep.getParentRelationship().getId());
