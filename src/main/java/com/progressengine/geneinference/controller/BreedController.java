@@ -37,33 +37,37 @@ public class BreedController {
         Relationship relationship = relationshipService.findOrCreateRelationship(sheep1, sheep2);
 
         // create a new child from the two sheep
-        Sheep newChild = RelationshipService.breedNewSheep(relationship);
+        Sheep newChild = RelationshipService.breedNewSheep(relationship); // categorized
 
         // get the new joint distribution from the additional offspring data
-        inferenceEngine.findJointDistribution(relationship);
+        inferenceEngine.findJointDistribution(relationship); // categorized for ensemble and loopy
 
         // update the marginal distributions of the parents' using the joint distribution
-        inferenceEngine.updateMarginalProbabilities(relationship);
+        inferenceEngine.updateMarginalProbabilities(relationship); // categorized for loopy
         sheepService.saveSheep(sheep1);
         sheepService.saveSheep(sheep2);
 
         // infer child hidden distribution
         inferenceEngine.inferChildHiddenDistribution(relationship,  newChild);
-        newChild.setHiddenDistribution(new EnumMap<>(newChild.getPriorDistribution()));
+        // could make this a method in sheep so it is more efficient
+        for (Category category : Category.values()) {
+            newChild.setDistribution(category, DistributionType.INFERRED, newChild.getDistribution(category, DistributionType.PRIOR));
+        }
 
+        // TODO - update all inference engines to use new categorized fields
         // testing new distribution
-        newChild.setDistribution(Category.SWIM, DistributionType.INFERRED, newChild.getHiddenDistribution());
-        sheep1.setDistribution(Category.SWIM, DistributionType.INFERRED, sheep1.getHiddenDistribution());
-        sheep2.setDistribution(Category.SWIM, DistributionType.INFERRED, sheep2.getHiddenDistribution());
+//        newChild.setDistribution(Category.SWIM, DistributionType.INFERRED, newChild.getHiddenDistribution());
+//        sheep1.setDistribution(Category.SWIM, DistributionType.INFERRED, sheep1.getHiddenDistribution());
+//        sheep2.setDistribution(Category.SWIM, DistributionType.INFERRED, sheep2.getHiddenDistribution());
         // ----------------------------------
 
         // testing new joint distribution
-        relationship.setJointDistribution(Category.SWIM, relationship.getHiddenPairsDistribution());
+//        relationship.setJointDistribution(Category.SWIM, relationship.getHiddenPairsDistribution());
         // ----------------------------------
 
         // testing new phenotype frequency
-        relationship.setPhenotypeFrequencies(Category.SWIM, relationship.getOffspringPhenotypeFrequency());
-        relationship.updatePhenotypeFrequency(Category.FLY, Grade.A, 5);
+//        relationship.setPhenotypeFrequencies(Category.SWIM, relationship.getOffspringPhenotypeFrequency());
+//        relationship.updatePhenotypeFrequency(Category.FLY, Grade.A, 5);
         // ----------------------------------
 
         // save relationship and new child

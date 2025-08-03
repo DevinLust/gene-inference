@@ -3,6 +3,7 @@ package com.progressengine.geneinference.service;
 import com.progressengine.geneinference.model.GradePair;
 import com.progressengine.geneinference.model.Relationship;
 import com.progressengine.geneinference.model.Sheep;
+import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.Grade;
 import org.springframework.stereotype.Service;
 
@@ -40,7 +41,7 @@ public class NaiveInference extends BaseInferenceEngine {
         Grade childPhenotype = child.getPhenotype();
 
         // find the probability distribution of the hidden allele given both genotypes
-        Map<GradePair, Map<Grade, Double>> conditionalDistributions = findConditionalDistributions(relationship, childPhenotype);
+        Map<GradePair, Map<Grade, Double>> conditionalDistributions = findConditionalDistributions(relationship, childPhenotype, Category.SWIM); // temporary so it will compile
 
         // sum all conditional distributions from each genotype multiplied by the joint probability of that genotype
         Map<GradePair, Double> jointDistribution = relationship.getHiddenPairsDistribution();

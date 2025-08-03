@@ -152,7 +152,7 @@ public class Sheep {
     }
 
     public void setGenotype(Category category, GradePair genotype) {
-        findSheepGenotype(category).setGenotype(genotype);
+        createIfAbsentSheepGenotype(category).setGenotype(genotype);
     }
     public void setGenotype(String categoryStr, GradePair genotype) {
         setGenotype(Category.valueOf(categoryStr), genotype);
@@ -166,7 +166,7 @@ public class Sheep {
     }
 
     public void setPhenotype(Category category, Grade phenotype) {
-        findSheepGenotype(category).setPhenotype(phenotype);
+        createIfAbsentSheepGenotype(category).setPhenotype(phenotype);
     }
     public void setPhenotype(String categoryStr, Grade phenotype) {
         setPhenotype(Category.valueOf(categoryStr), phenotype);
@@ -180,7 +180,7 @@ public class Sheep {
     }
 
     public void setHiddenAllele(Category category, Grade hiddenAllele) {
-        findSheepGenotype(category).setHiddenAllele(hiddenAllele);
+        createIfAbsentSheepGenotype(category).setHiddenAllele(hiddenAllele);
     }
     public void setHiddenAllele(String categoryStr, Grade hiddenAllele) {
         setHiddenAllele(Category.valueOf(categoryStr), hiddenAllele);
@@ -323,6 +323,15 @@ public class Sheep {
                 setDistribution(category, DistributionType.PRIOR, SheepService.createUniformDistribution());
                 setDistribution(category, DistributionType.INFERRED, SheepService.createUniformDistribution());
             }
+        }
+    }
+
+    public void createDefaultDistributions() {
+        if (!organized) organizeDistributions();
+
+        for (Category category : Category.values()) {
+            setDistribution(category, DistributionType.PRIOR, SheepService.createUniformDistribution());
+            setDistribution(category, DistributionType.INFERRED, SheepService.createUniformDistribution());
         }
     }
 

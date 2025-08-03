@@ -3,6 +3,8 @@ package com.progressengine.geneinference.service;
 import com.progressengine.geneinference.model.GradePair;
 import com.progressengine.geneinference.model.Relationship;
 import com.progressengine.geneinference.model.Sheep;
+import com.progressengine.geneinference.model.enums.Category;
+import com.progressengine.geneinference.model.enums.DistributionType;
 import com.progressengine.geneinference.model.enums.Grade;
 import org.springframework.stereotype.Service;
 
@@ -26,47 +28,47 @@ public class LoopyInference extends EnsembleInference {
         List<Relationship> parent1Relationships = relationshipService.findRelationshipsByParent(parent1);
         List<Relationship> parent2Relationships = relationshipService.findRelationshipsByParent(parent2);
 
+        // TODO - refactor loopMarginalProbability to be more efficient in calculating common messages
         // loopy belief propagation to get new marginals
-        Map<Grade, Double> parent1NewMarginalProbabilities = loopMarginalProbability(parent1, parent1Relationships, parent2Relationships, relationship, parent2);
-        Map<Grade, Double> parent2NewMarginalProbabilities = loopMarginalProbability(parent2, parent2Relationships, parent1Relationships, relationship, parent1);
+        for (Category category : Category.values()) {
+            Map<Grade, Double> parent1NewMarginalProbabilities = loopMarginalProbability(parent1, parent1Relationships, parent2Relationships, relationship, parent2, category);
+            Map<Grade, Double> parent2NewMarginalProbabilities = loopMarginalProbability(parent2, parent2Relationships, parent1Relationships, relationship, parent1, category);
 
 
-        parent1.setHiddenDistribution(parent1NewMarginalProbabilities);
-        parent2.setHiddenDistribution(parent2NewMarginalProbabilities);
+            parent1.setDistribution(category, DistributionType.INFERRED, parent1NewMarginalProbabilities);
+            parent2.setDistribution(category, DistributionType.INFERRED, parent2NewMarginalProbabilities);
+        }
     }
 
     // Uses the principal of loopy belief propagation to pass messages from immediate partners to the relationship in question
-    private Map<Grade, Double> loopMarginalProbability(Sheep parent, List<Relationship> relationships, List<Relationship> otherParentsRelationships, Relationship currentRelationship, Sheep otherParent) {
+    private Map<Grade, Double> loopMarginalProbability(Sheep parent, List<Relationship> relationships, List<Relationship> otherParentsRelationships, Relationship currentRelationship, Sheep otherParent, Category category) {
         // calculate the message to the current relationship
-        Map<Grade, Double> messageToRelationship = otherParent.getPriorDistribution() != null && !otherParent.getPriorDistribution().isEmpty() ? new EnumMap<>(otherParent.getPriorDistribution()) : SheepService.createUniformDistribution();
-        for (Relationship relationship : otherParentsRelationships) {
-            if (!relationship.getId().equals(currentRelationship.getId())) {
-                Sheep secondaryParent = relationship.getParent1().getId().equals(otherParent.getId()) ? relationship.getParent2() : relationship.getParent1();
-                boolean firstParent = relationship.getParent1().getId().equals(secondaryParent.getId()); // whether the secondary parent is the first or not
-                // the message to the current relationship is the product of the messages from all other relationships
-                productOfExperts(messageToRelationship, halfJointMarginal(relationship, secondaryParent.getHiddenDistribution(), firstParent));
-            }
-        }
+        Map<Grade, Double> messageToRelationship = otherParent.getDistribution(category, DistributionType.PRIOR);
+        combineMessages(messageToRelationship, otherParentsRelationships, currentRelationship, otherParent, category);
 
-        Map<Grade, Double> newMarginal = parent.getPriorDistribution() != null && !parent.getPriorDistribution().isEmpty() ? new EnumMap<>(parent.getPriorDistribution()) : SheepService.createUniformDistribution();
-        productOfExperts(newMarginal, halfJointMarginal(currentRelationship, messageToRelationship, currentRelationship.getParent1().getId().equals(otherParent.getId())));
+        Map<Grade, Double> newMarginal = parent.getDistribution(category, DistributionType.PRIOR);
+        productOfExperts(newMarginal, halfJointMarginal(currentRelationship, messageToRelationship, currentRelationship.getParent1().getId().equals(otherParent.getId()), category));
 
         // combine the message from this relationship with the other relationships for this parent
-        for (Relationship relationship : relationships) {
-            if (!relationship.getId().equals(currentRelationship.getId())) {
-                Sheep secondaryParent = relationship.getParent1().getId().equals(parent.getId()) ? relationship.getParent2() : relationship.getParent1();
-                boolean firstParent = relationship.getParent1().getId().equals(secondaryParent.getId()); // whether the secondary parent is the first or not
-                productOfExperts(newMarginal, halfJointMarginal(relationship, secondaryParent.getHiddenDistribution(), firstParent));
-            }
-        }
+        combineMessages(newMarginal, relationships, currentRelationship, parent, category);
 
         return newMarginal;
     }
 
+    private void combineMessages(Map<Grade, Double> overallMessage, List<Relationship> relationships, Relationship currentRelationship, Sheep currentParent, Category category) {
+        for (Relationship relationship : relationships) {
+            if (!relationship.getId().equals(currentRelationship.getId())) {
+                Sheep secondaryParent = relationship.getParent1().getId().equals(currentParent.getId()) ? relationship.getParent2() : relationship.getParent1();
+                boolean firstParent = relationship.getParent1().getId().equals(secondaryParent.getId()); // whether the secondary parent is the first or not
+                productOfExperts(overallMessage, halfJointMarginal(relationship, secondaryParent.getHiddenDistribution(), firstParent, category));
+            }
+        }
+    }
+
     // Marginalizes the joint distribution using the specified weight distribution and which parent it relates to in the relationship, the score parent
-    private Map<Grade, Double> halfJointMarginal(Relationship relationship, Map<Grade, Double> gradeDistribution, boolean firstParent) {
+    private Map<Grade, Double> halfJointMarginal(Relationship relationship, Map<Grade, Double> gradeDistribution, boolean firstParent, Category category) {
         Map<Grade, Double> newHalfMarginal = new EnumMap<>(Grade.class);
-        Map<GradePair, Double> jointDistribution = relationship.getHiddenPairsDistribution();
+        Map<GradePair, Double> jointDistribution = relationship.getJointDistribution(category);
 
         for (Map.Entry<GradePair, Double> entry : jointDistribution.entrySet()) {
             GradePair pair = entry.getKey();
