@@ -47,37 +47,43 @@ public class EnsembleInference extends BaseInferenceEngine {
         }
     }
 
+    private Map<Grade, Double> findChildDistributionByCategory(Relationship relationship, Grade childPhenotype, Category category) {
+        Map<Grade, Double> childHiddenDistribution = new EnumMap<>(Grade.class);
+
+        // find the probability distribution of the child's hidden allele given a pair of assumed hidden alleles from the parents
+        Map<GradePair, Map<Grade, Double>> conditionalDistributions = findConditionalDistributions(relationship, childPhenotype, category);
+
+        // get a true joint distribution by multiplying each joint probability by the respective marginals and normalizing
+        Map<GradePair, Double> jointDistribution = relationship.getJointDistribution(category);
+        // sum all conditional distributions from each genotype multiplied by the joint probability of that genotype
+        for (Map.Entry<GradePair, Double> entry : jointDistribution.entrySet()) {
+            GradePair gradePair = entry.getKey();
+            double marginal1 = relationship.getParent1().getDistribution(category, DistributionType.INFERRED).get(gradePair.getFirst());
+            double marginal2 = relationship.getParent2().getDistribution(category, DistributionType.INFERRED).get(gradePair.getSecond());
+            double jointProbability = entry.getValue() * marginal1 * marginal2; // un-normalized
+            Map<Grade, Double> genotypeDistribution = conditionalDistributions.get(gradePair);
+
+            // merge each conditional distribution
+            for (Map.Entry<Grade, Double> genotypeDistributionEntry : genotypeDistribution.entrySet()) {
+                Grade grade = genotypeDistributionEntry.getKey();
+                double conditionalProbability = genotypeDistributionEntry.getValue();
+                childHiddenDistribution.merge(grade, conditionalProbability * jointProbability, Double::sum);
+            }
+        }
+
+        // fill any missing probabilities with 0.0
+        fillMissingValuesWithZero(childHiddenDistribution);
+        // normalize the distribution
+        normalizeScores(childHiddenDistribution);
+
+        return childHiddenDistribution;
+    }
+
     // Returns a new Map of grades to probability given the relationship and observed phenotype of the child
     public void inferChildHiddenDistribution(Relationship relationship, Sheep child) {
         for (Category category : Category.values()) {
-            Map<Grade, Double> childHiddenDistribution = new EnumMap<>(Grade.class);
             Grade childPhenotype = child.getPhenotype(category);
-
-            // find the probability distribution of the hidden allele given both genotypes
-            Map<GradePair, Map<Grade, Double>> conditionalDistributions = findConditionalDistributions(relationship, childPhenotype, category);
-
-            // get a true joint distribution by multiplying each joint probability by the respective marginals and normalizing
-            Map<GradePair, Double> jointDistribution = relationship.getJointDistribution(category);
-            // sum all conditional distributions from each genotype multiplied by the joint probability of that genotype
-            for (Map.Entry<GradePair, Double> entry : jointDistribution.entrySet()) {
-                GradePair gradePair = entry.getKey();
-                double marginal1 = relationship.getParent1().getHiddenDistribution().get(gradePair.getFirst());
-                double marginal2 = relationship.getParent2().getHiddenDistribution().get(gradePair.getSecond());
-                double jointProbability = entry.getValue() * marginal1 * marginal2; // un-normalized
-                Map<Grade, Double> genotypeDistribution = conditionalDistributions.get(gradePair);
-
-                // merge each conditional distribution
-                for (Map.Entry<Grade, Double> genotypeDistributionEntry : genotypeDistribution.entrySet()) {
-                    Grade grade = genotypeDistributionEntry.getKey();
-                    double conditionalProbability = genotypeDistributionEntry.getValue();
-                    childHiddenDistribution.merge(grade, conditionalProbability * jointProbability, Double::sum);
-                }
-            }
-
-            // fill any missing probabilities with 0.0
-            fillMissingValuesWithZero(childHiddenDistribution);
-            // normalize the distribution
-            normalizeScores(childHiddenDistribution);
+            Map<Grade, Double> childHiddenDistribution = findChildDistributionByCategory(relationship, childPhenotype, category);
 
             child.setDistribution(category, DistributionType.PRIOR, childHiddenDistribution);
         }
