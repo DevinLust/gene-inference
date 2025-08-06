@@ -95,14 +95,16 @@ public class EnsembleInference extends BaseInferenceEngine {
         Sheep parent2 = relationship.getParent2();
 
         // use the multinomial scores of the relationship each sheep is apart of
-        Map<Grade, Double> parent1NewMarginalProbabilities = ensembleMarginalProbability(parent1);
-        Map<Grade, Double> parent2NewMarginalProbabilities = ensembleMarginalProbability(parent2);
+        for  (Category category : Category.values()) {
+            Map<Grade, Double> parent1NewMarginalProbabilities = ensembleMarginalProbability(parent1, category);
+            Map<Grade, Double> parent2NewMarginalProbabilities = ensembleMarginalProbability(parent2, category);
 
-        parent1.setHiddenDistribution(parent1NewMarginalProbabilities);
-        parent2.setHiddenDistribution(parent2NewMarginalProbabilities);
+            parent1.setDistribution(category, DistributionType.INFERRED, parent1NewMarginalProbabilities);
+            parent2.setDistribution(category, DistributionType.INFERRED, parent2NewMarginalProbabilities);
+        }
     }
 
-    private Map<Grade, Double> ensembleMarginalProbability(Sheep parent) {
+    private Map<Grade, Double> ensembleMarginalProbability(Sheep parent, Category category) {
         List<Relationship> allRelationships = relationshipService.findRelationshipsByParent(parent);
         List<Map<Grade, Double>> marginalProbabilities = new ArrayList<>();
 
@@ -110,7 +112,7 @@ public class EnsembleInference extends BaseInferenceEngine {
         for (Relationship relationship : allRelationships) {
             boolean firstParent = relationship.getParent1().equals(parent);
 
-            Map<Grade, Double> newMarginalProbabilities = completeJointContextMarginal(relationship, firstParent);
+            Map<Grade, Double> newMarginalProbabilities = completeJointContextMarginal(relationship, firstParent, category);
 
             fillMissingValuesWithZero(newMarginalProbabilities);
             marginalProbabilities.add(newMarginalProbabilities);
@@ -123,9 +125,9 @@ public class EnsembleInference extends BaseInferenceEngine {
         }
 
         // if the sheep has a prior distribution then combine it
-        Map<Grade, Double> priorProbabilities = parent.getPriorDistribution();
+        Map<Grade, Double> priorProbabilities = parent.getDistribution(category, DistributionType.PRIOR);
         if (priorProbabilities != null && priorProbabilities.size() == Grade.values().length) {
-            productOfExperts(ensembleProbabilities, parent.getPriorDistribution());
+            productOfExperts(ensembleProbabilities, priorProbabilities);
         }
 
         return ensembleProbabilities;
@@ -193,11 +195,11 @@ public class EnsembleInference extends BaseInferenceEngine {
     }
 
     // accumulate the joint distribution multiplied by each corresponding marginal
-    private Map<Grade, Double> completeJointContextMarginal(Relationship relationship, boolean firstParent) {
+    private Map<Grade, Double> completeJointContextMarginal(Relationship relationship, boolean firstParent, Category category) {
         Map<Grade, Double> partialMarginals = new EnumMap<>(Grade.class);
-        Map<GradePair, Double> jointDistribution = relationship.getHiddenPairsDistribution();
-        Map<Grade, Double> firstParentDistribution = relationship.getParent1().getHiddenDistribution();
-        Map<Grade, Double> secondParentDistribution = relationship.getParent2().getHiddenDistribution();
+        Map<GradePair, Double> jointDistribution = relationship.getJointDistribution(category);
+        Map<Grade, Double> firstParentDistribution = relationship.getParent1().getDistribution(category, DistributionType.INFERRED);
+        Map<Grade, Double> secondParentDistribution = relationship.getParent2().getDistribution(category, DistributionType.INFERRED);
 
         for (Map.Entry<GradePair, Double> entry : jointDistribution.entrySet()) {
             GradePair gradePair = entry.getKey();
