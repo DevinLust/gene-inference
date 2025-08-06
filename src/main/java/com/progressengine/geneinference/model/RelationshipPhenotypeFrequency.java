@@ -66,8 +66,11 @@ public class RelationshipPhenotypeFrequency {
     }
 
     public void addFrequency(Integer additionalOccurrences) {
-        if (this.frequency == null) { setFrequency(additionalOccurrences); }
-        this.frequency += additionalOccurrences;
+        if (this.frequency == null) {
+            setFrequency(additionalOccurrences);
+        } else {
+            this.frequency += additionalOccurrences;
+        }
     }
 }
 
