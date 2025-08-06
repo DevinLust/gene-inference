@@ -78,7 +78,14 @@ public class BreedController {
 
         // TODO - propagate probability to other partners and children
 
-        return String.format("Sheep has been bred with phenotype: %s%nIn relationship with id: %s", newChild.getPhenotype(), savedRelationship.getId());
+        StringBuilder childResults = new StringBuilder();
+        childResults.append("Relationship ID: ").append(savedRelationship.getId()).append("\n");
+
+        newChild.getGenotypes().forEach((category, genotype) ->
+                childResults.append(category).append(": ").append(genotype.getPhenotype()).append("\n")
+        );
+
+        return childResults.toString();
     }
 
 }
