@@ -177,7 +177,7 @@ public class Relationship {
             dist.setProbability(probability);
         }
     }
-    public void setJointDistributionsByCategory(String categoryStr, Map<GradePair, Double> jointDistribution) {
+    public void setJointDistribution(String categoryStr, Map<GradePair, Double> jointDistribution) {
         setJointDistribution(Category.valueOf(categoryStr), jointDistribution);
     }
 
