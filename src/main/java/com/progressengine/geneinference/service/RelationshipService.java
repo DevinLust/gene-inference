@@ -54,7 +54,6 @@ public class RelationshipService {
         newRelationship.setParent2(parent2);
 
         // set other fields as needed
-        newRelationship.setOffspringPhenotypeFrequency(new EnumMap<>(Grade.class));
 
         return relationshipRepository.save(newRelationship);
     }

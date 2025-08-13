@@ -60,7 +60,7 @@ public class LoopyInference extends EnsembleInference {
             if (!relationship.getId().equals(currentRelationship.getId())) {
                 Sheep secondaryParent = relationship.getParent1().getId().equals(currentParent.getId()) ? relationship.getParent2() : relationship.getParent1();
                 boolean firstParent = relationship.getParent1().getId().equals(secondaryParent.getId()); // whether the secondary parent is the first or not
-                productOfExperts(overallMessage, halfJointMarginal(relationship, secondaryParent.getHiddenDistribution(), firstParent, category));
+                productOfExperts(overallMessage, halfJointMarginal(relationship, secondaryParent.getDistribution(category, DistributionType.INFERRED), firstParent, category));
             }
         }
     }

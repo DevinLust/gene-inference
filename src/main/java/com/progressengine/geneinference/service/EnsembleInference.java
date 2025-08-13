@@ -133,67 +133,6 @@ public class EnsembleInference extends BaseInferenceEngine {
         return ensembleProbabilities;
     }
 
-    // combines the probability of each marginal with the context of them occurring together in the joint
-    private void combineMarginalsWithJointContext(Map<Grade, Double> parent1Marginals, Map<Grade, Double> parent2Marginals, Map<GradePair, Double> jointDistribution) {
-        Map<Grade, Double> tempParent1Marginals = new EnumMap<>(Grade.class);
-        Map<Grade, Double> tempParent2Marginals = new EnumMap<>(Grade.class);
-        for (Map.Entry<GradePair, Double> entry : jointDistribution.entrySet()) {
-            GradePair gradePair = entry.getKey();
-            double score = entry.getValue() * parent1Marginals.get(gradePair.getFirst()) * parent2Marginals.get(gradePair.getSecond());
-            tempParent1Marginals.merge(gradePair.getFirst(), score, Double::sum);
-            tempParent2Marginals.merge(gradePair.getSecond(), score, Double::sum);
-        }
-        normalizeScores(tempParent1Marginals);
-        normalizeScores(tempParent2Marginals);
-
-        // copy the new contextualized marginals back over
-        for (Map.Entry<Grade, Double> entry : parent1Marginals.entrySet()) {
-            entry.setValue(tempParent1Marginals.get(entry.getKey()));
-        }
-        for (Map.Entry<Grade, Double> entry : parent2Marginals.entrySet()) {
-            entry.setValue(tempParent2Marginals.get(entry.getKey()));
-        }
-    }
-
-    // builds a marginal distribution purely from the multinomial probabilities of the jointDistribution for the specified parent
-    private Map<Grade, Double> noJointContextMarginal(Map<GradePair, Double> jointDistribution, boolean firstParent) {
-        Map<Grade, Double> partialMarginals = new EnumMap<>(Grade.class);
-
-        for (Map.Entry<GradePair, Double> entry : jointDistribution.entrySet()) {
-            GradePair gradePair = entry.getKey();
-            double newProbability = entry.getValue();
-            if (firstParent) {
-                partialMarginals.merge(gradePair.getFirst(), newProbability, Double::sum);
-            } else {
-                partialMarginals.merge(gradePair.getSecond(), newProbability, Double::sum);
-            }
-        }
-
-        return partialMarginals;
-    }
-
-    // accumulate the multinomial probability if and only if the other sheep has a chance to have the corresponding grade
-    private Map<Grade, Double> qualifiedJointContextMarginal(Relationship relationship, boolean firstParent) {
-        Map<Grade, Double> partialMarginals = new EnumMap<>(Grade.class);
-        Map<GradePair, Double> jointDistribution = relationship.getHiddenPairsDistribution();
-        Map<Grade, Double> qualifiedMarginal = firstParent ? relationship.getParent2().getHiddenDistribution() : relationship.getParent1().getHiddenDistribution();
-
-        for (Map.Entry<GradePair, Double> entry : jointDistribution.entrySet()) {
-            GradePair gradePair = entry.getKey();
-            double newProbability = entry.getValue();
-
-            // the probability contributes if the other parents marginal allows it
-            if (firstParent && qualifiedMarginal.get(gradePair.getSecond()) > 0.0) {
-                partialMarginals.merge(gradePair.getFirst(), newProbability, Double::sum);
-            } else if (qualifiedMarginal.get(gradePair.getFirst()) > 0.0) {
-                partialMarginals.merge(gradePair.getSecond(), newProbability, Double::sum);
-            }
-        }
-        normalizeScores(partialMarginals);
-
-        return partialMarginals;
-    }
-
     // accumulate the joint distribution multiplied by each corresponding marginal
     private Map<Grade, Double> completeJointContextMarginal(Relationship relationship, boolean firstParent, Category category) {
         Map<Grade, Double> partialMarginals = new EnumMap<>(Grade.class);

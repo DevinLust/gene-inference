@@ -29,18 +29,18 @@ public class Sheep {
     @OneToMany(mappedBy = "sheep", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SheepGenotype> genotypes = new ArrayList<>();
 
-    @ElementCollection(fetch = FetchType.EAGER)
-    @MapKeyEnumerated(EnumType.STRING)
-    @MapKeyColumn(name = "grade")         // Name of the key column (for Grade enum)
-    @Column(name = "probability")           // Name of the value column (Integer)
-    private Map<Grade, Double> hiddenDistribution;
+//    @ElementCollection(fetch = FetchType.EAGER)
+//    @MapKeyEnumerated(EnumType.STRING)
+//    @MapKeyColumn(name = "grade")         // Name of the key column (for Grade enum)
+//    @Column(name = "probability")           // Name of the value column (Integer)
+//    private Map<Grade, Double> hiddenDistribution;
 
-    @ElementCollection
-    @CollectionTable(name = "sheep_prior_distribution", joinColumns = @JoinColumn(name = "sheep_id"))
-    @MapKeyEnumerated(EnumType.STRING)
-    @MapKeyColumn(name = "grade")
-    @Column(name = "probability")
-    private Map<Grade, Double> priorDistribution;
+//    @ElementCollection
+//    @CollectionTable(name = "sheep_prior_distribution", joinColumns = @JoinColumn(name = "sheep_id"))
+//    @MapKeyEnumerated(EnumType.STRING)
+//    @MapKeyColumn(name = "grade")
+//    @Column(name = "probability")
+//    private Map<Grade, Double> priorDistribution;
 
     @OneToMany(mappedBy = "sheep", cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
     private List<SheepDistribution> distributions = new ArrayList<>();
@@ -186,21 +186,21 @@ public class Sheep {
         setHiddenAllele(Category.valueOf(categoryStr), hiddenAllele);
     }
 
-    public Map<Grade, Double> getHiddenDistribution() {
-        return hiddenDistribution;
-    }
-
-    public void setHiddenDistribution(Map<Grade, Double> hiddenDistribution) {
-        this.hiddenDistribution = hiddenDistribution;
-    }
-
-    public Map<Grade, Double> getPriorDistribution() {
-        return priorDistribution;
-    }
-
-    public void setPriorDistribution(Map<Grade, Double> priorDistribution) {
-        this.priorDistribution = priorDistribution;
-    }
+//    public Map<Grade, Double> getHiddenDistribution() {
+//        return hiddenDistribution;
+//    }
+//
+//    public void setHiddenDistribution(Map<Grade, Double> hiddenDistribution) {
+//        this.hiddenDistribution = hiddenDistribution;
+//    }
+//
+//    public Map<Grade, Double> getPriorDistribution() {
+//        return priorDistribution;
+//    }
+//
+//    public void setPriorDistribution(Map<Grade, Double> priorDistribution) {
+//        this.priorDistribution = priorDistribution;
+//    }
 
     // experimental List of SheepDistribution
     private void validateDistribution(Map<Grade, Double> distribution) {
