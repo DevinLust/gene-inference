@@ -19,6 +19,7 @@ public class LoopyInference extends EnsembleInference {
         super(relationshipService);
     }
 
+    // TODO - refactor method headers to be precise and easier to understand
     @Override
     public void updateMarginalProbabilities(Relationship relationship) {
         Sheep parent1 = relationship.getParent1();
@@ -28,16 +29,34 @@ public class LoopyInference extends EnsembleInference {
         List<Relationship> parent1Relationships = relationshipService.findRelationshipsByParent(parent1);
         List<Relationship> parent2Relationships = relationshipService.findRelationshipsByParent(parent2);
 
-        // TODO - refactor loopMarginalProbability to be more efficient in calculating common messages
         // loopy belief propagation to get new marginals
         for (Category category : Category.values()) {
-            Map<Grade, Double> parent1NewMarginalProbabilities = loopMarginalProbability(parent1, parent1Relationships, parent2Relationships, relationship, parent2, category);
-            Map<Grade, Double> parent2NewMarginalProbabilities = loopMarginalProbability(parent2, parent2Relationships, parent1Relationships, relationship, parent1, category);
+            List<Map<Grade, Double>> newMarginals = loopMarginalProbabilities(relationship, parent1Relationships, parent2Relationships, category);
 
-
-            parent1.setDistribution(category, DistributionType.INFERRED, parent1NewMarginalProbabilities);
-            parent2.setDistribution(category, DistributionType.INFERRED, parent2NewMarginalProbabilities);
+            parent1.setDistribution(category, DistributionType.INFERRED, newMarginals.get(0));
+            parent2.setDistribution(category, DistributionType.INFERRED, newMarginals.get(1));
         }
+    }
+
+    private List<Map<Grade, Double>> loopMarginalProbabilities(Relationship currentRelationship, List<Relationship> parent1Relationships, List<Relationship> parent2Relationships, Category category) {
+        Sheep parent1 = currentRelationship.getParent1();
+        Sheep parent2 = currentRelationship.getParent2();
+
+        Map<Grade, Double> parent1MessageToRelationship = parent1.getDistribution(category, DistributionType.PRIOR);
+        combineMessages(parent1MessageToRelationship, parent1Relationships, currentRelationship, parent1, category);
+
+        Map<Grade, Double> parent2MessageToRelationship = parent2.getDistribution(category, DistributionType.PRIOR);
+        combineMessages(parent2MessageToRelationship, parent2Relationships, currentRelationship, parent2, category);
+
+        // parent1 belief
+        Map<Grade, Double> parent1Belief = new EnumMap<>(parent1MessageToRelationship);
+        productOfExperts(parent1Belief, halfJointMarginal(currentRelationship, parent2MessageToRelationship, false, category));
+
+        // parent2 belief
+        Map<Grade, Double> parent2Belief = new EnumMap<>(parent2MessageToRelationship);
+        productOfExperts(parent2Belief, halfJointMarginal(currentRelationship, parent1MessageToRelationship, true, category));
+
+        return List.of(parent1Belief, parent2Belief);
     }
 
     // Uses the principal of loopy belief propagation to pass messages from immediate partners to the relationship in question
