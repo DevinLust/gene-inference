@@ -18,8 +18,7 @@ public class LoopyInference extends EnsembleInference {
     public LoopyInference(RelationshipService relationshipService) {
         super(relationshipService);
     }
-
-    // TODO - refactor method headers to be precise and easier to understand
+    
     @Override
     public void updateMarginalProbabilities(Relationship relationship) {
         Sheep parent1 = relationship.getParent1();
@@ -38,6 +37,7 @@ public class LoopyInference extends EnsembleInference {
         }
     }
 
+    // Uses the principal of loopy belief propagation to pass messages from immediate partners to the relationship in question
     private List<Map<Grade, Double>> loopMarginalProbabilities(Relationship currentRelationship, List<Relationship> parent1Relationships, List<Relationship> parent2Relationships, Category category) {
         Sheep parent1 = currentRelationship.getParent1();
         Sheep parent2 = currentRelationship.getParent2();
@@ -59,21 +59,7 @@ public class LoopyInference extends EnsembleInference {
         return List.of(parent1Belief, parent2Belief);
     }
 
-    // Uses the principal of loopy belief propagation to pass messages from immediate partners to the relationship in question
-    private Map<Grade, Double> loopMarginalProbability(Sheep parent, List<Relationship> relationships, List<Relationship> otherParentsRelationships, Relationship currentRelationship, Sheep otherParent, Category category) {
-        // calculate the message to the current relationship
-        Map<Grade, Double> messageToRelationship = otherParent.getDistribution(category, DistributionType.PRIOR);
-        combineMessages(messageToRelationship, otherParentsRelationships, currentRelationship, otherParent, category);
-
-        Map<Grade, Double> newMarginal = parent.getDistribution(category, DistributionType.PRIOR);
-        productOfExperts(newMarginal, halfJointMarginal(currentRelationship, messageToRelationship, currentRelationship.getParent1().getId().equals(otherParent.getId()), category));
-
-        // combine the message from this relationship with the other relationships for this parent
-        combineMessages(newMarginal, relationships, currentRelationship, parent, category);
-
-        return newMarginal;
-    }
-
+    // combines the incoming messages from all relationships except the current relationship
     private void combineMessages(Map<Grade, Double> overallMessage, List<Relationship> relationships, Relationship currentRelationship, Sheep currentParent, Category category) {
         for (Relationship relationship : relationships) {
             if (!relationship.getId().equals(currentRelationship.getId())) {
@@ -84,7 +70,7 @@ public class LoopyInference extends EnsembleInference {
         }
     }
 
-    // Marginalizes the joint distribution using the specified weight distribution and which parent it relates to in the relationship, the score parent
+    // Marginalizes the joint distribution using the specified weight distribution and which parent it relates to in the relationship, the weighted parent
     private Map<Grade, Double> halfJointMarginal(Relationship relationship, Map<Grade, Double> gradeDistribution, boolean firstParent, Category category) {
         Map<Grade, Double> newHalfMarginal = new EnumMap<>(Grade.class);
         Map<GradePair, Double> jointDistribution = relationship.getJointDistribution(category);
@@ -92,10 +78,10 @@ public class LoopyInference extends EnsembleInference {
         for (Map.Entry<GradePair, Double> entry : jointDistribution.entrySet()) {
             GradePair pair = entry.getKey();
             double probability = entry.getValue();
-            Grade scoreGrade = firstParent ? pair.getFirst() : pair.getSecond();
+            Grade weightGrade = firstParent ? pair.getFirst() : pair.getSecond();
             Grade targetGrade = firstParent ? pair.getSecond() : pair.getFirst();
 
-            newHalfMarginal.merge(targetGrade, probability * gradeDistribution.get(scoreGrade), Double::sum);
+            newHalfMarginal.merge(targetGrade, probability * gradeDistribution.get(weightGrade), Double::sum);
         }
         normalizeScores(newHalfMarginal);
 
