@@ -23,13 +23,6 @@ public class Relationship {
     @JoinColumn(name = "parent2_id")
     private Sheep parent2; // foreign key to Sheep
 
-//    @ElementCollection(fetch = FetchType.EAGER)
-//    @CollectionTable(name = "relationship_hidden_pairs_distribution", joinColumns = @JoinColumn(name = "relationship_id"))
-//    @MapKeyClass(GradePair.class)
-//    @Column(name = "probability")
-//    @JsonDeserialize(keyUsing = GradePairKeyDeserializer.class)
-//    private Map<GradePair, Double> hiddenPairsDistribution;
-
     @OneToMany(mappedBy = "relationship", cascade = CascadeType.PERSIST, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<RelationshipJointDistribution> jointDistributions = new ArrayList<>();
 
@@ -38,12 +31,6 @@ public class Relationship {
 
     @Transient
     private boolean jointDistributionsOrganized = false;
-
-//    @ElementCollection(fetch = FetchType.EAGER)
-//    @MapKeyEnumerated(EnumType.STRING)
-//    @MapKeyColumn(name = "grade")         // Name of the key column (for Grade enum)
-//    @Column(name = "frequency")           // Name of the value column (Integer)
-//    private Map<Grade, Integer> offspringPhenotypeFrequency;
 
     // One-to-many mapping to phenotype frequencies
     @OneToMany(mappedBy = "relationship", cascade = CascadeType.PERSIST, orphanRemoval = true)
@@ -79,14 +66,6 @@ public class Relationship {
     public void setParent2(Sheep parent2) {
         this.parent2 = parent2;
     }
-
-//    public Map<GradePair, Double> getHiddenPairsDistribution() {
-//        return hiddenPairsDistribution;
-//    }
-//
-//    public void setHiddenPairsDistribution(Map<GradePair, Double> hiddenPairsDistribution) {
-//        this.hiddenPairsDistribution = hiddenPairsDistribution;
-//    }
 
     // experimental List of RelationshipJointDistribution
     @PostLoad
@@ -183,18 +162,6 @@ public class Relationship {
     public void setJointDistribution(String categoryStr, Map<GradePair, Double> jointDistribution) {
         setJointDistribution(Category.valueOf(categoryStr), jointDistribution);
     }
-
-//    public Map<Grade, Integer> getOffspringPhenotypeFrequency() {
-//        return offspringPhenotypeFrequency;
-//    }
-//
-//    public void setOffspringPhenotypeFrequency(Map<Grade, Integer> offspringPhenotypeFrequency) {
-//        this.offspringPhenotypeFrequency = offspringPhenotypeFrequency;
-//    }
-//
-//    public void updateOffspringPhenotypeFrequency(Grade grade, int additionalOccurrences) {
-//        this.offspringPhenotypeFrequency.merge(grade, additionalOccurrences, Integer::sum);
-//    }
 
     // experimental List of RelationshipPhenotypeFrequency
     private Map<Grade, RelationshipPhenotypeFrequency> getPhenotypeFrequenciesByCategory(Category category) {

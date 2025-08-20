@@ -54,22 +54,6 @@ public class BreedController {
             newChild.setDistribution(category, DistributionType.INFERRED, newChild.getDistribution(category, DistributionType.PRIOR));
         }
 
-        // TODO - update all inference engines to use new categorized fields
-        // testing new distribution
-//        newChild.setDistribution(Category.SWIM, DistributionType.INFERRED, newChild.getHiddenDistribution());
-//        sheep1.setDistribution(Category.SWIM, DistributionType.INFERRED, sheep1.getHiddenDistribution());
-//        sheep2.setDistribution(Category.SWIM, DistributionType.INFERRED, sheep2.getHiddenDistribution());
-        // ----------------------------------
-
-        // testing new joint distribution
-//        relationship.setJointDistribution(Category.SWIM, relationship.getHiddenPairsDistribution());
-        // ----------------------------------
-
-        // testing new phenotype frequency
-//        relationship.setPhenotypeFrequencies(Category.SWIM, relationship.getOffspringPhenotypeFrequency());
-//        relationship.updatePhenotypeFrequency(Category.FLY, Grade.A, 5);
-        // ----------------------------------
-
         // save relationship and new child
         Relationship savedRelationship = relationshipService.saveRelationship(relationship);
         if (saveChild) {

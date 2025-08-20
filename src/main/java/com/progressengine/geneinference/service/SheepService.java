@@ -7,7 +7,6 @@ import com.progressengine.geneinference.model.Sheep;
 import com.progressengine.geneinference.model.enums.Grade;
 import com.progressengine.geneinference.repository.RelationshipRepository;
 import com.progressengine.geneinference.repository.SheepRepository;
-import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.util.*;

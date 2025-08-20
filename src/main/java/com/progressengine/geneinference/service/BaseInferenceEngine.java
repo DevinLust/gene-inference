@@ -2,7 +2,6 @@ package com.progressengine.geneinference.service;
 
 import com.progressengine.geneinference.model.GradePair;
 import com.progressengine.geneinference.model.Relationship;
-import com.progressengine.geneinference.model.Sheep;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.Grade;
 
