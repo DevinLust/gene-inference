@@ -6,6 +6,7 @@ import com.progressengine.geneinference.model.Sheep;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.DistributionType;
 import com.progressengine.geneinference.model.enums.Grade;
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -31,6 +32,7 @@ public class EnsembleInference extends BaseInferenceEngine {
         return multinomialDistribution;
     }
 
+    @Transactional
     // Updates the relationship with a new joint distribution using purely multinomial distributions
     public void findJointDistribution(Relationship relationship) {
         Sheep parent1 = relationship.getParent1();
@@ -79,6 +81,7 @@ public class EnsembleInference extends BaseInferenceEngine {
         return childHiddenDistribution;
     }
 
+    @Transactional
     // Returns a new Map of grades to probability given the relationship and observed phenotype of the child
     public void inferChildHiddenDistribution(Relationship relationship, Sheep child) {
         for (Category category : Category.values()) {

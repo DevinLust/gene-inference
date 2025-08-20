@@ -4,6 +4,7 @@ import com.progressengine.geneinference.dto.SheepRequestDTO;
 import com.progressengine.geneinference.dto.SheepResponseDTO;
 import com.progressengine.geneinference.model.Sheep;
 import com.progressengine.geneinference.service.SheepService;
+import jakarta.transaction.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,6 +19,7 @@ public class SheepController {
         this.sheepService = sheepService;
     }
 
+    @Transactional
     @PostMapping(consumes = {"application/json", "application/json;charset=UTF-8"})
     public String addSheep(@RequestBody SheepRequestDTO sheepRequestDTO) {
         Sheep sheep = sheepService.fromRequestDTO(sheepRequestDTO);

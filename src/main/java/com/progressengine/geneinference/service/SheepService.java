@@ -61,9 +61,6 @@ public class SheepService {
         sheep.setHiddenAllele(dto.getHiddenAllele());
         sheep.setGenotypes(dto.getGenotypes());
 
-        if (dto.getHiddenDistribution() == null || dto.getHiddenDistribution().size() != Grade.values().length) {
-            throw new IllegalArgumentException("hiddenDistribution must include all grades");
-        }
         sheep.upsertDistributionsFromDTO(dto.getDistributions());
 
         if (dto.getParentRelationshipId() != null) {

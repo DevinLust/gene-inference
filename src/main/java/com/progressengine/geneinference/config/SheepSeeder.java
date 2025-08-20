@@ -5,6 +5,7 @@ import com.progressengine.geneinference.model.Sheep;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.Grade;
 import com.progressengine.geneinference.repository.SheepRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
@@ -26,6 +27,7 @@ public class SheepSeeder implements CommandLineRunner {
     }
 
     @Override
+    @Transactional
     public void run(String... args) {
         if (sheepRepository.count() > 0) {
             System.out.println("Sheep already exist. Skipping seeding.");

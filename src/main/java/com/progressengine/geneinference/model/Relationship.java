@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.Grade;
 import jakarta.persistence.*;
+import jakarta.transaction.Transactional;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -29,7 +30,7 @@ public class Relationship {
 //    @JsonDeserialize(keyUsing = GradePairKeyDeserializer.class)
 //    private Map<GradePair, Double> hiddenPairsDistribution;
 
-    @OneToMany(mappedBy = "relationship", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @OneToMany(mappedBy = "relationship", cascade = CascadeType.PERSIST, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<RelationshipJointDistribution> jointDistributions = new ArrayList<>();
 
     @Transient
@@ -45,7 +46,7 @@ public class Relationship {
 //    private Map<Grade, Integer> offspringPhenotypeFrequency;
 
     // One-to-many mapping to phenotype frequencies
-    @OneToMany(mappedBy = "relationship", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "relationship", cascade = CascadeType.PERSIST, orphanRemoval = true)
     private List<RelationshipPhenotypeFrequency> phenotypeFrequencies = new ArrayList<>();
 
     @Transient
@@ -145,6 +146,7 @@ public class Relationship {
                 .computeIfAbsent(category, k -> new HashMap<>());
     }
 
+    @Transactional
     public void setJointDistribution(Category category, Map<GradePair, Double> jointDistribution) {
         if  (!jointDistributionsOrganized) organizeJointDistributions();
 
@@ -177,6 +179,7 @@ public class Relationship {
             dist.setProbability(probability);
         }
     }
+    @Transactional
     public void setJointDistribution(String categoryStr, Map<GradePair, Double> jointDistribution) {
         setJointDistribution(Category.valueOf(categoryStr), jointDistribution);
     }
@@ -217,6 +220,7 @@ public class Relationship {
         return phenotypeFrequenciesByCategory.computeIfAbsent(category, k -> new EnumMap<>(Grade.class));
     }
 
+    @Transactional
     public void setPhenotypeFrequencies(Category category, Map<Grade, Integer> phenotypeFrequencies) {
          if (phenotypeFrequenciesOrganized) organizePhenotypeFrequencies();
 
@@ -236,6 +240,7 @@ public class Relationship {
             freq.setFrequency(phenotypeFrequency);
         }
     }
+    @Transactional
     public void setPhenotypeFrequencies(String categoryStr, Map<Grade, Integer> phenotypeFrequencies) {
         setPhenotypeFrequencies(Category.valueOf(categoryStr), phenotypeFrequencies);
     }

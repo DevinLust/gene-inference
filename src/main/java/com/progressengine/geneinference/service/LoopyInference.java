@@ -6,6 +6,7 @@ import com.progressengine.geneinference.model.Sheep;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.DistributionType;
 import com.progressengine.geneinference.model.enums.Grade;
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.util.EnumMap;
@@ -18,7 +19,8 @@ public class LoopyInference extends EnsembleInference {
     public LoopyInference(RelationshipService relationshipService) {
         super(relationshipService);
     }
-    
+
+    @Transactional
     @Override
     public void updateMarginalProbabilities(Relationship relationship) {
         Sheep parent1 = relationship.getParent1();
