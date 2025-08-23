@@ -2,6 +2,7 @@ package com.progressengine.geneinference.service;
 
 import com.progressengine.geneinference.model.Relationship;
 import com.progressengine.geneinference.model.Sheep;
+import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.Grade;
 import com.progressengine.geneinference.repository.RelationshipRepository;
 import org.springframework.stereotype.Service;
@@ -53,7 +54,6 @@ public class RelationshipService {
         newRelationship.setParent2(parent2);
 
         // set other fields as needed
-        newRelationship.setOffspringPhenotypeFrequency(new EnumMap<>(Grade.class));
 
         return relationshipRepository.save(newRelationship);
     }
@@ -75,18 +75,28 @@ public class RelationshipService {
 
         // random genotype from the two parents, one allele from each parent
         Random random = new Random();
-        Grade newPhenotype = random.nextBoolean() ? parent2.getPhenotype() : parent2.getHiddenAllele();
-        Grade newHiddenAllele = random.nextBoolean() ? parent1.getPhenotype() : parent1.getHiddenAllele();
-        if (random.nextBoolean()) {
-            newPhenotype = random.nextBoolean() ? parent1.getPhenotype() : parent1.getHiddenAllele();
-            newHiddenAllele =  random.nextBoolean() ? parent2.getPhenotype() : parent2.getHiddenAllele();
+        // -----------------------------------------------------------------------------------
+        for (Category category : Category.values()) {
+            if (parent1.getHiddenAllele(category) == null || parent2.getHiddenAllele(category) == null) {
+                throw new IllegalArgumentException("Missing known hidden allele in category " + category);
+            }
+            Grade newPhenotype;
+            Grade newHiddenAllele;
+            if (random.nextBoolean()) {
+                newPhenotype = random.nextBoolean() ? parent1.getPhenotype(category) : parent1.getHiddenAllele(category);
+                newHiddenAllele = random.nextBoolean() ? parent2.getPhenotype(category) : parent2.getHiddenAllele(category);
+            } else {
+                newPhenotype = random.nextBoolean() ? parent2.getPhenotype(category) : parent2.getHiddenAllele(category);
+                newHiddenAllele = random.nextBoolean() ? parent1.getPhenotype(category) : parent1.getHiddenAllele(category);
+            }
+
+
+            child.setPhenotype(category, newPhenotype);
+            child.setHiddenAllele(category, newHiddenAllele);
+            relationship.updatePhenotypeFrequency(category, newPhenotype, 1);
         }
-
-        child.setPhenotype(newPhenotype);
-        child.setHiddenAllele(newHiddenAllele);
-        relationship.updateOffspringPhenotypeFrequency(newPhenotype, 1);
-
-        child.setHiddenDistribution(SheepService.createUniformDistribution());
+        child.createDefaultDistributions();
+        // ---------------------------------------------------------------------------------
 
         child.setParentRelationship(relationship);
 

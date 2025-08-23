@@ -37,34 +37,22 @@ public class BreedController {
         Relationship relationship = relationshipService.findOrCreateRelationship(sheep1, sheep2);
 
         // create a new child from the two sheep
-        Sheep newChild = RelationshipService.breedNewSheep(relationship);
+        Sheep newChild = RelationshipService.breedNewSheep(relationship); // categorized
 
         // get the new joint distribution from the additional offspring data
-        inferenceEngine.findJointDistribution(relationship);
+        inferenceEngine.findJointDistribution(relationship); // categorized for ensemble and loopy
 
         // update the marginal distributions of the parents' using the joint distribution
-        inferenceEngine.updateMarginalProbabilities(relationship);
+        inferenceEngine.updateMarginalProbabilities(relationship); // categorized for loopy
         sheepService.saveSheep(sheep1);
         sheepService.saveSheep(sheep2);
 
         // infer child hidden distribution
         inferenceEngine.inferChildHiddenDistribution(relationship,  newChild);
-        newChild.setHiddenDistribution(new EnumMap<>(newChild.getPriorDistribution()));
-
-        // testing new distribution
-        newChild.setDistribution(Category.SWIM, DistributionType.INFERRED, newChild.getHiddenDistribution());
-        sheep1.setDistribution(Category.SWIM, DistributionType.INFERRED, sheep1.getHiddenDistribution());
-        sheep2.setDistribution(Category.SWIM, DistributionType.INFERRED, sheep2.getHiddenDistribution());
-        // ----------------------------------
-
-        // testing new joint distribution
-        relationship.setJointDistribution(Category.SWIM, relationship.getHiddenPairsDistribution());
-        // ----------------------------------
-
-        // testing new phenotype frequency
-        relationship.setPhenotypeFrequencies(Category.SWIM, relationship.getOffspringPhenotypeFrequency());
-        relationship.updatePhenotypeFrequency(Category.FLY, Grade.A, 5);
-        // ----------------------------------
+        // could make this a method in sheep so it is more efficient
+        for (Category category : Category.values()) {
+            newChild.setDistribution(category, DistributionType.INFERRED, newChild.getDistribution(category, DistributionType.PRIOR));
+        }
 
         // save relationship and new child
         Relationship savedRelationship = relationshipService.saveRelationship(relationship);
@@ -74,7 +62,14 @@ public class BreedController {
 
         // TODO - propagate probability to other partners and children
 
-        return String.format("Sheep has been bred with phenotype: %s%nIn relationship with id: %s", newChild.getPhenotype(), savedRelationship.getId());
+        StringBuilder childResults = new StringBuilder();
+        childResults.append("Relationship ID: ").append(savedRelationship.getId()).append("\n");
+
+        newChild.getGenotypes().forEach((category, genotype) ->
+                childResults.append(category).append(": ").append(genotype.getPhenotype()).append("\n")
+        );
+
+        return childResults.toString();
     }
 
 }

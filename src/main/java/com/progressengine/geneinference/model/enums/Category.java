@@ -1,7 +1,7 @@
 package com.progressengine.geneinference.model.enums;
 
 public enum Category {
-    SWIM, FLY;
+    SWIM, FLY, RUN, POWER, STAMINA;
 
     public static Category fromString(String str) {
         return Category.valueOf(str); // Throws IllegalArgumentException if not valid

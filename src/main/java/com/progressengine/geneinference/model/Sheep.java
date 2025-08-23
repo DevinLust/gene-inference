@@ -6,6 +6,7 @@ import com.progressengine.geneinference.model.enums.DistributionType;
 import com.progressengine.geneinference.service.SheepService;
 import jakarta.persistence.*;
 import com.progressengine.geneinference.model.enums.Grade;
+import jakarta.transaction.Transactional;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -26,23 +27,10 @@ public class Sheep {
     @Column(name = "hidden_allele")
     private Grade hiddenAllele;
 
-    @OneToMany(mappedBy = "sheep", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "sheep", fetch = FetchType.EAGER, cascade = CascadeType.PERSIST, orphanRemoval = true)
     private List<SheepGenotype> genotypes = new ArrayList<>();
 
-    @ElementCollection(fetch = FetchType.EAGER)
-    @MapKeyEnumerated(EnumType.STRING)
-    @MapKeyColumn(name = "grade")         // Name of the key column (for Grade enum)
-    @Column(name = "probability")           // Name of the value column (Integer)
-    private Map<Grade, Double> hiddenDistribution;
-
-    @ElementCollection
-    @CollectionTable(name = "sheep_prior_distribution", joinColumns = @JoinColumn(name = "sheep_id"))
-    @MapKeyEnumerated(EnumType.STRING)
-    @MapKeyColumn(name = "grade")
-    @Column(name = "probability")
-    private Map<Grade, Double> priorDistribution;
-
-    @OneToMany(mappedBy = "sheep", cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
+    @OneToMany(mappedBy = "sheep", cascade = CascadeType.PERSIST, fetch = FetchType.EAGER, orphanRemoval = true)
     private List<SheepDistribution> distributions = new ArrayList<>();
 
     @Transient
@@ -131,6 +119,7 @@ public class Sheep {
         return newGenotype;
     }
 
+    @Transactional
     public void setGenotypes(Map<Category, SheepGenotypeDTO> genotypesDTO) {
         // Validate all Grades are present
         Set<Category> missingCategories = EnumSet.allOf(Category.class);
@@ -151,9 +140,11 @@ public class Sheep {
         }
     }
 
+    @Transactional
     public void setGenotype(Category category, GradePair genotype) {
-        findSheepGenotype(category).setGenotype(genotype);
+        createIfAbsentSheepGenotype(category).setGenotype(genotype);
     }
+    @Transactional
     public void setGenotype(String categoryStr, GradePair genotype) {
         setGenotype(Category.valueOf(categoryStr), genotype);
     }
@@ -166,7 +157,7 @@ public class Sheep {
     }
 
     public void setPhenotype(Category category, Grade phenotype) {
-        findSheepGenotype(category).setPhenotype(phenotype);
+        createIfAbsentSheepGenotype(category).setPhenotype(phenotype);
     }
     public void setPhenotype(String categoryStr, Grade phenotype) {
         setPhenotype(Category.valueOf(categoryStr), phenotype);
@@ -180,26 +171,10 @@ public class Sheep {
     }
 
     public void setHiddenAllele(Category category, Grade hiddenAllele) {
-        findSheepGenotype(category).setHiddenAllele(hiddenAllele);
+        createIfAbsentSheepGenotype(category).setHiddenAllele(hiddenAllele);
     }
     public void setHiddenAllele(String categoryStr, Grade hiddenAllele) {
         setHiddenAllele(Category.valueOf(categoryStr), hiddenAllele);
-    }
-
-    public Map<Grade, Double> getHiddenDistribution() {
-        return hiddenDistribution;
-    }
-
-    public void setHiddenDistribution(Map<Grade, Double> hiddenDistribution) {
-        this.hiddenDistribution = hiddenDistribution;
-    }
-
-    public Map<Grade, Double> getPriorDistribution() {
-        return priorDistribution;
-    }
-
-    public void setPriorDistribution(Map<Grade, Double> priorDistribution) {
-        this.priorDistribution = priorDistribution;
     }
 
     // experimental List of SheepDistribution
@@ -306,6 +281,7 @@ public class Sheep {
     }
 
     // Upserts the partial distributions by categories into this sheep
+    @Transactional
     public void upsertDistributionsFromDTO(Map<Category, Map<Grade, Double>> distributionsByCategoryDTO) {
         // the value passed in might be null in which case follow next steps as if no category is passed
         if (!organized) organizeDistributions();
@@ -326,6 +302,17 @@ public class Sheep {
         }
     }
 
+    @Transactional
+    public void createDefaultDistributions() {
+        if (!organized) organizeDistributions();
+
+        for (Category category : Category.values()) {
+            setDistribution(category, DistributionType.PRIOR, SheepService.createUniformDistribution());
+            setDistribution(category, DistributionType.INFERRED, SheepService.createUniformDistribution());
+        }
+    }
+
+    @Transactional
     public void setDistribution(Category category, DistributionType distributionType, Map<Grade, Double> distribution) {
         if (!organized) {
             organizeDistributions();
@@ -336,6 +323,7 @@ public class Sheep {
         upsertDistributionsByCategory(category, distributionType, distribution);
     }
 
+    @Transactional
     public void setDistribution(String categoryStr, String distributionTypeStr, Map<Grade, Double> distribution) {
         setDistribution(Category.valueOf(categoryStr), DistributionType.valueOf(distributionTypeStr), distribution);
     }

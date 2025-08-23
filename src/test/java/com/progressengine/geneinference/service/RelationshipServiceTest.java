@@ -1,6 +1,8 @@
 package com.progressengine.geneinference.service;
 
+import com.progressengine.geneinference.dto.SheepGenotypeDTO;
 import com.progressengine.geneinference.model.*;
+import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.Grade;
 import com.progressengine.geneinference.repository.RelationshipRepository;
 import org.junit.jupiter.api.Test;
@@ -19,6 +21,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 public class RelationshipServiceTest {
 
+    private static final Random random = new Random(42);
+
     @Mock
     private RelationshipRepository relationshipRepository;
 
@@ -36,11 +40,23 @@ public class RelationshipServiceTest {
         Set<Grade> parent2Genotype = EnumSet.of(parent2Phenotype, parent2HiddenAllele);
         Set<Grade> allAlleles = EnumSet.of(parent1Phenotype, parent1HiddenAllele, parent2Phenotype, parent2HiddenAllele);
 
-        Sheep parent1 = createTestSheep(parent1Phenotype, parent1HiddenAllele, SheepService.createUniformDistribution());
+        Sheep parent1 = createTestSheep(Map.of(
+                Category.SWIM, new SheepGenotypeDTO(parent1Phenotype, parent1HiddenAllele),
+                Category.FLY, new SheepGenotypeDTO(randomGrade(), randomGrade()),
+                Category.RUN, new SheepGenotypeDTO(randomGrade(), randomGrade()),
+                Category.POWER, new SheepGenotypeDTO(randomGrade(), randomGrade()),
+                Category.STAMINA, new SheepGenotypeDTO(randomGrade(), randomGrade())
+        ));
 
-        Sheep parent2 = createTestSheep(parent2Phenotype, parent2HiddenAllele, SheepService.createUniformDistribution());
+        Sheep parent2 = createTestSheep(Map.of(
+                Category.SWIM, new SheepGenotypeDTO(parent2Phenotype, parent2HiddenAllele),
+                Category.FLY, new SheepGenotypeDTO(randomGrade(), randomGrade()),
+                Category.RUN, new SheepGenotypeDTO(randomGrade(), randomGrade()),
+                Category.POWER, new SheepGenotypeDTO(randomGrade(), randomGrade()),
+                Category.STAMINA, new SheepGenotypeDTO(randomGrade(), randomGrade())
+        ));
 
-        Relationship relationship = createTestRelationship(parent1, parent2, new EnumMap<>(Grade.class));
+        Relationship relationship = createTestRelationship(parent1, parent2);
 
         // Act
         Sheep[] sheepChildren = new Sheep[10];
@@ -52,14 +68,14 @@ public class RelationshipServiceTest {
         // Assert
         for (Sheep child : sheepChildren) {
             assertNotNull(child, "child should not be null");
-            assertTrue(allAlleles.contains(child.getPhenotype()), "phenotype should be in the set of possible alleles");
-            assertTrue(allAlleles.contains(child.getHiddenAllele()), "hidden allele should be in the set of possible alleles");
-            if (parent1Genotype.contains(child.getPhenotype())) {
-                assertTrue(parent2Genotype.contains(child.getHiddenAllele()), "hidden allele should be from parent 2");
-            } else if (parent2Genotype.contains(child.getPhenotype())) {
-                assertTrue(parent1Genotype.contains(child.getHiddenAllele()), "hidden allele should be from parent 1");
+            assertTrue(allAlleles.contains(child.getPhenotype(Category.SWIM)), "phenotype should be in the set of possible alleles");
+            assertTrue(allAlleles.contains(child.getHiddenAllele(Category.SWIM)), "hidden allele should be in the set of possible alleles");
+            if (parent1Genotype.contains(child.getPhenotype(Category.SWIM))) {
+                assertTrue(parent2Genotype.contains(child.getHiddenAllele(Category.SWIM)), "hidden allele should be from parent 2");
+            } else if (parent2Genotype.contains(child.getPhenotype(Category.SWIM))) {
+                assertTrue(parent1Genotype.contains(child.getHiddenAllele(Category.SWIM)), "hidden allele should be from parent 1");
             } else {
-                fail("impossible phenotype: " + child.getPhenotype());
+                fail("impossible phenotype: " + child.getPhenotype(Category.SWIM));
             }
         }
     }
@@ -80,11 +96,23 @@ public class RelationshipServiceTest {
         double lowerBound = expectedCount - 3 * sigma;
         double upperBound = expectedCount + 3 * sigma;
 
-        Sheep parent1 = createTestSheep(parent1Phenotype, parent1HiddenAllele, SheepService.createUniformDistribution());
+        Sheep parent1 = createTestSheep(Map.of(
+                Category.SWIM, new SheepGenotypeDTO(parent1Phenotype, parent1HiddenAllele),
+                Category.FLY, new SheepGenotypeDTO(randomGrade(), randomGrade()),
+                Category.RUN, new SheepGenotypeDTO(randomGrade(), randomGrade()),
+                Category.POWER, new SheepGenotypeDTO(randomGrade(), randomGrade()),
+                Category.STAMINA, new SheepGenotypeDTO(randomGrade(), randomGrade())
+        ));
 
-        Sheep parent2 = createTestSheep(parent2Phenotype, parent2HiddenAllele, SheepService.createUniformDistribution());
+        Sheep parent2 = createTestSheep(Map.of(
+                Category.SWIM, new SheepGenotypeDTO(parent2Phenotype, parent2HiddenAllele),
+                Category.FLY, new SheepGenotypeDTO(randomGrade(), randomGrade()),
+                Category.RUN, new SheepGenotypeDTO(randomGrade(), randomGrade()),
+                Category.POWER, new SheepGenotypeDTO(randomGrade(), randomGrade()),
+                Category.STAMINA, new SheepGenotypeDTO(randomGrade(), randomGrade())
+        ));
 
-        Relationship relationship = createTestRelationship(parent1, parent2, new EnumMap<>(Grade.class));
+        Relationship relationship = createTestRelationship(parent1, parent2);
 
         // Act
         for (int i = 0; i < N; i++) {
@@ -92,7 +120,7 @@ public class RelationshipServiceTest {
         }
 
         // Assert for distribution
-        Map<Grade, Integer> counts = relationship.getOffspringPhenotypeFrequency();
+        Map<Grade, Integer> counts = relationship.getPhenotypeFrequencies(Category.SWIM);
         for (Map.Entry<Grade, Integer> entry : counts.entrySet()) {
             Grade grade = entry.getKey();
             int count = entry.getValue();
@@ -108,8 +136,20 @@ public class RelationshipServiceTest {
     @Test
     void testFindOrCreateRelationship() {
         // Arrange
-        Sheep parent1 = createTestSheep(Grade.S, Grade.S, null);
-        Sheep parent2 = createTestSheep(Grade.E, Grade.E, null);
+        Sheep parent1 = createTestSheep(Map.of(
+                Category.SWIM, new SheepGenotypeDTO(Grade.S, Grade.S),
+                Category.FLY, new SheepGenotypeDTO(randomGrade(), randomGrade()),
+                Category.RUN, new SheepGenotypeDTO(randomGrade(), randomGrade()),
+                Category.POWER, new SheepGenotypeDTO(randomGrade(), randomGrade()),
+                Category.STAMINA, new SheepGenotypeDTO(randomGrade(), randomGrade())
+        ));
+        Sheep parent2 = createTestSheep(Map.of(
+                Category.SWIM, new SheepGenotypeDTO(Grade.E, Grade.E),
+                Category.FLY, new SheepGenotypeDTO(randomGrade(), randomGrade()),
+                Category.RUN, new SheepGenotypeDTO(randomGrade(), randomGrade()),
+                Category.POWER, new SheepGenotypeDTO(randomGrade(), randomGrade()),
+                Category.STAMINA, new SheepGenotypeDTO(randomGrade(), randomGrade())
+        ));
 
         int parent1Id = 1;
         int parent2Id = 2;
@@ -130,19 +170,21 @@ public class RelationshipServiceTest {
         assertEquals(parent2Id, savedRelationship.getParent2().getId());
     }
 
-    private Sheep createTestSheep(Grade phenotype, Grade hiddenAllele, Map<Grade, Double> hiddenDistribution) {
+    private Sheep createTestSheep(Map<Category, SheepGenotypeDTO> genotypes) {
         Sheep sheep = new Sheep();
-        sheep.setPhenotype(phenotype);
-        sheep.setHiddenAllele(hiddenAllele);
-        sheep.setHiddenDistribution(hiddenDistribution);
+        sheep.setGenotypes(genotypes);
+        sheep.createDefaultDistributions();
         return sheep;
     }
 
-    private Relationship createTestRelationship(Sheep parent1, Sheep parent2, Map<Grade, Integer> offspringPhenotypeFrequency) {
+    private Relationship createTestRelationship(Sheep parent1, Sheep parent2) {
         Relationship relationship = new Relationship();
         relationship.setParent1(parent1);
         relationship.setParent2(parent2);
-        relationship.setOffspringPhenotypeFrequency(offspringPhenotypeFrequency);
         return relationship;
+    }
+
+    private Grade randomGrade() {
+        return Grade.values()[random.nextInt(Grade.values().length)];
     }
 }

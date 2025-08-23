@@ -2,7 +2,7 @@ package com.progressengine.geneinference.service;
 
 import com.progressengine.geneinference.model.GradePair;
 import com.progressengine.geneinference.model.Relationship;
-import com.progressengine.geneinference.model.Sheep;
+import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.Grade;
 
 import java.util.EnumMap;
@@ -22,22 +22,22 @@ public abstract class BaseInferenceEngine implements InferenceEngine {
     }
 
     // Maps a pair of hidden alleles to a conditional distribution based on the observed phenotype
-    protected Map<GradePair, Map<Grade, Double>> findConditionalDistributions(Relationship relationship, Grade childPhenotype) {
-        Sheep parent1 = relationship.getParent1();
-        Sheep parent2 = relationship.getParent2();
-        Map<GradePair, Double> jointDistribution = relationship.getHiddenPairsDistribution();
+    protected Map<GradePair, Map<Grade, Double>> findConditionalDistributions(Relationship relationship, Grade childPhenotype, Category category) {
+        Grade phenotype1 = relationship.getParent1().getPhenotype(category);
+        Grade phenotype2 = relationship.getParent2().getPhenotype(category);
+        Map<GradePair, Double> jointDistribution = relationship.getJointDistribution(category);
 
         // find the probability distribution of the hidden allele given both genotypes
         Map<GradePair, Map<Grade, Double>> conditionalDistributions = new HashMap<>();
         for (GradePair gradePair : jointDistribution.keySet()) {
             // find the probability the phenotype came from each parent
-            double[] parentProbabilities = probabilityAlleleFromParents(gradePair, parent1, parent2, childPhenotype);
+            double[] parentProbabilities = probabilityAlleleFromParents(gradePair, phenotype1, phenotype2, childPhenotype);
 
             // get the distribution of the hidden child allele from the current genotypes
             Map<Grade, Double> genotypeDistribution = new EnumMap<>(Grade.class);
-            genotypeDistribution.merge(parent1.getPhenotype(), 0.5 * parentProbabilities[1], Double::sum);
+            genotypeDistribution.merge(phenotype1, 0.5 * parentProbabilities[1], Double::sum);
             genotypeDistribution.merge(gradePair.getFirst(), 0.5 * parentProbabilities[1], Double::sum);
-            genotypeDistribution.merge(parent2.getPhenotype(), 0.5 * parentProbabilities[0], Double::sum);
+            genotypeDistribution.merge(phenotype2, 0.5 * parentProbabilities[0], Double::sum);
             genotypeDistribution.merge(gradePair.getSecond(), 0.5 * parentProbabilities[0], Double::sum);
 
             conditionalDistributions.put(gradePair, genotypeDistribution);
@@ -47,12 +47,12 @@ public abstract class BaseInferenceEngine implements InferenceEngine {
     }
 
     // Returns the probability the given allele came from each parent given the assumed hidden alleles
-    protected double[] probabilityAlleleFromParents(GradePair hiddenAlleles, Sheep parent1, Sheep parent2, Grade allele) {
+    protected double[] probabilityAlleleFromParents(GradePair hiddenAlleles, Grade phenotype1, Grade phenotype2, Grade allele) {
         double[] probabilities = new double[2];
 
         double totalProbabilityOfAllele = 0.0;
         double probabilityOfAlleleGivenParent1 = 0.0;
-        if (parent1.getPhenotype().equals(allele)) {
+        if (phenotype1.equals(allele)) {
             probabilityOfAlleleGivenParent1 += 0.5;
             totalProbabilityOfAllele += 0.25;
         }
@@ -62,7 +62,7 @@ public abstract class BaseInferenceEngine implements InferenceEngine {
         }
 
         double probabilityOfAlleleGivenParent2 = 0.0;
-        if (parent2.getPhenotype().equals(allele)) {
+        if (phenotype2.equals(allele)) {
             probabilityOfAlleleGivenParent2 += 0.5;
             totalProbabilityOfAllele += 0.25;
         }

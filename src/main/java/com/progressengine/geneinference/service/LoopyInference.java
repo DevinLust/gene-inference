@@ -3,7 +3,10 @@ package com.progressengine.geneinference.service;
 import com.progressengine.geneinference.model.GradePair;
 import com.progressengine.geneinference.model.Relationship;
 import com.progressengine.geneinference.model.Sheep;
+import com.progressengine.geneinference.model.enums.Category;
+import com.progressengine.geneinference.model.enums.DistributionType;
 import com.progressengine.geneinference.model.enums.Grade;
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.util.EnumMap;
@@ -17,6 +20,7 @@ public class LoopyInference extends EnsembleInference {
         super(relationshipService);
     }
 
+    @Transactional
     @Override
     public void updateMarginalProbabilities(Relationship relationship) {
         Sheep parent1 = relationship.getParent1();
@@ -27,54 +31,59 @@ public class LoopyInference extends EnsembleInference {
         List<Relationship> parent2Relationships = relationshipService.findRelationshipsByParent(parent2);
 
         // loopy belief propagation to get new marginals
-        Map<Grade, Double> parent1NewMarginalProbabilities = loopMarginalProbability(parent1, parent1Relationships, parent2Relationships, relationship, parent2);
-        Map<Grade, Double> parent2NewMarginalProbabilities = loopMarginalProbability(parent2, parent2Relationships, parent1Relationships, relationship, parent1);
+        for (Category category : Category.values()) {
+            List<Map<Grade, Double>> newMarginals = loopMarginalProbabilities(relationship, parent1Relationships, parent2Relationships, category);
 
-
-        parent1.setHiddenDistribution(parent1NewMarginalProbabilities);
-        parent2.setHiddenDistribution(parent2NewMarginalProbabilities);
+            parent1.setDistribution(category, DistributionType.INFERRED, newMarginals.get(0));
+            parent2.setDistribution(category, DistributionType.INFERRED, newMarginals.get(1));
+        }
     }
 
     // Uses the principal of loopy belief propagation to pass messages from immediate partners to the relationship in question
-    private Map<Grade, Double> loopMarginalProbability(Sheep parent, List<Relationship> relationships, List<Relationship> otherParentsRelationships, Relationship currentRelationship, Sheep otherParent) {
-        // calculate the message to the current relationship
-        Map<Grade, Double> messageToRelationship = otherParent.getPriorDistribution() != null && !otherParent.getPriorDistribution().isEmpty() ? new EnumMap<>(otherParent.getPriorDistribution()) : SheepService.createUniformDistribution();
-        for (Relationship relationship : otherParentsRelationships) {
-            if (!relationship.getId().equals(currentRelationship.getId())) {
-                Sheep secondaryParent = relationship.getParent1().getId().equals(otherParent.getId()) ? relationship.getParent2() : relationship.getParent1();
-                boolean firstParent = relationship.getParent1().getId().equals(secondaryParent.getId()); // whether the secondary parent is the first or not
-                // the message to the current relationship is the product of the messages from all other relationships
-                productOfExperts(messageToRelationship, halfJointMarginal(relationship, secondaryParent.getHiddenDistribution(), firstParent));
-            }
-        }
+    private List<Map<Grade, Double>> loopMarginalProbabilities(Relationship currentRelationship, List<Relationship> parent1Relationships, List<Relationship> parent2Relationships, Category category) {
+        Sheep parent1 = currentRelationship.getParent1();
+        Sheep parent2 = currentRelationship.getParent2();
 
-        Map<Grade, Double> newMarginal = parent.getPriorDistribution() != null && !parent.getPriorDistribution().isEmpty() ? new EnumMap<>(parent.getPriorDistribution()) : SheepService.createUniformDistribution();
-        productOfExperts(newMarginal, halfJointMarginal(currentRelationship, messageToRelationship, currentRelationship.getParent1().getId().equals(otherParent.getId())));
+        Map<Grade, Double> parent1MessageToRelationship = parent1.getDistribution(category, DistributionType.PRIOR);
+        combineMessages(parent1MessageToRelationship, parent1Relationships, currentRelationship, parent1, category);
 
-        // combine the message from this relationship with the other relationships for this parent
-        for (Relationship relationship : relationships) {
-            if (!relationship.getId().equals(currentRelationship.getId())) {
-                Sheep secondaryParent = relationship.getParent1().getId().equals(parent.getId()) ? relationship.getParent2() : relationship.getParent1();
-                boolean firstParent = relationship.getParent1().getId().equals(secondaryParent.getId()); // whether the secondary parent is the first or not
-                productOfExperts(newMarginal, halfJointMarginal(relationship, secondaryParent.getHiddenDistribution(), firstParent));
-            }
-        }
+        Map<Grade, Double> parent2MessageToRelationship = parent2.getDistribution(category, DistributionType.PRIOR);
+        combineMessages(parent2MessageToRelationship, parent2Relationships, currentRelationship, parent2, category);
 
-        return newMarginal;
+        // parent1 belief
+        Map<Grade, Double> parent1Belief = new EnumMap<>(parent1MessageToRelationship);
+        productOfExperts(parent1Belief, halfJointMarginal(currentRelationship, parent2MessageToRelationship, false, category));
+
+        // parent2 belief
+        Map<Grade, Double> parent2Belief = new EnumMap<>(parent2MessageToRelationship);
+        productOfExperts(parent2Belief, halfJointMarginal(currentRelationship, parent1MessageToRelationship, true, category));
+
+        return List.of(parent1Belief, parent2Belief);
     }
 
-    // Marginalizes the joint distribution using the specified weight distribution and which parent it relates to in the relationship, the score parent
-    private Map<Grade, Double> halfJointMarginal(Relationship relationship, Map<Grade, Double> gradeDistribution, boolean firstParent) {
+    // combines the incoming messages from all relationships except the current relationship
+    private void combineMessages(Map<Grade, Double> overallMessage, List<Relationship> relationships, Relationship currentRelationship, Sheep currentParent, Category category) {
+        for (Relationship relationship : relationships) {
+            if (!relationship.getId().equals(currentRelationship.getId())) {
+                Sheep secondaryParent = relationship.getParent1().getId().equals(currentParent.getId()) ? relationship.getParent2() : relationship.getParent1();
+                boolean firstParent = relationship.getParent1().getId().equals(secondaryParent.getId()); // whether the secondary parent is the first or not
+                productOfExperts(overallMessage, halfJointMarginal(relationship, secondaryParent.getDistribution(category, DistributionType.INFERRED), firstParent, category));
+            }
+        }
+    }
+
+    // Marginalizes the joint distribution using the specified weight distribution and which parent it relates to in the relationship, the weighted parent
+    private Map<Grade, Double> halfJointMarginal(Relationship relationship, Map<Grade, Double> gradeDistribution, boolean firstParent, Category category) {
         Map<Grade, Double> newHalfMarginal = new EnumMap<>(Grade.class);
-        Map<GradePair, Double> jointDistribution = relationship.getHiddenPairsDistribution();
+        Map<GradePair, Double> jointDistribution = relationship.getJointDistribution(category);
 
         for (Map.Entry<GradePair, Double> entry : jointDistribution.entrySet()) {
             GradePair pair = entry.getKey();
             double probability = entry.getValue();
-            Grade scoreGrade = firstParent ? pair.getFirst() : pair.getSecond();
+            Grade weightGrade = firstParent ? pair.getFirst() : pair.getSecond();
             Grade targetGrade = firstParent ? pair.getSecond() : pair.getFirst();
 
-            newHalfMarginal.merge(targetGrade, probability * gradeDistribution.get(scoreGrade), Double::sum);
+            newHalfMarginal.merge(targetGrade, probability * gradeDistribution.get(weightGrade), Double::sum);
         }
         normalizeScores(newHalfMarginal);
 

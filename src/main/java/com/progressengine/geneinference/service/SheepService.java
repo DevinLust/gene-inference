@@ -7,7 +7,6 @@ import com.progressengine.geneinference.model.Sheep;
 import com.progressengine.geneinference.model.enums.Grade;
 import com.progressengine.geneinference.repository.RelationshipRepository;
 import com.progressengine.geneinference.repository.SheepRepository;
-import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -61,11 +60,6 @@ public class SheepService {
         sheep.setHiddenAllele(dto.getHiddenAllele());
         sheep.setGenotypes(dto.getGenotypes());
 
-        if (dto.getHiddenDistribution() == null || dto.getHiddenDistribution().size() != Grade.values().length) {
-            throw new IllegalArgumentException("hiddenDistribution must include all grades");
-        }
-        sheep.setHiddenDistribution(dto.getHiddenDistribution());
-        sheep.setPriorDistribution(new EnumMap<>(dto.getHiddenDistribution()));
         sheep.upsertDistributionsFromDTO(dto.getDistributions());
 
         if (dto.getParentRelationshipId() != null) {
@@ -84,7 +78,6 @@ public class SheepService {
         responseDTO.setPhenotype(sheep.getPhenotype());
         responseDTO.setHiddenAllele(sheep.getHiddenAllele());
         responseDTO.setGenotypes(sheep.getGenotypes());
-        responseDTO.setHiddenDistribution(sheep.getHiddenDistribution());
         responseDTO.setDistributionsByCategory(sheep.getAllDistributions());
 
         if (sheep.getParentRelationship() != null) {
