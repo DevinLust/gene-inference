@@ -9,10 +9,7 @@ import java.util.Map;
 public class SheepResponseDTO {
     private Integer id;
     private String name;
-    private Grade phenotype;
-    private Grade hiddenAllele;
     private Map<Category, SheepGenotypeDTO> genotypes;
-    private Map<Grade, Double> hiddenDistribution;
     private Map<Category, Map<DistributionType, Map<Grade, Double>>> distributionsByCategory;
     private Integer parentRelationshipId;
 
@@ -32,36 +29,12 @@ public class SheepResponseDTO {
         this.name = name;
     }
 
-    public Grade getHiddenAllele() {
-        return hiddenAllele;
-    }
-
-    public void setHiddenAllele(Grade hiddenAllele) {
-        this.hiddenAllele = hiddenAllele;
-    }
-
-    public Grade getPhenotype() {
-        return phenotype;
-    }
-
-    public void setPhenotype(Grade phenotype) {
-        this.phenotype = phenotype;
-    }
-
     public Map<Category, SheepGenotypeDTO> getGenotypes() {
         return genotypes;
     }
 
     public void setGenotypes(Map<Category, SheepGenotypeDTO> genotypes) {
         this.genotypes = genotypes;
-    }
-
-    public Map<Grade, Double> getHiddenDistribution() {
-        return hiddenDistribution;
-    }
-
-    public void setHiddenDistribution(Map<Grade, Double> hiddenDistribution) {
-        this.hiddenDistribution = hiddenDistribution;
     }
 
     public Map<Category, Map<DistributionType, Map<Grade, Double>>> getDistributionsByCategory() {

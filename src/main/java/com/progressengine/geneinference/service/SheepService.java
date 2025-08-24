@@ -56,8 +56,6 @@ public class SheepService {
     public Sheep fromRequestDTO(SheepRequestDTO dto) {
         Sheep sheep = new Sheep();
         sheep.setName(dto.getName());
-        sheep.setPhenotype(dto.getPhenotype());
-        sheep.setHiddenAllele(dto.getHiddenAllele());
         sheep.setGenotypes(dto.getGenotypes());
 
         sheep.upsertDistributionsFromDTO(dto.getDistributions());
@@ -75,8 +73,6 @@ public class SheepService {
         SheepResponseDTO responseDTO = new SheepResponseDTO();
         responseDTO.setId(sheep.getId());
         responseDTO.setName(sheep.getName());
-        responseDTO.setPhenotype(sheep.getPhenotype());
-        responseDTO.setHiddenAllele(sheep.getHiddenAllele());
         responseDTO.setGenotypes(sheep.getGenotypes());
         responseDTO.setDistributionsByCategory(sheep.getAllDistributions());
 
