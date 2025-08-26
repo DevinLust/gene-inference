@@ -23,7 +23,7 @@ public class Relationship {
     @JoinColumn(name = "parent2_id")
     private Sheep parent2; // foreign key to Sheep
 
-    @OneToMany(mappedBy = "relationship", cascade = CascadeType.PERSIST, orphanRemoval = true, fetch = FetchType.EAGER)
+    @OneToMany(mappedBy = "relationship", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<RelationshipJointDistribution> jointDistributions = new ArrayList<>();
 
     @Transient
@@ -33,7 +33,7 @@ public class Relationship {
     private boolean jointDistributionsOrganized = false;
 
     // One-to-many mapping to phenotype frequencies
-    @OneToMany(mappedBy = "relationship", cascade = CascadeType.PERSIST, orphanRemoval = true)
+    @OneToMany(mappedBy = "relationship", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<RelationshipPhenotypeFrequency> phenotypeFrequencies = new ArrayList<>();
 
     @Transient

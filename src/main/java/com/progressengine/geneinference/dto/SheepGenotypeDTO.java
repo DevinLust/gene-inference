@@ -1,5 +1,6 @@
 package com.progressengine.geneinference.dto;
 
+import com.progressengine.geneinference.model.GradePair;
 import com.progressengine.geneinference.model.enums.Grade;
 
 public class SheepGenotypeDTO {
@@ -17,6 +18,10 @@ public class SheepGenotypeDTO {
 
     public Grade getHiddenAllele() {
         return hiddenAllele;
+    }
+
+    public GradePair toGradePair() {
+        return new GradePair(phenotype, hiddenAllele);
     }
 }
 
