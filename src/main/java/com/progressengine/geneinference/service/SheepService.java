@@ -3,7 +3,6 @@ package com.progressengine.geneinference.service;
 import com.progressengine.geneinference.dto.SheepNewRequestDTO;
 import com.progressengine.geneinference.dto.SheepReplaceRequestDTO;
 import com.progressengine.geneinference.dto.SheepResponseDTO;
-import com.progressengine.geneinference.dto.SheepUpdateRequestDTO;
 import com.progressengine.geneinference.model.Relationship;
 import com.progressengine.geneinference.model.Sheep;
 import com.progressengine.geneinference.model.enums.Grade;
@@ -52,6 +51,10 @@ public class SheepService {
 
     public Sheep saveSheep(Sheep sheep) {
         return sheepRepository.save(sheep);
+    }
+
+    public void saveAll(List<Sheep> sheep) {
+        sheepRepository.saveAll(sheep);
     }
 
     public List<Sheep> getAllSheep() {

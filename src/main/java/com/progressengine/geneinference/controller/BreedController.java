@@ -4,7 +4,6 @@ import com.progressengine.geneinference.model.Relationship;
 import com.progressengine.geneinference.model.Sheep;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.DistributionType;
-import com.progressengine.geneinference.model.enums.Grade;
 import com.progressengine.geneinference.service.InferenceEngine;
 import com.progressengine.geneinference.service.RelationshipService;
 import com.progressengine.geneinference.service.SheepService;
@@ -12,7 +11,8 @@ import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.EnumMap;
+import java.util.ArrayList;
+import java.util.List;
 
 @RestController
 @RequestMapping(value = "/breed")
@@ -44,8 +44,6 @@ public class BreedController {
 
         // update the marginal distributions of the parents' using the joint distribution
         inferenceEngine.updateMarginalProbabilities(relationship); // categorized for loopy
-        sheepService.saveSheep(sheep1);
-        sheepService.saveSheep(sheep2);
 
         // infer child hidden distribution
         inferenceEngine.inferChildHiddenDistribution(relationship,  newChild);
@@ -56,9 +54,13 @@ public class BreedController {
 
         // save relationship and new child
         Relationship savedRelationship = relationshipService.saveRelationship(relationship);
+
+        List<Sheep> sheepToSave = new ArrayList<>(List.of(sheep1, sheep2));
         if (saveChild) {
-            sheepService.saveSheep(newChild);
+            sheepToSave.add(newChild);
         }
+
+        sheepService.saveAll(sheepToSave);
 
         // TODO - propagate probability to other partners and children
 
