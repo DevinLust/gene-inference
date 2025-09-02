@@ -1,5 +1,6 @@
 package com.progressengine.geneinference.controller;
 
+import com.progressengine.geneinference.dto.PredictionResponseDTO;
 import com.progressengine.geneinference.model.Relationship;
 import com.progressengine.geneinference.model.Sheep;
 import com.progressengine.geneinference.model.enums.Category;
@@ -9,6 +10,8 @@ import com.progressengine.geneinference.service.RelationshipService;
 import com.progressengine.geneinference.service.SheepService;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
@@ -72,6 +75,16 @@ public class BreedController {
         );
 
         return childResults.toString();
+    }
+
+    @GetMapping("/{sheep1Id}/{sheep2Id}/predict")
+    public ResponseEntity<?> predictBreeding(@PathVariable Integer sheep1Id, @PathVariable Integer sheep2Id) {
+        Sheep sheep1 = sheepService.findById(sheep1Id);
+        Sheep sheep2 = sheepService.findById(sheep2Id);
+
+        PredictionResponseDTO prediction = inferenceEngine.predictChildrenDistributions(sheep1, sheep2);
+
+        return ResponseEntity.ok(prediction);
     }
 
 }
