@@ -7,10 +7,7 @@ import com.progressengine.geneinference.model.enums.Grade;
 import com.progressengine.geneinference.repository.RelationshipRepository;
 import org.springframework.stereotype.Service;
 
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Optional;
-import java.util.Random;
+import java.util.*;
 
 @Service
 public class RelationshipService {
@@ -64,6 +61,28 @@ public class RelationshipService {
 
     public List<Relationship> findRelationshipsByParent(Integer parentId) {
         return relationshipRepository.findByParentId(parentId);
+    }
+
+    public List<List<Relationship>> filterRelationshipsByParent(Sheep parent1, Sheep parent2, int limitPerParent) {
+        return filterRelationshipsByParent(parent1.getId(), parent2.getId(), limitPerParent);
+    }
+
+    // returns two lists of up to the given limit of relationships associated with the corresponding parent order.
+    public List<List<Relationship>> filterRelationshipsByParent(Integer parent1Id, Integer parent2Id, int limitPerParent) {
+        List<Relationship> all = relationshipRepository.findLimitedByParents(parent1Id, parent2Id, limitPerParent);
+
+        List<Relationship> parent1Relationships = new ArrayList<>();
+        List<Relationship> parent2Relationships = new ArrayList<>();
+        for (Relationship relationship : all) {
+            if (relationship.getParent1().getId().equals(parent1Id) || relationship.getParent2().getId().equals(parent1Id)) {
+                parent1Relationships.add(relationship);
+            }
+            if (relationship.getParent1().getId().equals(parent2Id) || relationship.getParent2().getId().equals(parent2Id)) {
+                parent2Relationships.add(relationship);
+            }
+        }
+
+        return List.of(parent1Relationships, parent2Relationships);
     }
 
     // assumes uniform distribution for child

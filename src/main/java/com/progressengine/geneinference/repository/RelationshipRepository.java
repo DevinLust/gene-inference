@@ -17,4 +17,20 @@ public interface RelationshipRepository extends JpaRepository<Relationship, Inte
     @Query("SELECT r FROM Relationship r WHERE r.parent1.id = :parentId OR r.parent2.id = :parentId")
     List<Relationship> findByParentId(@Param("parentId") Integer parentId);
 
+    @Query(value = """
+       (
+         SELECT * FROM relationship 
+         WHERE parent1_id = :p1 OR parent2_id = :p1
+         LIMIT :limit
+       )
+       UNION ALL
+       (
+         SELECT * FROM relationship 
+         WHERE parent1_id = :p2 OR parent2_id = :p2
+         LIMIT :limit
+       )
+       """, nativeQuery = true)
+    List<Relationship> findLimitedByParents(@Param("p1") Integer parent1Id,
+                                            @Param("p2") Integer parent2Id,
+                                            @Param("limit") int limit);
 }

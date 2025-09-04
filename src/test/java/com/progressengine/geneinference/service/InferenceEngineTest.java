@@ -1,5 +1,6 @@
 package com.progressengine.geneinference.service;
 
+import com.progressengine.geneinference.dto.PredictionResponseDTO;
 import com.progressengine.geneinference.model.*;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.DistributionType;
@@ -313,6 +314,41 @@ public abstract class InferenceEngineTest {
             assertEquals(6, childDistribution.size(), "Should have 6 key value pairs for each grade");
 
             double sum = childDistribution.values().stream().mapToDouble(Double::doubleValue).sum();
+            assertEquals(1.0, sum, 1e-9, "Probabilities should sum to 1.0");
+        }
+    }
+
+    @Test
+    void testPredictChildrenDistributions() {
+        // Arrange
+        Sheep parent1 = createTestSheep(Map.of(
+                Category.SWIM, Grade.B,
+                Category.FLY, Grade.C,
+                Category.RUN, Grade.D,
+                Category.POWER, Grade.S,
+                Category.STAMINA, Grade.E
+        ), 1);
+
+        Sheep parent2 = createTestSheep(Map.of(
+                Category.SWIM, Grade.B,
+                Category.FLY, Grade.A,
+                Category.RUN, Grade.A,
+                Category.POWER, Grade.C,
+                Category.STAMINA, Grade.S
+        ), 2);
+
+        // Act
+        Map<Category, Map<Grade, Double>> prediction = inferenceEngine.predictChildrenDistributions(parent1, parent2).getPhenotypeDistributions();
+
+        // Assert
+        for (Category category : Category.values()) {
+            Map<Grade, Double> distribution = prediction.get(category);
+            assertNotNull(distribution, "Distribution should not be null");
+            assertEquals(6, distribution.size(), "Should have 6 key value pairs for each grade");
+
+
+            // The sum of probabilities should be ~1.0
+            double sum = distribution.values().stream().mapToDouble(Double::doubleValue).sum();
             assertEquals(1.0, sum, 1e-9, "Probabilities should sum to 1.0");
         }
     }

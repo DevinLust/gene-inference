@@ -1,8 +1,11 @@
 package com.progressengine.geneinference.service;
 
+import com.progressengine.geneinference.dto.PredictionResponseDTO;
 import com.progressengine.geneinference.model.GradePair;
 import com.progressengine.geneinference.model.Relationship;
+import com.progressengine.geneinference.model.Sheep;
 import com.progressengine.geneinference.model.enums.Category;
+import com.progressengine.geneinference.model.enums.DistributionType;
 import com.progressengine.geneinference.model.enums.Grade;
 
 import java.util.EnumMap;
@@ -10,6 +13,28 @@ import java.util.HashMap;
 import java.util.Map;
 
 public abstract class BaseInferenceEngine implements InferenceEngine {
+    // Predicts the probabilities of the phenotype for each category of the two parents' children
+    public PredictionResponseDTO predictChildrenDistributions(Sheep parent1, Sheep parent2) {
+        Map<Category, Map<Grade, Double>> predictedDistributions = new EnumMap<>(Category.class);
+        for (Category category : Category.values()) {
+            Map<Grade, Double> distribution = new EnumMap<>(Grade.class);
+            Map<Grade, Double> parent1Distribution = parent1.getDistribution(category, DistributionType.INFERRED);
+            Map<Grade, Double> parent2Distribution = parent2.getDistribution(category, DistributionType.INFERRED);
+
+            distribution.merge(parent1.getPhenotype(category), 0.25, Double::sum);
+            distribution.merge(parent2.getPhenotype(category), 0.25, Double::sum);
+            for (Map.Entry<Grade, Double> entry : parent1Distribution.entrySet()) {
+                distribution.merge(entry.getKey(), 0.25 * entry.getValue(), Double::sum);
+            }
+            for (Map.Entry<Grade, Double> entry : parent2Distribution.entrySet()) {
+                distribution.merge(entry.getKey(), 0.25 * entry.getValue(), Double::sum);
+            }
+            predictedDistributions.put(category, distribution);
+        }
+
+        return new PredictionResponseDTO(predictedDistributions);
+    }
+
     // combine existing distribution with new distribution
     protected void productOfExperts(Map<Grade, Double> existingDistribution, Map<Grade, Double> newDistribution) {
 

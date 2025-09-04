@@ -5,20 +5,11 @@ import com.progressengine.geneinference.model.enums.Grade;
 
 import java.util.Map;
 
-public class SheepRequestDTO {
-    private Integer id;
+public class SheepNewRequestDTO {
     private String name;
     private Map<Category, SheepGenotypeDTO> genotypes;
     private Map<Category, Map<Grade, Double>> distributions;
     private Integer parentRelationshipId;
-
-    public Integer getId() {
-        return id;
-    }
-
-    public void setId(Integer id) {
-        this.id = id;
-    }
 
     public String getName() {
         return name;

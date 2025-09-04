@@ -19,18 +19,10 @@ public class Sheep {
     private Integer id;
     private String name;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "phenotype")
-    private Grade phenotype;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "hidden_allele")
-    private Grade hiddenAllele;
-
-    @OneToMany(mappedBy = "sheep", fetch = FetchType.EAGER, cascade = CascadeType.PERSIST, orphanRemoval = true)
+    @OneToMany(mappedBy = "sheep", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SheepGenotype> genotypes = new ArrayList<>();
 
-    @OneToMany(mappedBy = "sheep", cascade = CascadeType.PERSIST, fetch = FetchType.EAGER, orphanRemoval = true)
+    @OneToMany(mappedBy = "sheep", cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
     private List<SheepDistribution> distributions = new ArrayList<>();
 
     @Transient
@@ -39,7 +31,7 @@ public class Sheep {
     @Transient
     private boolean organized = false;
 
-    @OneToOne
+    @ManyToOne
     @JoinColumn(name = "parent_relationship_id")
     private Relationship parentRelationship; // foreign key to Relationship
 
@@ -60,22 +52,6 @@ public class Sheep {
 
     public void setName(String name) {
         this.name = name;
-    }
-
-    public Grade getPhenotype() {
-        return phenotype;
-    }
-
-    public void setPhenotype(Grade phenotype) {
-        this.phenotype = phenotype;
-    }
-
-    public Grade getHiddenAllele() {
-        return hiddenAllele;
-    }
-
-    public void setHiddenAllele(Grade hiddenAllele) {
-        this.hiddenAllele = hiddenAllele;
     }
 
     // experimental List of Genotypes
