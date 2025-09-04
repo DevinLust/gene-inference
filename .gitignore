@@ -1,3 +1,6 @@
+# ====================
+# Backend (Java / Maven)
+# ====================
 HELP.md
 target/
 !backend/.mvn/wrapper/maven-wrapper.jar
@@ -5,7 +8,8 @@ target/
 !**/src/test/**/target/
 backend/.env
 
-### STS ###
+### IDE / Editors ###
+# Spring Tool Suite
 .apt_generated
 .classpath
 .factorypath
@@ -14,13 +18,13 @@ backend/.env
 .springBeans
 .sts4-cache
 
-### IntelliJ IDEA ###
-.idea
+# IntelliJ IDEA
+.idea/
 *.iws
 *.iml
 *.ipr
 
-### NetBeans ###
+# NetBeans
 /nbproject/private/
 /nbbuild/
 /dist/
@@ -30,5 +34,46 @@ build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 
-### VS Code ###
+# VS Code
 .vscode/
+
+# ====================
+# Frontend (Next.js / Node)
+# ====================
+# Node / npm / yarn
+frontend/node_modules/
+frontend/.pnp
+frontend/.pnp.*
+frontend/.yarn/*
+!frontend/.yarn/patches
+!frontend/.yarn/plugins
+!frontend/.yarn/releases
+!frontend/.yarn/versions
+
+# Testing
+frontend/coverage/
+
+# Next.js build artifacts
+frontend/.next/
+frontend/out/
+frontend/build/
+
+# Misc / OS
+frontend/.DS_Store
+*.pem
+
+# Debug logs
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/.pnpm-debug.log*
+
+# Environment files
+frontend/.env*
+
+# Vercel
+frontend/.vercel/
+
+# TypeScript
+frontend/*.tsbuildinfo
+frontend/next-env.d.ts
