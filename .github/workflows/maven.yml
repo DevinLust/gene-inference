@@ -28,6 +28,7 @@ jobs:
         distribution: 'temurin'
         cache: maven
     - name: Build with Maven
+      working-directory: ./backend
       run: mvn -B clean install --file pom.xml
       env:
         DB_URL: ${{ secrets.DB_URL }}
