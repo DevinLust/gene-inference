@@ -267,6 +267,8 @@ public class Sheep {
             if (distributionsByCategoryDTO != null && distributionsByCategoryDTO.containsKey(category)) {
                 Map<Grade, Double> distribution = distributionsByCategoryDTO.get(category);
                 setDistribution(category, DistributionType.PRIOR, distribution);
+
+                // if the sheep doesn't already have an inferred distribution, set it to the new prior
                 if (missingDistributionByCategory(category, DistributionType.INFERRED)) {
                     setDistribution(category, DistributionType.INFERRED, distribution);
                 }

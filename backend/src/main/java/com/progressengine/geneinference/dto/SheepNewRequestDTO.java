@@ -42,4 +42,14 @@ public class SheepNewRequestDTO {
     public void setParentRelationshipId(Integer parentRelationshipId) {
         this.parentRelationshipId = parentRelationshipId;
     }
+
+    @Override
+    public String toString() {
+        return "SheepDTO{" +
+                "name='" + name + '\'' +
+                ", genotypes=" + genotypes +
+                ", distributions=" + distributions +
+                ", parentRelationshipId=" + parentRelationshipId +
+                '}';
+    }
 }
