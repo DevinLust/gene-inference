@@ -139,7 +139,7 @@ public class SheepService {
         sheepRepository.delete(sheep);
     }
 
-    public Sheep fromRequestDTO(SheepNewRequestDTO dto) {
+    public Sheep fromRequestDTO(SheepNewRequestDTO dto) throws IllegalArgumentException {
         Sheep sheep = new Sheep();
         sheep.setName(dto.getName());
         sheep.setGenotypes(dto.getGenotypes());

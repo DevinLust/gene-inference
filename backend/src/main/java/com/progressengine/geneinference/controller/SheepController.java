@@ -27,7 +27,12 @@ public class SheepController {
     @Transactional
     @PostMapping(consumes = {"application/json", "application/json;charset=UTF-8"})
     public ResponseEntity<?> addSheep(@RequestBody SheepNewRequestDTO sheepNewRequestDTO) {
-        Sheep sheep = sheepService.fromRequestDTO(sheepNewRequestDTO);
+        Sheep sheep;
+        try {
+            sheep = sheepService.fromRequestDTO(sheepNewRequestDTO);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
         return ResponseEntity.ok().body(sheepService.saveSheep(sheep));
     }
 
