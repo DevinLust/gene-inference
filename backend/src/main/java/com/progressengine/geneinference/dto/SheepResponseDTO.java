@@ -10,7 +10,7 @@ public class SheepResponseDTO {
     private Integer id;
     private String name;
     private Map<Category, SheepGenotypeDTO> genotypes;
-    private Map<Category, Map<DistributionType, Map<Grade, Double>>> distributionsByCategory;
+    private Map<Category, Map<DistributionType, Map<Grade, Double>>> distributions;
     private Integer parentRelationshipId;
 
     public Integer getId() {
@@ -37,12 +37,12 @@ public class SheepResponseDTO {
         this.genotypes = genotypes;
     }
 
-    public Map<Category, Map<DistributionType, Map<Grade, Double>>> getDistributionsByCategory() {
-        return distributionsByCategory;
+    public Map<Category, Map<DistributionType, Map<Grade, Double>>> getDistributions() {
+        return distributions;
     }
 
-    public void setDistributionsByCategory(Map<Category, Map<DistributionType, Map<Grade, Double>>> distributionsByCategory) {
-        this.distributionsByCategory = distributionsByCategory;
+    public void setDistributions(Map<Category, Map<DistributionType, Map<Grade, Double>>> distributions) {
+        this.distributions = distributions;
     }
 
     public Integer getParentRelationshipId() {

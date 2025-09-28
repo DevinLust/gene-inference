@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Sheeplantix",
+  title: "Sheepsburgh",
   description: "All your sheep powering needs",
 };
 

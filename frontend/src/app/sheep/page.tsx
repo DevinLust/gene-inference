@@ -6,7 +6,7 @@ export default async function SheepPage() {
     let sheep: any[] | null = null;
 
     try {
-        // Replace with your backend URL
+        // fetch a more light-weight sheep list
         const res = await fetch("http://localhost:8080/sheep");
         sheep = await res.json();
     } catch (err) {
@@ -19,13 +19,16 @@ export default async function SheepPage() {
 
             {!sheep && <p className="text-red-500">Backend not running</p>}
 
-            <div className="mt-4 flex items-center justify-between gap-2 md:mt-8">
+            <div className="mt-4 mb-4 flex items-center justify-between gap-2 md:mt-8">
                 {sheep && <CreateSheep />}
             </div>
 
-            <ul className="list-disc pl-4">
+            <ul className="list-disc pl-4 list-inside">
                 {sheep && sheep.map((s: any) => (
-                    <li key={s.id}>{s.name ?? "(unnamed)"}</li>
+                    <li key={s.id} className="flex list-item items-center justify-between">
+                        <span>{s.name || <span className="text-gray-400">(unnamed)</span>}</span>
+                        <Link className="text-blue-400 ml-2" href={`/sheep/${s.id}`}>more details</Link>
+                    </li>
                 ))}
             </ul>
         </div>
