@@ -13,6 +13,11 @@ const links = [
         href: '/sheep/create',
         icon: 'DocumentDuplicateIcon',
     },
+    {
+        name: 'Breeding',
+        href: '/sheep/breed',
+        icon: 'LambIcon'
+    },
 ];
 
 export default function NavLinks() {

@@ -10,3 +10,14 @@ export function CreateSheep() {
         </Link>
     );
 }
+
+export function SheepDetails({ sheepId }: { sheepId: string }) {
+    return (
+        <Link
+            href={`/sheep/${sheepId}`}
+            className="rounded text-blue-400 ml-2 hover:bg-gray-600 px-2 py-1"
+        >
+            <span>more details</span>
+        </Link>
+    );
+}

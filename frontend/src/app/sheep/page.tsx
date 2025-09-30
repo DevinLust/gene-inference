@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CreateSheep } from "@/app/ui/sheep/buttons";
+import { CreateSheep, SheepDetails } from "@/app/ui/sheep/buttons";
 
 // app/sheep/page.tsx
 export default async function SheepPage() {
@@ -27,7 +27,7 @@ export default async function SheepPage() {
                 {sheep && sheep.map((s: any) => (
                     <li key={s.id} className="flex list-item items-center justify-between">
                         <span>{s.name || <span className="text-gray-400">(unnamed)</span>}</span>
-                        <Link className="text-blue-400 ml-2" href={`/sheep/${s.id}`}>more details</Link>
+                        <SheepDetails sheepId={s.id} />
                     </li>
                 ))}
             </ul>

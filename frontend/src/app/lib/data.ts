@@ -1,4 +1,4 @@
-import { Sheep } from "./definitions";
+import { Sheep, Prediction } from "./definitions";
 
 // data fetching functions
 export async function fetchSheepById(id: string): Promise<Sheep> {
@@ -10,4 +10,15 @@ export async function fetchSheepById(id: string): Promise<Sheep> {
     }
 
     return await res.json() as Promise<Sheep>;
+}
+
+export async function fetchPrediction(sheep1Id: string, sheep2Id: string): Promise<Prediction> {
+    const res = await fetch(`http://localhost:8080/breed/${sheep1Id}/${sheep2Id}/predict`);
+
+    if (!res.ok) {
+        console.error("Failed to fetch prediction: " + res.status);
+        throw new Error(`Failed to fetch prediction from sheep ${sheep1Id} and ${sheep2Id}, status: ${res.status}`);
+    }
+
+    return await res.json() as Prediction;
 }

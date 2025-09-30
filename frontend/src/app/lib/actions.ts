@@ -67,15 +67,11 @@ export async function formDataToSheepDTO(formData: FormData): Promise<SheepCreat
 export async function createSheep(prevState: any, formData: FormData) {
     const newSheep: SheepCreateDTO = await formDataToSheepDTO(formData);
 
-    console.log(newSheep); // test
-
     const res = await fetch("http://localhost:8080/sheep", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newSheep),
     });
-
-    console.log(res); // test
 
     if (!res.ok) {
         return { message: "Failed to create sheep" };
