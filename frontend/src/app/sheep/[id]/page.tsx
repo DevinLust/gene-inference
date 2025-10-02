@@ -17,7 +17,7 @@ export default async function SheepDetailPage(props: { params: Promise<{ id: str
             <Link href="/sheep" className="text-blue-400 mb-8">Back to Sheep List</Link>
 
             {/* Name */}
-            <h1 className="mt-2 mb-2 text-xl">{sheep.name ?? "(unnamed)"}</h1>
+            <h1 className="mt-2 mb-2 text-2xl text-bold"><span>{sheep.name || <span className="text-gray-400">(unnamed)</span>}</span></h1>
 
             {/* ID */}
             <p className="mb-2">ID: {sheep.id}</p>

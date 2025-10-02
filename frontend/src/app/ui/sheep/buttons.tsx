@@ -11,7 +11,7 @@ export function CreateSheep() {
     );
 }
 
-export function SheepDetails({ sheepId }: { sheepId: string }) {
+export function SheepDetails({ sheepId }: { sheepId: string | number }) {
     return (
         <Link
             href={`/sheep/${sheepId}`}

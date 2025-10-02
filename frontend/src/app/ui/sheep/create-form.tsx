@@ -35,7 +35,7 @@ export default function SheepForm() {
                             Phenotype:
                             <select
                                 name={`genotypes.${c}.phenotype`}
-                                className="ml-1 border rounded"
+                                className="ml-1 border rounded py-1"
                             >
                                 <option value="">(none)</option>
                                 {grades.map((g) => (
@@ -45,12 +45,11 @@ export default function SheepForm() {
                                 ))}
                             </select>
                         </label>
-
                         <label>
                             Hidden Allele:
                             <select
                                 name={`genotypes.${c}.hiddenAllele`}
-                                className="ml-1 border rounded"
+                                className="ml-1 border rounded py-1"
                             >
                                 <option value="">(none)</option>
                                 {grades.map((g) => (

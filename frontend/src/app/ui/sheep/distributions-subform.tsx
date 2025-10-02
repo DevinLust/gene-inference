@@ -1,3 +1,5 @@
+'use client';
+
 import { useState } from "react";
 
 const categories = ["SWIM", "FLY", "RUN", "POWER", "STAMINA"];

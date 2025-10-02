@@ -77,5 +77,6 @@ export async function createSheep(prevState: any, formData: FormData) {
         return { message: "Failed to create sheep" };
     }
 
+    revalidatePath('/sheep');
     redirect('/sheep');
 }

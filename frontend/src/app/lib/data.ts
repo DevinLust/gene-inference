@@ -1,6 +1,21 @@
+'use server';
+
 import { Sheep, Prediction } from "./definitions";
 
 // data fetching functions
+export async function fetchAllSheep(): Promise<Sheep[]> {
+    const res = await fetch("http://localhost:8080/sheep", {
+        cache: "force-cache",
+    });
+
+    if (!res.ok) {
+        console.error("Failed to fetch all sheep");
+        throw new Error(`Failed to fetch all sheep, status: ${res.statusText}`);
+    }
+
+    return await res.json();
+}
+
 export async function fetchSheepById(id: string): Promise<Sheep> {
     const res = await fetch(`http://localhost:8080/sheep/${id}`);
 
