@@ -176,7 +176,7 @@ public class SheepService {
         responseDTO.setId(sheep.getId());
         responseDTO.setName(sheep.getName());
         responseDTO.setGenotypes(sheep.getGenotypes());
-        responseDTO.setDistributionsByCategory(sheep.getAllDistributions());
+        responseDTO.setDistributions(sheep.getAllDistributions());
 
         if (sheep.getParentRelationship() != null) {
             responseDTO.setParentRelationshipId(sheep.getParentRelationship().getId());

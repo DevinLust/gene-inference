@@ -46,7 +46,9 @@ export type SheepCreateDTO = {
 }
 
 export type Prediction = {
-    [C in Category]: {
-        [G in Grade]: number;
-    };
+    phenotypeDistributions: {
+        [C in Category]: {
+            [G in Grade]: number;
+        };
+    }
 };
