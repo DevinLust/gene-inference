@@ -1,5 +1,6 @@
 package com.progressengine.geneinference.service;
 
+import com.progressengine.geneinference.dto.RelationshipResponseDTO;
 import com.progressengine.geneinference.model.Relationship;
 import com.progressengine.geneinference.model.Sheep;
 import com.progressengine.geneinference.model.enums.Category;
@@ -19,6 +20,10 @@ public class RelationshipService {
     }
 
     public Relationship saveRelationship(Relationship relationship) { return relationshipRepository.save(relationship); }
+
+    public List<Relationship> getAllRelationships() {
+        return relationshipRepository.findAll();
+    }
 
     /**
      * Finds or creates a Relationship for the two sheep.
@@ -120,5 +125,9 @@ public class RelationshipService {
         child.setParentRelationship(relationship);
 
         return child;
+    }
+
+    public RelationshipResponseDTO toResponseDTO(Relationship relationship) {
+        return new RelationshipResponseDTO(relationship);
     }
 }
