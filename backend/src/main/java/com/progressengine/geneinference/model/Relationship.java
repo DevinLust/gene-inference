@@ -187,6 +187,13 @@ public class Relationship {
         return phenotypeFrequenciesByCategory.computeIfAbsent(category, k -> new EnumMap<>(Grade.class));
     }
 
+    public Map<Category, Map<Grade, Integer>> getAllPhenotypeFrequencies() {
+        if (!phenotypeFrequenciesOrganized) organizePhenotypeFrequencies();
+
+        return this.phenotypeFrequenciesByCategory.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, e -> getPhenotypeFrequencies(e.getKey())));
+    }
+
     @Transactional
     public void setPhenotypeFrequencies(Category category, Map<Grade, Integer> phenotypeFrequencies) {
          if (phenotypeFrequenciesOrganized) organizePhenotypeFrequencies();
