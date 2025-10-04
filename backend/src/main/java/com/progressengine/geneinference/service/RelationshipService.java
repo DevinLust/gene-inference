@@ -6,6 +6,7 @@ import com.progressengine.geneinference.model.Sheep;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.Grade;
 import com.progressengine.geneinference.repository.RelationshipRepository;
+import org.springdoc.api.OpenApiResourceNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -23,6 +24,14 @@ public class RelationshipService {
 
     public List<Relationship> getAllRelationships() {
         return relationshipRepository.findAll();
+    }
+
+    public Relationship getRelationshipById(Integer relationshipId) {
+        Optional<Relationship> optionalRelationship = relationshipRepository.findById(relationshipId);
+        if (optionalRelationship.isEmpty()) {
+            throw new OpenApiResourceNotFoundException("Relationship not found");
+        }
+        return optionalRelationship.get();
     }
 
     /**

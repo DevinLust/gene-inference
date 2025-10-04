@@ -100,7 +100,6 @@ public class SheepController {
         return ResponseEntity.ok(sheepService.saveSheep(sheep));
     }
 
-    @Transactional
     @DeleteMapping("/{sheepId}")
     public ResponseEntity<?> deleteSheep(@PathVariable Integer sheepId) {
         sheepService.deleteSheep(sheepId);

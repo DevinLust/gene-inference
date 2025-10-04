@@ -8,6 +8,7 @@ import com.progressengine.geneinference.model.Sheep;
 import com.progressengine.geneinference.model.enums.Grade;
 import com.progressengine.geneinference.repository.RelationshipRepository;
 import com.progressengine.geneinference.repository.SheepRepository;
+import jakarta.transaction.Transactional;
 import org.springdoc.api.OpenApiResourceNotFoundException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -123,6 +124,7 @@ public class SheepService {
         return ResponseEntity.ok(partners);
     }
 
+    @Transactional
     public void deleteSheep(Integer sheepId) {
         Sheep sheep = findById(sheepId);
 
