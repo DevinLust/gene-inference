@@ -1,6 +1,5 @@
 package com.progressengine.geneinference.service;
 
-import com.progressengine.geneinference.dto.PredictionResponseDTO;
 import com.progressengine.geneinference.model.GradePair;
 import com.progressengine.geneinference.model.Relationship;
 import com.progressengine.geneinference.model.Sheep;
@@ -14,7 +13,7 @@ import java.util.Map;
 
 public abstract class BaseInferenceEngine implements InferenceEngine {
     // Predicts the probabilities of the phenotype for each category of the two parents' children
-    public PredictionResponseDTO predictChildrenDistributions(Sheep parent1, Sheep parent2) {
+    public Map<Category, Map<Grade, Double>> predictChildrenDistributions(Sheep parent1, Sheep parent2) {
         Map<Category, Map<Grade, Double>> predictedDistributions = new EnumMap<>(Category.class);
         for (Category category : Category.values()) {
             Map<Grade, Double> distribution = new EnumMap<>(Grade.class);
@@ -32,7 +31,7 @@ public abstract class BaseInferenceEngine implements InferenceEngine {
             predictedDistributions.put(category, distribution);
         }
 
-        return new PredictionResponseDTO(predictedDistributions);
+        return predictedDistributions;
     }
 
     // combine existing distribution with new distribution

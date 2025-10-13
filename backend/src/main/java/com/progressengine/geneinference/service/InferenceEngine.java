@@ -1,8 +1,8 @@
 package com.progressengine.geneinference.service;
 
-import com.progressengine.geneinference.dto.PredictionResponseDTO;
 import com.progressengine.geneinference.model.Relationship;
 import com.progressengine.geneinference.model.Sheep;
+import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.Grade;
 
 import java.util.Map;
@@ -15,5 +15,5 @@ public interface InferenceEngine {
 
     void updateMarginalProbabilities(Relationship relationship);
 
-    PredictionResponseDTO predictChildrenDistributions(Sheep parent1, Sheep parent2);
+    Map<Category, Map<Grade, Double>> predictChildrenDistributions(Sheep parent1, Sheep parent2);
 }
