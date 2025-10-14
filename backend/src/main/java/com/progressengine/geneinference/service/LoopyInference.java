@@ -28,9 +28,9 @@ public class LoopyInference extends EnsembleInference {
 
         // List of relationships for each parent
         // TODO - filtering breaks tests because it can't mock it without overriding the tests
-//        List<List<Relationship>> filteredRelationships = relationshipService.filterRelationshipsByParent(parent1, parent2, 5);
-//        List<Relationship> parent1Relationships = filteredRelationships.get(0);
-//        List<Relationship> parent2Relationships = filteredRelationships.get(1);
+        // List<List<Relationship>> filteredRelationships = relationshipService.filterRelationshipsByParent(parent1, parent2, 5);
+        // List<Relationship> parent1Relationships = filteredRelationships.get(0);
+        // List<Relationship> parent2Relationships = filteredRelationships.get(1);
         List<Relationship> parent1Relationships = relationshipService.findRelationshipsByParent(parent1);
         List<Relationship> parent2Relationships = relationshipService.findRelationshipsByParent(parent2);
 
@@ -40,6 +40,9 @@ public class LoopyInference extends EnsembleInference {
 
             parent1.setDistribution(category, DistributionType.INFERRED, newMarginals.get(0));
             parent2.setDistribution(category, DistributionType.INFERRED, newMarginals.get(1));
+
+            checkCertainty(parent1, category);
+            checkCertainty(parent2, category);
         }
     }
 

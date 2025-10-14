@@ -167,8 +167,8 @@ public class BreedController {
         int certainty = 0;
         for (Map.Entry<Grade, Double> entry : sheep.getDistribution(category, DistributionType.INFERRED).entrySet()) {
             if (entry.getValue() > CERTAINTY_THRESHOLD) {
-                certainty++;
-            } else if (entry.getValue() == 0.0) {
+                certainty += 5;
+            } else if (entry.getValue() == 0.0) { // rewards distributions with true certainty
                 certainty++;
             }
         }

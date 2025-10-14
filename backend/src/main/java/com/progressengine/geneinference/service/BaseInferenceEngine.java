@@ -34,6 +34,17 @@ public abstract class BaseInferenceEngine implements InferenceEngine {
         return predictedDistributions;
     }
 
+    // check the hidden distributions of a sheep and if an allele is certain, set the hidden allele to it
+    protected void checkCertainty(Sheep sheep, Category category) {
+        if (sheep.getHiddenAllele(category) != null) { return; }
+
+        for (Map.Entry<Grade, Double> entry : sheep.getDistribution(category, DistributionType.INFERRED).entrySet()) {
+            if (entry.getValue() == 1.0) { // could make this a certainty threshold
+                sheep.setHiddenAllele(category, entry.getKey());
+            }
+        }
+    }
+
     // combine existing distribution with new distribution
     protected void productOfExperts(Map<Grade, Double> existingDistribution, Map<Grade, Double> newDistribution) {
 

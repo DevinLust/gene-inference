@@ -8,13 +8,13 @@ import java.util.EnumSet;
 import java.util.Map;
 import java.util.Set;
 
-public class BestPredictionDTO {
-    private SheepSummaryResponseDTO parent1;
-    private SheepSummaryResponseDTO parent2;
-    private Map<Category, Grade> parent1BestCategoryGradeMap; // maps category to the grade that won it
-    private Map<Category, Grade> parent2BestCategoryGradeMap;
-    private Set<Category> bestCategoriesSet;
-    private Map<Category, Map<Grade, Double>> phenotypeDistribution; // Maps each category to the distribution a child has these phenotypes
+public class BestPredictionDTO implements Comparable<BestPredictionDTO> {
+    private final SheepSummaryResponseDTO parent1;
+    private final SheepSummaryResponseDTO parent2;
+    private final Map<Category, Grade> parent1BestCategoryGradeMap; // maps category to the grade that won it
+    private final Map<Category, Grade> parent2BestCategoryGradeMap;
+    private final Set<Category> bestCategoriesSet;
+    private final Map<Category, Map<Grade, Double>> phenotypeDistribution; // Maps each category to the distribution a child has these phenotypes
 
     public BestPredictionDTO(Sheep parent1, Sheep parent2, Map<Category, Grade> parent1BestGrades, Map<Category, Grade> parent2BestGrades, Map<Category, Map<Grade, Double>> predictions) {
         this.parent1 = new SheepSummaryResponseDTO(parent1);
@@ -49,5 +49,10 @@ public class BestPredictionDTO {
 
     public Map<Category, Map<Grade, Double>> getPhenotypeDistribution() {
         return phenotypeDistribution;
+    }
+
+    @Override
+    public int compareTo(BestPredictionDTO o) {
+        return Integer.compare(this.bestCategoriesSet.size(), o.bestCategoriesSet.size());
     }
 }
