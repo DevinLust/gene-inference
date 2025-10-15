@@ -37,14 +37,24 @@ public class BreedController {
 
     @Transactional
     @PostMapping(value = "/{sheep1Id}/{sheep2Id}")
-    public String breed(@PathVariable Integer sheep1Id, @PathVariable Integer sheep2Id, @RequestParam(name = "saveChild", defaultValue = "true") boolean saveChild) {
+    public ResponseEntity<?> breed(@PathVariable Integer sheep1Id, @PathVariable Integer sheep2Id, @RequestParam(name = "saveChild", defaultValue = "true") boolean saveChild) {
         // find/create the relationship of these two sheep
         Sheep sheep1 = sheepService.findById(sheep1Id);
         Sheep sheep2 = sheepService.findById(sheep2Id);
-        Relationship relationship = relationshipService.findOrCreateRelationship(sheep1, sheep2);
+        Relationship relationship;
+        try {
+            relationship = relationshipService.findOrCreateRelationship(sheep1, sheep2);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
 
         // create a new child from the two sheep
-        Sheep newChild = RelationshipService.breedNewSheep(relationship); // categorized
+        Sheep newChild;
+        try {
+            newChild = RelationshipService.breedNewSheep(relationship);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
 
         // get the new joint distribution from the additional offspring data
         inferenceEngine.findJointDistribution(relationship); // categorized for ensemble and loopy
@@ -78,7 +88,7 @@ public class BreedController {
                 childResults.append(category).append(": ").append(genotype.getPhenotype()).append("\n")
         );
 
-        return childResults.toString();
+        return ResponseEntity.ok(childResults.toString());
     }
 
     @GetMapping("/{sheep1Id}/{sheep2Id}/predict")
