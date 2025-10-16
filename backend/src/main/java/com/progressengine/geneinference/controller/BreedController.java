@@ -7,6 +7,7 @@ import com.progressengine.geneinference.model.Sheep;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.DistributionType;
 import com.progressengine.geneinference.model.enums.Grade;
+import com.progressengine.geneinference.service.BreedingService;
 import com.progressengine.geneinference.service.InferenceEngine;
 import com.progressengine.geneinference.service.RelationshipService;
 import com.progressengine.geneinference.service.SheepService;
@@ -16,6 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import javax.management.relation.Relation;
 import java.util.*;
 
 @RestController
@@ -27,62 +29,33 @@ public class BreedController {
 
     private final SheepService sheepService;
     private final RelationshipService relationshipService;
+    public final BreedingService breedingService;
     private final InferenceEngine inferenceEngine;
 
-    public BreedController(SheepService sheepService, RelationshipService relationshipService, @Qualifier("loopy") InferenceEngine inferenceEngine) {
+    public BreedController(SheepService sheepService, RelationshipService relationshipService, BreedingService breedingService, @Qualifier("loopy") InferenceEngine inferenceEngine) {
         this.sheepService = sheepService;
         this.relationshipService = relationshipService;
+        this.breedingService = breedingService;
         this.inferenceEngine = inferenceEngine;
     }
 
-    @Transactional
     @PostMapping(value = "/{sheep1Id}/{sheep2Id}")
     public ResponseEntity<?> breed(@PathVariable Integer sheep1Id, @PathVariable Integer sheep2Id, @RequestParam(name = "saveChild", defaultValue = "true") boolean saveChild) {
         // find/create the relationship of these two sheep
-        Sheep sheep1 = sheepService.findById(sheep1Id);
-        Sheep sheep2 = sheepService.findById(sheep2Id);
-        Relationship relationship;
-        try {
-            relationship = relationshipService.findOrCreateRelationship(sheep1, sheep2);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
-
-        // create a new child from the two sheep
         Sheep newChild;
         try {
-            newChild = RelationshipService.breedNewSheep(relationship);
+            newChild = breedingService.breedAndInferSheep(sheep1Id, sheep2Id);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
 
-        // get the new joint distribution from the additional offspring data
-        inferenceEngine.findJointDistribution(relationship); // categorized for ensemble and loopy
-
-        // update the marginal distributions of the parents' using the joint distribution
-        inferenceEngine.updateMarginalProbabilities(relationship); // categorized for loopy
-
-        // infer child hidden distribution
-        inferenceEngine.inferChildHiddenDistribution(relationship,  newChild);
-        // could make this a method in sheep so it is more efficient
-        for (Category category : Category.values()) {
-            newChild.setDistribution(category, DistributionType.INFERRED, newChild.getDistribution(category, DistributionType.PRIOR));
-        }
-
-        // save relationship and new child
-        Relationship savedRelationship = relationshipService.saveRelationship(relationship);
-
-        List<Sheep> sheepToSave = new ArrayList<>(List.of(sheep1, sheep2));
-        if (saveChild) {
-            sheepToSave.add(newChild);
-        }
-
-        sheepService.saveAll(sheepToSave);
+        // save new child
+        sheepService.saveSheep(newChild);
 
         // TODO - propagate probability to other partners and children
 
         StringBuilder childResults = new StringBuilder();
-        childResults.append("Relationship ID: ").append(savedRelationship.getId()).append("\n");
+        childResults.append("Relationship ID: ").append(newChild.getParentRelationship().getId()).append("\n");
 
         newChild.getGenotypes().forEach((category, genotype) ->
                 childResults.append(category).append(": ").append(genotype.getPhenotype()).append("\n")

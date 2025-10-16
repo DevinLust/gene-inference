@@ -42,6 +42,12 @@ public class Relationship {
     @Transient
     private boolean phenotypeFrequenciesOrganized = false;
 
+    public Relationship() {}
+
+    public Relationship(Sheep parent1, Sheep parent2) {
+        this.parent1 = parent1;
+        this.parent2 = parent2;
+    }
 
     public Integer getId() {
         return id;

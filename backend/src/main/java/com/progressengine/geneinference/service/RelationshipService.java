@@ -54,7 +54,7 @@ public class RelationshipService {
     /**
      * Finds or creates a Relationship for the two given sheep. The relationship will automatically
      * set the first parent as the sheep with the lower id. If the relationship does not already
-     * exist in the database it will return a new unpersisted Relationship. Throws an error if the
+     * exist in the database it will return a new persisted Relationship. Throws an error if the
      * two sheep reference the same sheep.
      *
      * @param sheep1 - one of the two parent sheep
@@ -82,11 +82,9 @@ public class RelationshipService {
         }
 
         // Otherwise, create new
-        Relationship newRelationship = new Relationship();
-        newRelationship.setParent1(parent1);
-        newRelationship.setParent2(parent2);
+        Relationship newRelationship = new Relationship(parent1, parent2);
 
-        return newRelationship;
+        return saveRelationship(newRelationship);
     }
 
     public List<Relationship> findRelationshipsByParent(Sheep parent) {
@@ -129,54 +127,6 @@ public class RelationshipService {
         return List.of(parent1Relationships, parent2Relationships);
     }
 
-    /**
-     * Breed a new child sheep from the given Relationship. The child randomly takes
-     * one allele from each parent and then randomly chooses which one is the phenotype.
-     * The child will have default distributions and sets its parents to this relationship.
-     * The parents must have known hidden alleles in all categories to breed. Throws
-     * an IllegalArgumentException otherwise.
-     *
-     * @param relationship - the relationship of the two parents to breed
-     * @return a Sheep that represents the child born from the relationship
-     */
-    public static Sheep breedNewSheep(Relationship relationship) {
-        breedingValidation(relationship);
-
-        Sheep child = new Sheep();
-
-        Sheep parent1 = relationship.getParent1();
-        Sheep parent2 = relationship.getParent2();
-
-        // random genotype from the two parents, one allele from each parent
-        Random random = new Random();
-        // -----------------------------------------------------------------------------------
-        for (Category category : Category.values()) {
-            if (parent1.getHiddenAllele(category) == null || parent2.getHiddenAllele(category) == null) {
-                throw new IllegalArgumentException("Missing known hidden allele in category " + category);
-            }
-            Grade newPhenotype;
-            Grade newHiddenAllele;
-            if (random.nextBoolean()) {
-                newPhenotype = random.nextBoolean() ? parent1.getPhenotype(category) : parent1.getHiddenAllele(category);
-                newHiddenAllele = random.nextBoolean() ? parent2.getPhenotype(category) : parent2.getHiddenAllele(category);
-            } else {
-                newPhenotype = random.nextBoolean() ? parent2.getPhenotype(category) : parent2.getHiddenAllele(category);
-                newHiddenAllele = random.nextBoolean() ? parent1.getPhenotype(category) : parent1.getHiddenAllele(category);
-            }
-
-
-            child.setPhenotype(category, newPhenotype);
-            child.setHiddenAllele(category, newHiddenAllele);
-            relationship.updatePhenotypeFrequency(category, newPhenotype, 1);
-        }
-        child.createDefaultDistributions();
-        // ---------------------------------------------------------------------------------
-
-        child.setParentRelationship(relationship);
-
-        return child;
-    }
-
     public RelationshipResponseDTO toResponseDTO(Relationship relationship) {
         return new RelationshipResponseDTO(relationship);
     }
@@ -189,24 +139,4 @@ public class RelationshipService {
         }
     }
 
-    // validates that these two sheep can be automatically bred within the app
-    private static void breedingValidation(Relationship relationship) {
-        Set<Category> parent1Missing = missingHiddenAllele(relationship.getParent1());
-        Set<Category> parent2Missing = missingHiddenAllele(relationship.getParent2());
-        if (!parent1Missing.isEmpty() || !parent2Missing.isEmpty()) {
-            String parent1MissingStr = parent1Missing.isEmpty() ? "" : String.format("Parent 1 is missing hidden alleles in: %s%n", parent1Missing);
-            String parent2MissingStr = parent2Missing.isEmpty() ? "" : String.format("Parent 2 is missing hidden alleles in: %s%n", parent2Missing);
-            throw new IllegalArgumentException(String.format("Cannot breed sheep with missing hidden alleles!%n%s%s", parent1MissingStr, parent2MissingStr));
-        }
-    }
-
-    private static Set<Category> missingHiddenAllele(Sheep sheep) {
-        Set<Category> categories = EnumSet.noneOf(Category.class);
-        for (Category category : Category.values()) {
-            if (sheep.getHiddenAllele(category) == null) {
-                categories.add(category);
-            }
-        }
-        return categories;
-    }
 }
