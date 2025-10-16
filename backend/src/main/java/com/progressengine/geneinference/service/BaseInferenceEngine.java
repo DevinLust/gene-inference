@@ -12,7 +12,17 @@ import java.util.HashMap;
 import java.util.Map;
 
 public abstract class BaseInferenceEngine implements InferenceEngine {
-    // Predicts the probabilities of the phenotype for each category of the two parents' children
+
+    /**
+     * Predicts the probabilities of the phenotype for each category of the two parents' children.
+     * The two parents don't need to be in a Relationship. The two parents can be the same
+     * Sheep.
+     *
+     * @param parent1 - the first parent Sheep to base the prediction on
+     * @param parent2 - the second parent Sheep to base the prediction on
+     * @return a Map of distributions that predict the probability of phenotypes for the children
+     * of these two parents by category
+     */
     public Map<Category, Map<Grade, Double>> predictChildrenDistributions(Sheep parent1, Sheep parent2) {
         Map<Category, Map<Grade, Double>> predictedDistributions = new EnumMap<>(Category.class);
         for (Category category : Category.values()) {

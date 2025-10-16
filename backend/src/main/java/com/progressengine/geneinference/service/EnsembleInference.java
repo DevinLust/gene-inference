@@ -32,8 +32,14 @@ public class EnsembleInference extends BaseInferenceEngine {
         return multinomialDistribution;
     }
 
+    /**
+     * Updates the relationship with a new joint distribution using a multinomial distribution
+     * to find the likelihood of the parent's having pairs of hidden alleles based on the
+     * frequency of the phenotypes of the children this Relationship has had.
+     *
+     * @param relationship
+     */
     @Transactional
-    // Updates the relationship with a new joint distribution using purely multinomial distributions
     public void findJointDistribution(Relationship relationship) {
         Sheep parent1 = relationship.getParent1();
         Sheep parent2 = relationship.getParent2();
@@ -81,8 +87,14 @@ public class EnsembleInference extends BaseInferenceEngine {
         return childHiddenDistribution;
     }
 
+    /**
+     * Sets the prior distribution of a child given the Relationship of the parents
+     * and observed phenotype of the child.
+     *
+     * @param relationship - the Relationship of the parents of the given child
+     * @param child - the Sheep to calculate and set the prior for
+     */
     @Transactional
-    // Returns a new Map of grades to probability given the relationship and observed phenotype of the child
     public void inferChildHiddenDistribution(Relationship relationship, Sheep child) {
         for (Category category : Category.values()) {
             Grade childPhenotype = child.getPhenotype(category);

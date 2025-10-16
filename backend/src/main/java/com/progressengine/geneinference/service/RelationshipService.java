@@ -22,6 +22,7 @@ public class RelationshipService {
 
     /**
      * Saves the given relationship in the database.
+     *
      * @param relationship - relationship to save
      * @return the saved relationship
      */
@@ -29,6 +30,7 @@ public class RelationshipService {
 
     /**
      * Fetches all relationships in the database
+     *
      * @return a List of all relationships
      */
     public List<Relationship> getAllRelationships() {
@@ -37,6 +39,7 @@ public class RelationshipService {
 
     /**
      * Fetches the relationship with the given id, otherwise it throws an error.
+     *
      * @param relationshipId - id of the desired relationship
      * @return the relationship with the given id
      */
@@ -53,6 +56,7 @@ public class RelationshipService {
      * set the first parent as the sheep with the lower id. If the relationship does not already
      * exist in the database it will return a new unpersisted Relationship. Throws an error if the
      * two sheep reference the same sheep.
+     *
      * @param sheep1 - one of the two parent sheep
      * @param sheep2 - one of the two parent sheep
      * @return the relationship of these two sheep
@@ -100,8 +104,9 @@ public class RelationshipService {
     /**
      * returns two lists of up to the given limit of relationships associated
      * with the corresponding parent order.
-     * @param parent1Id - Id of the first parent
-     * @param parent2Id - Id of the second parent
+     *
+     * @param parent1Id - id of the first parent
+     * @param parent2Id - id of the second parent
      * @param limitPerParent - limit of number of relationships to find for each parent
      * @return a List containing two Lists of relationships, the List at index 0 are the
      * relationships of the first parent and the List at index 1 are the relationships of
@@ -130,6 +135,7 @@ public class RelationshipService {
      * The child will have default distributions and sets its parents to this relationship.
      * The parents must have known hidden alleles in all categories to breed. Throws
      * an IllegalArgumentException otherwise.
+     *
      * @param relationship - the relationship of the two parents to breed
      * @return a Sheep that represents the child born from the relationship
      */
