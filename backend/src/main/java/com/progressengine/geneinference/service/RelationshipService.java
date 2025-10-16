@@ -20,12 +20,26 @@ public class RelationshipService {
         this.relationshipRepository = relationshipRepository;
     }
 
+    /**
+     * Saves the given relationship in the database.
+     * @param relationship - relationship to save
+     * @return the saved relationship
+     */
     public Relationship saveRelationship(Relationship relationship) { return relationshipRepository.save(relationship); }
 
+    /**
+     * Fetches all relationships in the database
+     * @return a List of all relationships
+     */
     public List<Relationship> getAllRelationships() {
         return relationshipRepository.findAll();
     }
 
+    /**
+     * Fetches the relationship with the given id, otherwise it throws an error.
+     * @param relationshipId - id of the desired relationship
+     * @return the relationship with the given id
+     */
     public Relationship getRelationshipById(Integer relationshipId) {
         Optional<Relationship> optionalRelationship = relationshipRepository.findById(relationshipId);
         if (optionalRelationship.isEmpty()) {
@@ -35,7 +49,13 @@ public class RelationshipService {
     }
 
     /**
-     * Finds or creates a Relationship for the two sheep.
+     * Finds or creates a Relationship for the two given sheep. The relationship will automatically
+     * set the first parent as the sheep with the lower id. If the relationship does not already
+     * exist in the database it will return a new unpersisted Relationship. Throws an error if the
+     * two sheep reference the same sheep.
+     * @param sheep1 - one of the two parent sheep
+     * @param sheep2 - one of the two parent sheep
+     * @return the relationship of these two sheep
      */
     public Relationship findOrCreateRelationship(Sheep sheep1, Sheep sheep2) {
         relationshipValidation(sheep1, sheep2); // validates these two sheep can be in relationship
@@ -62,8 +82,6 @@ public class RelationshipService {
         newRelationship.setParent1(parent1);
         newRelationship.setParent2(parent2);
 
-        // set other fields as needed
-
         return newRelationship;
     }
 
@@ -79,7 +97,16 @@ public class RelationshipService {
         return filterRelationshipsByParent(parent1.getId(), parent2.getId(), limitPerParent);
     }
 
-    // returns two lists of up to the given limit of relationships associated with the corresponding parent order.
+    /**
+     * returns two lists of up to the given limit of relationships associated
+     * with the corresponding parent order.
+     * @param parent1Id - Id of the first parent
+     * @param parent2Id - Id of the second parent
+     * @param limitPerParent - limit of number of relationships to find for each parent
+     * @return a List containing two Lists of relationships, the List at index 0 are the
+     * relationships of the first parent and the List at index 1 are the relationships of
+     * the second parent.
+     */
     public List<List<Relationship>> filterRelationshipsByParent(Integer parent1Id, Integer parent2Id, int limitPerParent) {
         List<Relationship> all = relationshipRepository.findLimitedByParents(parent1Id, parent2Id, limitPerParent);
 
@@ -97,7 +124,15 @@ public class RelationshipService {
         return List.of(parent1Relationships, parent2Relationships);
     }
 
-    // assumes uniform distribution for child
+    /**
+     * Breed a new child sheep from the given Relationship. The child randomly takes
+     * one allele from each parent and then randomly chooses which one is the phenotype.
+     * The child will have default distributions and sets its parents to this relationship.
+     * The parents must have known hidden alleles in all categories to breed. Throws
+     * an IllegalArgumentException otherwise.
+     * @param relationship - the relationship of the two parents to breed
+     * @return a Sheep that represents the child born from the relationship
+     */
     public static Sheep breedNewSheep(Relationship relationship) {
         breedingValidation(relationship);
 
@@ -139,6 +174,7 @@ public class RelationshipService {
     public RelationshipResponseDTO toResponseDTO(Relationship relationship) {
         return new RelationshipResponseDTO(relationship);
     }
+
 
     // validates that these two sheep can be in a relationship
     private static void relationshipValidation(Sheep sheep1, Sheep sheep2) {
