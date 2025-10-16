@@ -37,7 +37,7 @@ public class EnsembleInference extends BaseInferenceEngine {
      * to find the likelihood of the parent's having pairs of hidden alleles based on the
      * frequency of the phenotypes of the children this Relationship has had.
      *
-     * @param relationship
+     * @param relationship - the Relationship to update based on its data
      */
     @Transactional
     public void findJointDistribution(Relationship relationship) {

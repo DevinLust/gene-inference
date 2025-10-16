@@ -11,8 +11,7 @@ import jakarta.transaction.Transactional;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @RestController
 @RequestMapping(value = "/sheep")
@@ -40,6 +39,19 @@ public class SheepController {
     public List<SheepResponseDTO> getAllSheep() {
         List<Sheep> sheepList = sheepService.getAllSheep();
         return sheepList.stream()
+                .map(sheepService::toResponseDTO)
+                .toList();
+    }
+
+    @GetMapping("/filter")
+    public List<SheepResponseDTO> filterSheep(
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) List<Grade> grades) {
+
+        // convert list to set to remove duplicates
+        Set<Grade> gradeSet = grades == null ? Collections.emptySet() : new HashSet<>(grades);
+
+        return sheepService.filterSheep(name, gradeSet).stream()
                 .map(sheepService::toResponseDTO)
                 .toList();
     }

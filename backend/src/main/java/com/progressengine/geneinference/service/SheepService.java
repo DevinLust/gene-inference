@@ -5,15 +5,20 @@ import com.progressengine.geneinference.dto.SheepReplaceRequestDTO;
 import com.progressengine.geneinference.dto.SheepResponseDTO;
 import com.progressengine.geneinference.model.Relationship;
 import com.progressengine.geneinference.model.Sheep;
+import com.progressengine.geneinference.model.SheepGenotype;
 import com.progressengine.geneinference.model.enums.Grade;
 import com.progressengine.geneinference.repository.RelationshipRepository;
 import com.progressengine.geneinference.repository.SheepRepository;
+import jakarta.persistence.criteria.Expression;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
 import jakarta.transaction.Transactional;
 import org.springdoc.api.OpenApiResourceNotFoundException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import jakarta.persistence.criteria.Predicate;
 import java.util.stream.Collectors;
 
 @Service
@@ -61,6 +66,27 @@ public class SheepService {
     public List<Sheep> getAllSheep() {
         return sheepRepository.findAll();
     }
+
+    /**
+     * Fetches sheep from the database based on the supplied name and grades.
+     * If name is not null then any sheep that has a similar name to the string
+     * and is not null is allowed through. If grades is a supplied filter then
+     * it will only return sheep with at least one supplied grade as a phenotype
+     * or hidden allele.
+     *
+     * @param name - name to search likeness
+     * @param grades - Set of whitelisted grades
+     * @return a List of Sheep that matches the filter criteria
+     */
+    public List<Sheep> filterSheep(String name, Set<Grade> grades) {
+        if (grades == null || grades.isEmpty()) {
+            grades = Arrays.stream(Grade.values()).collect(Collectors.toSet());
+        }
+
+        Set<String> gradeStrings = grades.stream().map(Grade::name).collect(Collectors.toSet());
+        return sheepRepository.findSheepHavingAnyGradeAndNameNative(gradeStrings, name);
+    }
+
 
     public Sheep getSheepById(Integer id) {
         Optional<Sheep> possibleSheep = sheepRepository.findById(id);
