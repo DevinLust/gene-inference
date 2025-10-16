@@ -74,7 +74,7 @@ public class Sheep {
                 return genotype;
             }
         }
-        throw new IllegalStateException("No genotype found for category: " + category);
+        throw new IllegalStateException(formatErrorMessage("No genotype found for category: " + category));
     }
 
     public GradePair getGenotype(Category category) {
@@ -102,14 +102,14 @@ public class Sheep {
         missingCategories.removeAll(genotypesDTO.keySet());
 
         if (!missingCategories.isEmpty()) {
-            throw new IllegalArgumentException("Missing categories in genotypesDTO: " + missingCategories);
+            throw new IllegalArgumentException(formatErrorMessage("Missing categories in genotypesDTO: " + missingCategories));
         }
 
         for (Map.Entry<Category, SheepGenotypeDTO> entry : genotypesDTO.entrySet()) {
             Category category = entry.getKey();
             SheepGenotypeDTO genotypeDTO = entry.getValue();
             if (genotypeDTO.getPhenotype() == null) {
-                throw new IllegalArgumentException("Phenotype of category " + category + " is null");
+                throw new IllegalArgumentException(formatErrorMessage("Phenotype of category " + category + " is null"));
             }
             SheepGenotype genotype = createIfAbsentSheepGenotype(category);
             genotype.setGenotype(genotypeDTO.getPhenotype(),  genotypeDTO.getHiddenAllele());
@@ -160,7 +160,7 @@ public class Sheep {
         missingGrades.removeAll(distribution.keySet());
 
         if (!missingGrades.isEmpty()) {
-            throw new IllegalArgumentException("Missing grades in distribution: " + missingGrades);
+            throw new IllegalArgumentException(formatErrorMessage("Missing grades in distribution: " + missingGrades));
         }
 
         // Validate sum ≈ 1.0
@@ -169,7 +169,7 @@ public class Sheep {
                 .sum();
 
         if (Math.abs(total - 1.0) > 1e-6) {
-            throw new IllegalArgumentException("Distribution probabilities must sum to 1.0 (±1e-6). Actual sum: " + total);
+            throw new IllegalArgumentException(formatErrorMessage("Distribution probabilities must sum to 1.0 (±1e-6). Actual sum: " + total));
         }
     }
 
@@ -189,10 +189,19 @@ public class Sheep {
     }
 
     private Map<Grade, SheepDistribution> getDistributionByCategoryAndType(Category category,  DistributionType distributionType) {
+        if (!distributionsByCategory.containsKey(category)) {
+            throw new IllegalArgumentException(formatErrorMessage("Category " + category + " does not exist in distribution map"));
+        }
         Map<DistributionType, Map<Grade, SheepDistribution>> typeMap = distributionsByCategory.get(category);
 
-        if (typeMap == null || !typeMap.containsKey(distributionType)) {
-            throw new IllegalStateException("Distribution not initialized for category " + category + " and type " + distributionType);
+        if (typeMap == null) {
+            throw new IllegalArgumentException(formatErrorMessage(category + " is missing distribution-type map"));
+        }
+        if (!typeMap.containsKey(distributionType)) {
+            throw new IllegalArgumentException(formatErrorMessage("Distribution-type map is missing key for category " + category + " and type " + distributionType));
+        }
+        if (typeMap.get(distributionType) == null) {
+            throw new IllegalArgumentException(formatErrorMessage("Distribution for " + category + " -> " + distributionType + " is uninitialized"));
         }
 
         return typeMap.get(distributionType);
@@ -313,4 +322,9 @@ public class Sheep {
     public void setParentRelationship(Relationship parentRelationship) {
         this.parentRelationship = parentRelationship;
     }
+
+    private String formatErrorMessage(String specificMessage) {
+        return String.format("Error in sheep: %d: %s", this.id, specificMessage);
+    }
+
 }

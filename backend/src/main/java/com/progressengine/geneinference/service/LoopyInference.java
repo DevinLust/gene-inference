@@ -20,6 +20,11 @@ public class LoopyInference extends EnsembleInference {
         super(relationshipService);
     }
 
+    /**
+     * Updates the two sheep's marginal probabilities based on data from their relationship.
+     *
+     * @param relationship - the Relationship of the parents to update
+     */
     @Transactional
     @Override
     public void updateMarginalProbabilities(Relationship relationship) {
@@ -28,9 +33,9 @@ public class LoopyInference extends EnsembleInference {
 
         // List of relationships for each parent
         // TODO - filtering breaks tests because it can't mock it without overriding the tests
-//        List<List<Relationship>> filteredRelationships = relationshipService.filterRelationshipsByParent(parent1, parent2, 5);
-//        List<Relationship> parent1Relationships = filteredRelationships.get(0);
-//        List<Relationship> parent2Relationships = filteredRelationships.get(1);
+        // List<List<Relationship>> filteredRelationships = relationshipService.filterRelationshipsByParent(parent1, parent2, 5);
+        // List<Relationship> parent1Relationships = filteredRelationships.get(0);
+        // List<Relationship> parent2Relationships = filteredRelationships.get(1);
         List<Relationship> parent1Relationships = relationshipService.findRelationshipsByParent(parent1);
         List<Relationship> parent2Relationships = relationshipService.findRelationshipsByParent(parent2);
 
@@ -40,10 +45,25 @@ public class LoopyInference extends EnsembleInference {
 
             parent1.setDistribution(category, DistributionType.INFERRED, newMarginals.get(0));
             parent2.setDistribution(category, DistributionType.INFERRED, newMarginals.get(1));
+
+            checkCertainty(parent1, category);
+            checkCertainty(parent2, category);
         }
     }
 
-    // Uses the principal of loopy belief propagation to pass messages from immediate partners to the relationship in question
+    /**
+     * Returns List containing the updated distributions of the two parents in the current
+     * Relationship. Uses the principal of loopy belief propagation to pass messages from
+     * immediate partners to the relationship and category in question. The final belief
+     * is a product of all messages each parent gets from their Relationships.
+     *
+     * @param currentRelationship - the Relationship of the two parents to update
+     * @param parent1Relationships - a List of Relationships the first parent is in
+     * @param parent2Relationships - a List of Relationships the second parent is in
+     * @param category - the Category of the distribution to update
+     * @return a List containing the two updated and detached distributions of the parents
+     * for the particular category
+     */
     private List<Map<Grade, Double>> loopMarginalProbabilities(Relationship currentRelationship, List<Relationship> parent1Relationships, List<Relationship> parent2Relationships, Category category) {
         Sheep parent1 = currentRelationship.getParent1();
         Sheep parent2 = currentRelationship.getParent2();
@@ -65,7 +85,17 @@ public class LoopyInference extends EnsembleInference {
         return List.of(parent1Belief, parent2Belief);
     }
 
-    // combines the incoming messages from all relationships except the current relationship
+    /**
+     * Combines the incoming messages from all neighboring relationships except the
+     * current relationship. This keeps the message independent of the other parent.
+     * OverallMessage will be the message currentParent has about currentRelationship.
+     *
+     * @param overallMessage - the running product of messages
+     * @param relationships - a List of Relationships of the current parent
+     * @param currentRelationship - a reference to the current Relationship to be avoided
+     * @param currentParent - a reference to the current parent, a Sheep
+     * @param category - the target Category of this message
+     */
     private void combineMessages(Map<Grade, Double> overallMessage, List<Relationship> relationships, Relationship currentRelationship, Sheep currentParent, Category category) {
         for (Relationship relationship : relationships) {
             if (!relationship.getId().equals(currentRelationship.getId())) {
@@ -76,18 +106,31 @@ public class LoopyInference extends EnsembleInference {
         }
     }
 
-    // Marginalizes the joint distribution using the specified weight distribution and which parent it relates to in the relationship, the weighted parent
-    private Map<Grade, Double> halfJointMarginal(Relationship relationship, Map<Grade, Double> gradeDistribution, boolean firstParent, Category category) {
+    /**
+     * Calculates the message the given relationship has about the other parent in
+     * the Relationship. The specified parent is the parent used in the weighting
+     * of the joint distribution which is marginalized over the other grade.
+     *
+     * @param relationship - the Relationship to pass a message from
+     * @param weightDistribution - a distribution that is used to weight the
+     *                           marginalization of the joint distribution
+     * @param firstParentAsWeight - boolean to determine whether to use the first
+     *                            parent in the relationship as the weight parent
+     * @param category - the target Category of this message
+     * @return a distribution that represents message from the given Relationship
+     * to the other parent
+     */
+    private Map<Grade, Double> halfJointMarginal(Relationship relationship, Map<Grade, Double> weightDistribution, boolean firstParentAsWeight, Category category) {
         Map<Grade, Double> newHalfMarginal = new EnumMap<>(Grade.class);
         Map<GradePair, Double> jointDistribution = relationship.getJointDistribution(category);
 
         for (Map.Entry<GradePair, Double> entry : jointDistribution.entrySet()) {
             GradePair pair = entry.getKey();
             double probability = entry.getValue();
-            Grade weightGrade = firstParent ? pair.getFirst() : pair.getSecond();
-            Grade targetGrade = firstParent ? pair.getSecond() : pair.getFirst();
+            Grade weightGrade = firstParentAsWeight ? pair.getFirst() : pair.getSecond();
+            Grade targetGrade = firstParentAsWeight ? pair.getSecond() : pair.getFirst();
 
-            newHalfMarginal.merge(targetGrade, probability * gradeDistribution.get(weightGrade), Double::sum);
+            newHalfMarginal.merge(targetGrade, probability * weightDistribution.get(weightGrade), Double::sum);
         }
         normalizeScores(newHalfMarginal);
 

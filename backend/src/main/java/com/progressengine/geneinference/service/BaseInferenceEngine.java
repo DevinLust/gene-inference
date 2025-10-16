@@ -1,6 +1,5 @@
 package com.progressengine.geneinference.service;
 
-import com.progressengine.geneinference.dto.PredictionResponseDTO;
 import com.progressengine.geneinference.model.GradePair;
 import com.progressengine.geneinference.model.Relationship;
 import com.progressengine.geneinference.model.Sheep;
@@ -13,8 +12,18 @@ import java.util.HashMap;
 import java.util.Map;
 
 public abstract class BaseInferenceEngine implements InferenceEngine {
-    // Predicts the probabilities of the phenotype for each category of the two parents' children
-    public PredictionResponseDTO predictChildrenDistributions(Sheep parent1, Sheep parent2) {
+
+    /**
+     * Predicts the probabilities of the phenotype for each category of the two parents' children.
+     * The two parents don't need to be in a Relationship. The two parents can be the same
+     * Sheep.
+     *
+     * @param parent1 - the first parent Sheep to base the prediction on
+     * @param parent2 - the second parent Sheep to base the prediction on
+     * @return a Map of distributions that predict the probability of phenotypes for the children
+     * of these two parents by category
+     */
+    public Map<Category, Map<Grade, Double>> predictChildrenDistributions(Sheep parent1, Sheep parent2) {
         Map<Category, Map<Grade, Double>> predictedDistributions = new EnumMap<>(Category.class);
         for (Category category : Category.values()) {
             Map<Grade, Double> distribution = new EnumMap<>(Grade.class);
@@ -32,7 +41,18 @@ public abstract class BaseInferenceEngine implements InferenceEngine {
             predictedDistributions.put(category, distribution);
         }
 
-        return new PredictionResponseDTO(predictedDistributions);
+        return predictedDistributions;
+    }
+
+    // check the hidden distributions of a sheep and if an allele is certain, set the hidden allele to it
+    protected void checkCertainty(Sheep sheep, Category category) {
+        if (sheep.getHiddenAllele(category) != null) { return; }
+
+        for (Map.Entry<Grade, Double> entry : sheep.getDistribution(category, DistributionType.INFERRED).entrySet()) {
+            if (entry.getValue() == 1.0) { // could make this a certainty threshold
+                sheep.setHiddenAllele(category, entry.getKey());
+            }
+        }
     }
 
     // combine existing distribution with new distribution

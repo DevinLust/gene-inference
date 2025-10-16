@@ -42,6 +42,12 @@ public class Relationship {
     @Transient
     private boolean phenotypeFrequenciesOrganized = false;
 
+    public Relationship() {}
+
+    public Relationship(Sheep parent1, Sheep parent2) {
+        this.parent1 = parent1;
+        this.parent2 = parent2;
+    }
 
     public Integer getId() {
         return id;
@@ -185,6 +191,13 @@ public class Relationship {
 
     private Map<Grade, RelationshipPhenotypeFrequency> createIfAbsentPhenotypeFrequencies(Category category) {
         return phenotypeFrequenciesByCategory.computeIfAbsent(category, k -> new EnumMap<>(Grade.class));
+    }
+
+    public Map<Category, Map<Grade, Integer>> getAllPhenotypeFrequencies() {
+        if (!phenotypeFrequenciesOrganized) organizePhenotypeFrequencies();
+
+        return this.phenotypeFrequenciesByCategory.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, e -> getPhenotypeFrequencies(e.getKey())));
     }
 
     @Transactional

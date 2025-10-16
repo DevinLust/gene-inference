@@ -1,10 +1,12 @@
 package com.progressengine.geneinference.service;
 
+import com.progressengine.geneinference.dto.RelationshipResponseDTO;
 import com.progressengine.geneinference.model.Relationship;
 import com.progressengine.geneinference.model.Sheep;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.Grade;
 import com.progressengine.geneinference.repository.RelationshipRepository;
+import org.springdoc.api.OpenApiResourceNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -18,19 +20,53 @@ public class RelationshipService {
         this.relationshipRepository = relationshipRepository;
     }
 
+    /**
+     * Saves the given relationship in the database.
+     *
+     * @param relationship - relationship to save
+     * @return the saved relationship
+     */
     public Relationship saveRelationship(Relationship relationship) { return relationshipRepository.save(relationship); }
 
     /**
-     * Finds or creates a Relationship for the two sheep.
+     * Fetches all relationships in the database
+     *
+     * @return a List of all relationships
+     */
+    public List<Relationship> getAllRelationships() {
+        return relationshipRepository.findAll();
+    }
+
+    /**
+     * Fetches the relationship with the given id, otherwise it throws an error.
+     *
+     * @param relationshipId - id of the desired relationship
+     * @return the relationship with the given id
+     */
+    public Relationship getRelationshipById(Integer relationshipId) {
+        Optional<Relationship> optionalRelationship = relationshipRepository.findById(relationshipId);
+        if (optionalRelationship.isEmpty()) {
+            throw new OpenApiResourceNotFoundException("Relationship not found");
+        }
+        return optionalRelationship.get();
+    }
+
+    /**
+     * Finds or creates a Relationship for the two given sheep. The relationship will automatically
+     * set the first parent as the sheep with the lower id. If the relationship does not already
+     * exist in the database it will return a new persisted Relationship. Throws an error if the
+     * two sheep reference the same sheep.
+     *
+     * @param sheep1 - one of the two parent sheep
+     * @param sheep2 - one of the two parent sheep
+     * @return the relationship of these two sheep
      */
     public Relationship findOrCreateRelationship(Sheep sheep1, Sheep sheep2) {
+        relationshipValidation(sheep1, sheep2); // validates these two sheep can be in relationship
+
         // Determine the lower and higher sheep IDs
         Integer sheepId1 = sheep1.getId();
         Integer sheepId2 = sheep2.getId();
-
-        if (sheep1 == sheep2 || sheepId1.equals(sheepId2)) {
-            throw new IllegalArgumentException("Cannot breed a sheep with itself!");
-        }
 
         Integer parent1Id = Math.min(sheepId1, sheepId2);
         Sheep parent1 = sheepId1 < sheepId2 ? sheep1 : sheep2;
@@ -46,13 +82,9 @@ public class RelationshipService {
         }
 
         // Otherwise, create new
-        Relationship newRelationship = new Relationship();
-        newRelationship.setParent1(parent1);
-        newRelationship.setParent2(parent2);
+        Relationship newRelationship = new Relationship(parent1, parent2);
 
-        // set other fields as needed
-
-        return relationshipRepository.save(newRelationship);
+        return saveRelationship(newRelationship);
     }
 
     public List<Relationship> findRelationshipsByParent(Sheep parent) {
@@ -67,7 +99,17 @@ public class RelationshipService {
         return filterRelationshipsByParent(parent1.getId(), parent2.getId(), limitPerParent);
     }
 
-    // returns two lists of up to the given limit of relationships associated with the corresponding parent order.
+    /**
+     * returns two lists of up to the given limit of relationships associated
+     * with the corresponding parent order.
+     *
+     * @param parent1Id - id of the first parent
+     * @param parent2Id - id of the second parent
+     * @param limitPerParent - limit of number of relationships to find for each parent
+     * @return a List containing two Lists of relationships, the List at index 0 are the
+     * relationships of the first parent and the List at index 1 are the relationships of
+     * the second parent.
+     */
     public List<List<Relationship>> filterRelationshipsByParent(Integer parent1Id, Integer parent2Id, int limitPerParent) {
         List<Relationship> all = relationshipRepository.findLimitedByParents(parent1Id, parent2Id, limitPerParent);
 
@@ -85,40 +127,16 @@ public class RelationshipService {
         return List.of(parent1Relationships, parent2Relationships);
     }
 
-    // assumes uniform distribution for child
-    public static Sheep breedNewSheep(Relationship relationship) {
-        Sheep child = new Sheep();
-
-        Sheep parent1 = relationship.getParent1();
-        Sheep parent2 = relationship.getParent2();
-
-        // random genotype from the two parents, one allele from each parent
-        Random random = new Random();
-        // -----------------------------------------------------------------------------------
-        for (Category category : Category.values()) {
-            if (parent1.getHiddenAllele(category) == null || parent2.getHiddenAllele(category) == null) {
-                throw new IllegalArgumentException("Missing known hidden allele in category " + category);
-            }
-            Grade newPhenotype;
-            Grade newHiddenAllele;
-            if (random.nextBoolean()) {
-                newPhenotype = random.nextBoolean() ? parent1.getPhenotype(category) : parent1.getHiddenAllele(category);
-                newHiddenAllele = random.nextBoolean() ? parent2.getPhenotype(category) : parent2.getHiddenAllele(category);
-            } else {
-                newPhenotype = random.nextBoolean() ? parent2.getPhenotype(category) : parent2.getHiddenAllele(category);
-                newHiddenAllele = random.nextBoolean() ? parent1.getPhenotype(category) : parent1.getHiddenAllele(category);
-            }
-
-
-            child.setPhenotype(category, newPhenotype);
-            child.setHiddenAllele(category, newHiddenAllele);
-            relationship.updatePhenotypeFrequency(category, newPhenotype, 1);
-        }
-        child.createDefaultDistributions();
-        // ---------------------------------------------------------------------------------
-
-        child.setParentRelationship(relationship);
-
-        return child;
+    public RelationshipResponseDTO toResponseDTO(Relationship relationship) {
+        return new RelationshipResponseDTO(relationship);
     }
+
+
+    // validates that these two sheep can be in a relationship
+    private static void relationshipValidation(Sheep sheep1, Sheep sheep2) {
+        if (sheep1 == sheep2 || sheep1.getId().equals(sheep2.getId())) {
+            throw new IllegalArgumentException("Cannot breed a sheep with itself!");
+        }
+    }
+
 }

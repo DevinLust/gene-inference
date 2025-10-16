@@ -338,7 +338,7 @@ public abstract class InferenceEngineTest {
         ), 2);
 
         // Act
-        Map<Category, Map<Grade, Double>> prediction = inferenceEngine.predictChildrenDistributions(parent1, parent2).getPhenotypeDistributions();
+        Map<Category, Map<Grade, Double>> prediction = inferenceEngine.predictChildrenDistributions(parent1, parent2);
 
         // Assert
         for (Category category : Category.values()) {
