@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Prediction } from "@/app/lib/definitions";
 import { fetchPrediction } from "@/app/lib/data";
+import PhenotypeDistributions from "./phentoype-distributions";
 
 export default function SheepPredictionForm() {
     const [sheep1, setSheep1] = useState("");
@@ -21,7 +22,7 @@ export default function SheepPredictionForm() {
     }
 
     return (
-        <div className="max-w-md space-y-4 p-4 border rounded">
+        <div className="flex-1 max-w-md space-y-4 p-4 border rounded">
             <h2 className="text-xl font-bold">Predict Child Phenotype</h2>
 
             <input
@@ -48,21 +49,7 @@ export default function SheepPredictionForm() {
             </button>
 
             {/* Prediction display */}
-            {prediction && (
-                <div className="mt-6 mb-4">
-                    <h2 className="mb-1 text-xl">Distributions:</h2>
-                    {Object.entries(prediction.phenotypeDistributions).map(([cat, distribution]) => (
-                        <div key={`${cat}`} className="mt-4 border border-white p-4">
-                            <h2 className="mt-1 mb-1">{cat}:</h2>
-                            <div key={`${cat}.INFERRED`} className="grid grid-cols-6 gap-2 mb-2">
-                                {Object.entries(distribution).map(([grade, prob]) => (
-                                    <p key={`${cat}.INFERRED.${grade}`}>{grade}: {(prob * 100).toFixed(2)}%</p>
-                                ))}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
+            {prediction && <PhenotypeDistributions phenotypeDistributions={prediction.phenotypeDistributions} />}
         </div>
     );
 }

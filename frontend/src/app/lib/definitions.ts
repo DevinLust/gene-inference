@@ -38,17 +38,33 @@ export type Sheep = {
     parentRelationshipId: number | null;
 };
 
+export type SheepSummary = {
+    id: number;
+    name: string | null;
+};
+
 export type SheepCreateDTO = {
     name: string | null;
     distributions: ProbabilityMapCreateDTO;
     genotypes: GenotypeMap;
     parentRelationshipId: number | null;
-}
+};
+
+export type PhenotypeDistributions = {
+    [C in Category]: {
+        [G in Grade]: number;
+    };
+};
 
 export type Prediction = {
-    phenotypeDistributions: {
-        [C in Category]: {
-            [G in Grade]: number;
-        };
-    }
+    phenotypeDistributions: PhenotypeDistributions
+};
+
+export type BestPrediction = {
+    parent1: SheepSummary;
+    parent2: SheepSummary;
+    parent1BestCategoryGradeMap: Partial<Record<Category, Grade>>;
+    parent2BestCategoryGradeMap: Partial<Record<Category, Grade>>;
+    bestCategoriesSet: Category[];
+    phenotypeDistributions: PhenotypeDistributions
 };

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { CreateSheep } from "@/app/ui/sheep/buttons";
 import SheepList from "@/app/ui/sheep/sheep-list";
 import { Suspense } from 'react';
