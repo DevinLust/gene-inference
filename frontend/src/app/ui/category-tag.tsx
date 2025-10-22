@@ -17,14 +17,14 @@ export default function CategoryTag({ category }: { category: Category}) {
     const categoryText = category.charAt(0).toUpperCase() + category.slice(1).toLowerCase();
 
     return (
-        <p
-            className={`px-1 py-3/4 text-white rounded`}
+        <span
+            className="inline-block items-center px-1 text-white rounded"
             style={{
                 background: `radial-gradient(${startColor}, ${backgroundColor} 40%, ${endColor} 100%)`,
             }}
         >
             {categoryText}
-        </p>
+        </span>
     );
 }
 

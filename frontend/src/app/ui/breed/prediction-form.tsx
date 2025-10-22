@@ -22,7 +22,7 @@ export default function SheepPredictionForm() {
     }
 
     return (
-        <div className="flex-1 max-w-md space-y-4 p-4 border rounded">
+        <div className="flex-1 max-w-md space-y-4 p-4 rounded-lg bg-gray-600">
             <h2 className="text-xl font-bold">Predict Child Phenotype</h2>
 
             <input
@@ -30,7 +30,7 @@ export default function SheepPredictionForm() {
                 placeholder="Sheep 1 ID"
                 value={sheep1}
                 onChange={(e) => setSheep1(e.target.value)}
-                className="w-full rounded border p-2"
+                className="w-full rounded border border-gray-500 p-2 bg-gray-800"
             />
 
             <input
@@ -38,7 +38,7 @@ export default function SheepPredictionForm() {
                 placeholder="Sheep 2 ID"
                 value={sheep2}
                 onChange={(e) => setSheep2(e.target.value)}
-                className="w-full rounded border p-2"
+                className="w-full rounded border border-gray-500 p-2 bg-gray-800"
             />
 
             <button

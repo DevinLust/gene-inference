@@ -1,15 +1,17 @@
-import { PhenotypeDistributions, Category, Grade } from '@/app/lib/definitions';
+import { PhenotypeDistributions, Grade, Category } from '@/app/lib/definitions';
+import CategoryTag from "@/app/ui/category-tag";
 
 export default function PhenotypeDistributionsList({ phenotypeDistributions }: { phenotypeDistributions: PhenotypeDistributions }) {
     return (
-        <div className="mt-6 mb-4">
-            <h2 className="mb-1 text-xl">Distributions:</h2>
+        <div className="grid grid-cols-1 gap-4 p-2 bg-gray-800 rounded-lg">
             {Object.entries(phenotypeDistributions).map(([cat, distribution]) => (
-                <div key={`${cat}`} className="mt-4 border border-white p-4">
-                    <h2 className="mt-1 mb-1">{cat}:</h2>
-                    <div key={`${cat}.INFERRED`} className="grid grid-cols-6 gap-2 mb-2">
+                <div key={`${cat}`} className="border border-gray-500 rounded-lg bg-blue-900">
+                    <div className="w-full bg-blue-500 pl-4 py-1 rounded-t-lg">
+                        <CategoryTag category={cat as Category} />
+                    </div>
+                    <div key={`${cat}`} className="grid grid-cols-6 gap-2 px-2 pt-1">
                         {Object.entries(distribution).map(([grade, prob]) => (
-                            <p key={`${cat}.INFERRED.${grade}`}>{grade}: {(prob * 100).toFixed(2)}%</p>
+                            <p key={`${cat}.${grade}`}>{grade}: {(prob * 100).toFixed(2)}%</p>
                         ))}
                     </div>
                 </div>
