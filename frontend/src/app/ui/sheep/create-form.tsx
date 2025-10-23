@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { createSheep } from "@/app/lib/actions";
 import DistributionForm from "./distributions-subform";
+import CategoryTag from "@/app/ui/category-tag";
 import type { Category, Grade } from "@/app/lib/definitions";
 
 const categories: Category[] = ["SWIM", "FLY", "RUN", "POWER", "STAMINA"];
@@ -13,7 +14,7 @@ export default function SheepForm() {
     const [state, formAction] = useActionState(createSheep, { message: "" });
 
     return (
-        <form action={formAction} className="flex flex-col gap-6 p-4 max-w-lg">
+        <form action={formAction} className="flex flex-col gap-6 p-4 max-w-lg bg-gray-600 rounded-lg">
             {/* Name */}
             <label className="flex flex-col">
                 <span className="font-medium">Sheep Name</span>
@@ -21,44 +22,48 @@ export default function SheepForm() {
                     name="name"
                     type="text"
                     placeholder="Enter sheep name"
-                    className="border rounded p-2"
+                    className="border border-gray-500 rounded p-2 bg-gray-800"
                 />
             </label>
 
             {/* Genotypes */}
-            <fieldset className="border p-3 rounded">
+            <fieldset className="border border-gray-500 bg-gray-800 p-3 rounded-lg">
                 <legend className="font-semibold">Genotypes</legend>
                 {categories.map((c) => (
-                    <div key={c} className="mb-2">
-                        <p className="font-medium">{c}</p>
-                        <label className="mr-2">
-                            Phenotype:
-                            <select
-                                name={`genotypes.${c}.phenotype`}
-                                className="ml-1 border rounded py-1"
-                            >
-                                <option value="">(none)</option>
-                                {grades.map((g) => (
-                                    <option key={g} value={g}>
-                                        {g}
-                                    </option>
-                                ))}
-                            </select>
-                        </label>
-                        <label>
-                            Hidden Allele:
-                            <select
-                                name={`genotypes.${c}.hiddenAllele`}
-                                className="ml-1 border rounded py-1"
-                            >
-                                <option value="">(none)</option>
-                                {grades.map((g) => (
-                                    <option key={g} value={g}>
-                                        {g}
-                                    </option>
-                                ))}
-                            </select>
-                        </label>
+                    <div key={c} className="mb-2 bg-blue-900 border border-gray-500 rounded-lg">
+                        <div className="w-full bg-blue-500 pl-4 py-1 rounded-t-lg">
+                            <CategoryTag category={c} />
+                        </div>
+                        <div className="flex justify-around p-4">
+                            <label>
+                                Phenotype:
+                                <select
+                                    name={`genotypes.${c}.phenotype`}
+                                    className="ml-1 py-1 border border-gray-500 rounded bg-gray-800"
+                                >
+                                    <option value="">None</option>
+                                    {grades.map((g) => (
+                                        <option key={g} value={g}>
+                                            {g}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+                            <label>
+                                Hidden Allele:
+                                <select
+                                    name={`genotypes.${c}.hiddenAllele`}
+                                    className="ml-1 py-1 border border-gray-500 rounded bg-gray-800"
+                                >
+                                    <option value="">None</option>
+                                    {grades.map((g) => (
+                                        <option key={g} value={g}>
+                                            {g}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+                        </div>
                     </div>
                 ))}
             </fieldset>
@@ -73,7 +78,7 @@ export default function SheepForm() {
                     name="parentRelationshipId"
                     type="text"
                     placeholder="Optional: Enter relationship ID of parents"
-                    className="border rounded p-2"
+                    className="bg-gray-800 border border-gray-500 rounded p-2"
                 />
             </label>
 

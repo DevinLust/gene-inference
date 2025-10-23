@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from "react";
+import { Category } from "@/app/lib/definitions";
+import CategoryTag from "@/app/ui/category-tag";
 
 const categories = ["SWIM", "FLY", "RUN", "POWER", "STAMINA"];
 const grades = ["S", "A", "B", "C", "D", "E"];
@@ -19,15 +21,13 @@ export default function SheepDistributionsForm() {
     return (
         <div className="space-y-6">
             {categories.map((cat) => (
-                <div key={cat} className="border rounded p-4">
+                <div key={cat} className="bg-gray-800 border border-gray-500 rounded p-4">
                     <button
                         type="button"
                         className="font-medium text-blue-600 hover:underline"
                         onClick={() => toggleCategory(cat)}
                     >
-                        {expandedCategories[cat]
-                            ? `Hide ${cat} distribution`
-                            : `Set ${cat} distribution`}
+                        {expandedCategories[cat] ? "Hide" : "Set"} {cat} Distribution
                     </button>
 
                     {expandedCategories[cat] && (
