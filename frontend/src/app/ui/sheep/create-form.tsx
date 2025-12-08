@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { createSheep } from "@/app/lib/actions";
 import DistributionForm from "./distributions-subform";
 import CategoryTag from "@/app/ui/category-tag";
+import FeatureInProgress from "@/app/ui/in-progress";
 import type { Category, Grade } from "@/app/lib/definitions";
 
 const categories: Category[] = ["SWIM", "FLY", "RUN", "POWER", "STAMINA"];
@@ -69,7 +70,9 @@ export default function SheepForm() {
             </fieldset>
 
             {/* Distributions */}
-            <DistributionForm />
+            <FeatureInProgress>
+                <DistributionForm />
+            </FeatureInProgress>
 
             {/* Parent Relationship */}
             <label className="flex flex-col">
