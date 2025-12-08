@@ -3,20 +3,22 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import clsx from 'clsx';
+import { GiSheep, GiBarn } from "react-icons/gi";
+import { SiAwslambda } from "react-icons/si";
 
 // Map of links to display in the side navigation.
 // Depending on the size of the application, this would be stored in a database.
 const links = [
-    { name: 'Sheep List', href: '/sheep', icon: 'HomeIcon' },
+    { name: 'Sheep List', href: '/sheep', icon: GiBarn },
     {
         name: 'New Sheep',
         href: '/sheep/create',
-        icon: 'DocumentDuplicateIcon',
+        icon: GiSheep,
     },
     {
         name: 'Breeding',
         href: '/sheep/breed',
-        icon: 'LambIcon'
+        icon: SiAwslambda,
     },
 ];
 
@@ -37,6 +39,7 @@ export default function NavLinks() {
                             },
                         )}
                     >
+                        <LinkIcon className="h-5 w-5 shrink-0" />
                         <p className="hidden md:block">{link.name}</p>
                     </Link>
                 );
