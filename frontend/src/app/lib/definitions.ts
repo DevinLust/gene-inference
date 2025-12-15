@@ -68,3 +68,10 @@ export type BestPrediction = {
     bestCategoriesSet: Category[];
     phenotypeDistributions: PhenotypeDistributions
 };
+
+export type Relationship = {
+    id: number;
+    parent1: SheepSummary;
+    parent2: SheepSummary;
+    phenotypeFrequencies: Record<Category, Partial<Record<Grade, number>>>;
+};

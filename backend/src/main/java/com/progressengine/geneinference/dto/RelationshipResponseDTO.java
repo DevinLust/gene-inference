@@ -8,15 +8,15 @@ import java.util.Map;
 
 public record RelationshipResponseDTO(
         Integer id,
-        Integer parent1Id,
-        Integer parent2Id,
+        SheepSummaryResponseDTO parent1,
+        SheepSummaryResponseDTO parent2,
         Map<Category, Map<Grade, Integer>> phenotypeFrequencies
 ) {
     public RelationshipResponseDTO(Relationship relationship) {
         this(
                 relationship.getId(),
-                relationship.getParent1().getId(),
-                relationship.getParent2().getId(),
+                new SheepSummaryResponseDTO(relationship.getParent1()),
+                new SheepSummaryResponseDTO(relationship.getParent2()),
                 relationship.getAllPhenotypeFrequencies()
         );
     }

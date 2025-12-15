@@ -1,6 +1,6 @@
 'use server';
 
-import { Sheep, Prediction, BestPrediction } from "./definitions";
+import { Sheep, Prediction, BestPrediction, Relationship } from "./definitions";
 
 // data fetching functions
 export async function fetchAllSheep(): Promise<Sheep[]> {
@@ -35,6 +35,22 @@ export async function fetchBestPredictions(): Promise<BestPrediction[]> {
     await checkStatus(res);
 
     return await res.json() as BestPrediction[];
+}
+
+export async function fetchAllRelationships(): Promise<Relationship[]> {
+    const res = await fetch("http://localhost:8080/relationship");
+
+    await checkStatus(res);
+
+    return await res.json() as Relationship[];
+}
+
+export async function fetchRelationshipById(id: string): Promise<Relationship> {
+    const res = await fetch(`http://localhost:8080/relationship/${id}`);
+
+    await checkStatus(res);
+
+    return await res.json() as Promise<Relationship>;
 }
 
 async function checkStatus(res: Response) {

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ReactNode } from "react";
 
 export function CreateSheep() {
     return (
@@ -11,13 +12,18 @@ export function CreateSheep() {
     );
 }
 
-export function SheepDetails({ sheepId }: { sheepId: string | number }) {
-    return (
-        <Link
-            href={`/sheep/${sheepId}`}
-            className="rounded text-blue-400 ml-2 hover:bg-gray-600 px-2 py-1"
-        >
-            <span>more details</span>
-        </Link>
-    );
+type SheepDetailsProps = {
+  sheepId: string | number;
+  children?: ReactNode;
+};
+
+export function SheepDetails({ sheepId, children }: SheepDetailsProps) {
+  return (
+    <Link
+      href={`/sheep/${sheepId}`}
+      className="rounded text-blue-400 ml-2 hover:bg-gray-600 px-2 py-1"
+    >
+      {children ?? <span>more details</span>}
+    </Link>
+  );
 }
