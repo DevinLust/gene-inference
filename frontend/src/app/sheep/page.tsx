@@ -1,4 +1,4 @@
-import { CreateSheep } from "@/app/ui/sheep/buttons";
+import { CreateSheep } from "@/app/ui/buttons";
 import SheepList from "@/app/ui/sheep/sheep-list";
 import { Suspense } from 'react';
 

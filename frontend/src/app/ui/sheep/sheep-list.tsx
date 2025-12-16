@@ -2,7 +2,7 @@
 
 import { Sheep } from '@/app/lib/definitions';
 import { fetchAllSheep } from '@/app/lib/data';
-import { SheepDetails } from './buttons';
+import { SheepDetails } from '@/app/ui/buttons';
 
 export default async function SheepList() {
     const sheep: Sheep[] = await fetchAllSheep();

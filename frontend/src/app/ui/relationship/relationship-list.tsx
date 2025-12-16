@@ -1,6 +1,6 @@
 import { fetchAllRelationships } from '@/app/lib/data';
 import { Relationship } from '@/app/lib/definitions';
-import { RelationshipDetails } from './buttons';
+import { RelationshipDetails } from '@/app/ui/buttons';
 
 export default async function RelationshipList() {
     const relationships: Relationship[] = await fetchAllRelationships();

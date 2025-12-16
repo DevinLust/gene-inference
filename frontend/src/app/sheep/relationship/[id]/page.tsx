@@ -2,7 +2,7 @@ import { fetchRelationshipById } from "@/app/lib/data";
 import CategoryCard from "@/app/ui/category-card";
 import { Category, Relationship, Grade } from "@/app/lib/definitions";
 import { notFound } from 'next/navigation';
-import { SheepDetails } from '@/app/ui/sheep/buttons';
+import { SheepDetails } from '@/app/ui/buttons';
 import Link from 'next/link';
 
 export default async function RelationshipDetailPage(props: { params: Promise<{ id: string }> }) {
@@ -17,7 +17,7 @@ export default async function RelationshipDetailPage(props: { params: Promise<{ 
 
     return (
         <div>
-            <Link href="/sheep/relationship" className="text-blue-400 mb-8">Back to Relationship List</Link>
+            <Link href="/sheep/relationship" className="inline-block text-blue-400 mb-4">Back to Relationship List</Link>
 
             {/* ID */}
             <p className="mb-2">ID: {relationship.id}</p>

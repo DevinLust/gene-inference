@@ -15,15 +15,27 @@ export function CreateSheep() {
 type SheepDetailsProps = {
   sheepId: string | number;
   children?: ReactNode;
+  className?: string;
 };
 
-export function SheepDetails({ sheepId, children }: SheepDetailsProps) {
+export function SheepDetails({ sheepId, children, className }: SheepDetailsProps) {
   return (
     <Link
       href={`/sheep/${sheepId}`}
-      className="rounded text-blue-400 ml-2 hover:bg-gray-600 px-2 py-1"
+      className={`rounded text-blue-400 ml-2 hover:bg-gray-600 px-2 py-1 ${className ?? ""}`}
     >
       {children ?? <span>more details</span>}
     </Link>
   );
+}
+
+export function RelationshipDetails({ relId }: { relId: string | number }) {
+    return (
+        <Link
+            href={`/sheep/relationship/${relId}`}
+            className="rounded text-blue-400 ml-2 hover:bg-gray-600 px-2 py-1"
+        >
+            <span>more details</span>
+        </Link>
+    );
 }
