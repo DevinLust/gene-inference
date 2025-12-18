@@ -80,3 +80,20 @@ export async function createSheep(prevState: any, formData: FormData) {
     revalidatePath('/sheep');
     redirect('/sheep');
 }
+
+export async function breedSheep(prevState: any, formData: FormData) {
+    const parent1Id = formData.get("parent1Id") as string;
+    const parent2Id = formData.get("parent2Id") as string;
+
+    const res = await fetch(`http://localhost:8080/breed/${parent1Id}/${parent2Id}`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json" },
+    });
+
+    if (!res.ok) {
+        return { message: "Failed to breed sheep" };
+    }
+
+    revalidatePath('/sheep');
+    redirect('/sheep');
+}
