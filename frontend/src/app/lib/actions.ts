@@ -4,6 +4,12 @@ import { Grade, Category, SheepCreateDTO } from '@/app/lib/definitions';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
+if (!process.env.NEXT_PUBLIC_API_BASE_URL) {
+  throw new Error("NEXT_PUBLIC_API_BASE_URL is not defined");
+}
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+
 const categories: Category[] = ["SWIM", "FLY", "RUN", "POWER", "STAMINA"];
 const grades: Grade[] = ["S", "A", "B", "C", "D", "E"];
 
@@ -67,14 +73,15 @@ export async function formDataToSheepDTO(formData: FormData): Promise<SheepCreat
 export async function createSheep(prevState: any, formData: FormData) {
     const newSheep: SheepCreateDTO = await formDataToSheepDTO(formData);
 
-    const res = await fetch("http://localhost:8080/sheep", {
+    const res = await fetch(`${API_BASE_URL}/sheep`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newSheep),
     });
 
     if (!res.ok) {
-        return { message: "Failed to create sheep" };
+        const message = await parseError(res);
+        throw new Error(message); // throw instead of returning a generic object
     }
 
     revalidatePath('/sheep');
@@ -85,15 +92,36 @@ export async function breedSheep(prevState: any, formData: FormData) {
     const parent1Id = formData.get("parent1Id") as string;
     const parent2Id = formData.get("parent2Id") as string;
 
-    const res = await fetch(`http://localhost:8080/breed/${parent1Id}/${parent2Id}`, {
+    const res = await fetch(`${API_BASE_URL}/breed/${parent1Id}/${parent2Id}`, {
         method: "POST",
         headers: {"Content-Type": "application/json" },
     });
 
     if (!res.ok) {
-        return { message: "Failed to breed sheep" };
+        const message = await parseError(res);
+        throw new Error(message);
     }
 
     revalidatePath('/sheep');
     redirect('/sheep');
 }
+
+async function parseError(res: Response) {
+  let errorMessage = "An unexpected error occurred";
+
+  try {
+    const contentType = res.headers.get("content-type");
+
+    if (contentType?.includes("application/json")) {
+      const body = await res.json();
+      errorMessage = body.message || body.error || errorMessage;
+    } else {
+      errorMessage = await res.text();
+    }
+  } catch {
+    // fallback message already set
+  }
+
+  return errorMessage;
+}
+

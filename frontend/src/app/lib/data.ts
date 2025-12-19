@@ -1,10 +1,17 @@
 'use server';
 
 import { Sheep, Prediction, BestPrediction, Relationship } from "./definitions";
+import { notFound } from "next/navigation";
+
+if (!process.env.NEXT_PUBLIC_API_BASE_URL) {
+  throw new Error("NEXT_PUBLIC_API_BASE_URL is not defined");
+}
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 // data fetching functions
 export async function fetchAllSheep(): Promise<Sheep[]> {
-    const res = await fetch("http://localhost:8080/sheep", {
+    const res = await fetch(`${API_BASE_URL}/sheep`, {
         cache: "force-cache",
     });
 
@@ -14,7 +21,7 @@ export async function fetchAllSheep(): Promise<Sheep[]> {
 }
 
 export async function fetchSheepById(id: string): Promise<Sheep> {
-    const res = await fetch(`http://localhost:8080/sheep/${id}`);
+    const res = await fetch(`${API_BASE_URL}/sheep/${id}`);
 
     await checkStatus(res);
 
@@ -22,7 +29,7 @@ export async function fetchSheepById(id: string): Promise<Sheep> {
 }
 
 export async function fetchPrediction(sheep1Id: string, sheep2Id: string): Promise<Prediction> {
-    const res = await fetch(`http://localhost:8080/breed/${sheep1Id}/${sheep2Id}/predict`);
+    const res = await fetch(`${API_BASE_URL}/breed/${sheep1Id}/${sheep2Id}/predict`);
 
     await checkStatus(res);
 
@@ -30,7 +37,7 @@ export async function fetchPrediction(sheep1Id: string, sheep2Id: string): Promi
 }
 
 export async function fetchBestPredictions(): Promise<BestPrediction[]> {
-    const res = await fetch("http://localhost:8080/breed/best-predictions");
+    const res = await fetch(`${API_BASE_URL}/breed/best-predictions`);
 
     await checkStatus(res);
 
@@ -38,7 +45,7 @@ export async function fetchBestPredictions(): Promise<BestPrediction[]> {
 }
 
 export async function fetchAllRelationships(): Promise<Relationship[]> {
-    const res = await fetch("http://localhost:8080/relationship");
+    const res = await fetch(`${API_BASE_URL}/relationship`);
 
     await checkStatus(res);
 
@@ -46,7 +53,7 @@ export async function fetchAllRelationships(): Promise<Relationship[]> {
 }
 
 export async function fetchRelationshipById(id: string): Promise<Relationship> {
-    const res = await fetch(`http://localhost:8080/relationship/${id}`);
+    const res = await fetch(`${API_BASE_URL}/relationship/${id}`);
 
     await checkStatus(res);
 
@@ -54,6 +61,9 @@ export async function fetchRelationshipById(id: string): Promise<Relationship> {
 }
 
 async function checkStatus(res: Response) {
+    if (res.status === 404) {
+        notFound(); // renders not-found.tsx
+    }
     if (!res.ok) {
         // Attempt to parse the error message from JSON
         let errorMessage;
@@ -64,6 +74,6 @@ async function checkStatus(res: Response) {
             // Fallback if response is not JSON
             errorMessage = await res.text();
         }
-        throw new Error(`Failed to fetch best predictions: ${res.status} - ${errorMessage}`);
+        throw new Error(`Failed to fetch data: ${res.status} - ${errorMessage}`);
     }
 }
