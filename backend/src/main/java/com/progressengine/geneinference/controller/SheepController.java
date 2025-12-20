@@ -30,7 +30,9 @@ public class SheepController {
         try {
             sheep = sheepService.fromRequestDTO(sheepNewRequestDTO);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity
+                .badRequest()
+                .body(Map.of("message", e.getMessage()));
         }
         return ResponseEntity.ok().body(sheepService.saveSheep(sheep));
     }

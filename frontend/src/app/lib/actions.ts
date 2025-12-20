@@ -71,7 +71,12 @@ export async function formDataToSheepDTO(formData: FormData): Promise<SheepCreat
 }
 
 export async function createSheep(prevState: any, formData: FormData) {
-    const newSheep: SheepCreateDTO = await formDataToSheepDTO(formData);
+    let newSheep: SheepCreateDTO;
+    try {
+        newSheep = await formDataToSheepDTO(formData);
+    } catch (err) {
+        return err instanceof Error && err.message ? { message: err.message } : { message: "Invalid form data" };
+    }
 
     const res = await fetch(`${API_BASE_URL}/sheep`, {
         method: "POST",
@@ -81,7 +86,8 @@ export async function createSheep(prevState: any, formData: FormData) {
 
     if (!res.ok) {
         const message = await parseError(res);
-        throw new Error(message); // throw instead of returning a generic object
+        console.log(`Error Message: ${message}`);
+        return { message: message }
     }
 
     revalidatePath('/sheep');
@@ -92,6 +98,10 @@ export async function breedSheep(prevState: any, formData: FormData) {
     const parent1Id = formData.get("parent1Id") as string;
     const parent2Id = formData.get("parent2Id") as string;
 
+    if (!parent1Id || !parent2Id || isNaN(Number(parent1Id)) || isNaN(Number(parent2Id))) {
+        return { message: "Borth parent Ids must be valid numbers"};
+    }
+
     const res = await fetch(`${API_BASE_URL}/breed/${parent1Id}/${parent2Id}`, {
         method: "POST",
         headers: {"Content-Type": "application/json" },
@@ -99,7 +109,7 @@ export async function breedSheep(prevState: any, formData: FormData) {
 
     if (!res.ok) {
         const message = await parseError(res);
-        throw new Error(message);
+        return { message: message }
     }
 
     revalidatePath('/sheep');
