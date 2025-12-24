@@ -265,8 +265,23 @@ public class Sheep {
         return !distributionsByCategory.get(category).containsKey(distributionType);
     }
 
+    // Replaces the distributions by categories into this sheep and resets the rest
+    public void replaceDistributionsFromDTO(Map<Category, Map<Grade, Double>> distributionsByCategoryDTO) {
+        if (!organized) organizeDistributions();
+
+        for (Category category : Category.values()) {
+            if (distributionsByCategoryDTO != null && distributionsByCategoryDTO.containsKey(category)) {
+                Map<Grade, Double> distribution = distributionsByCategoryDTO.get(category);
+                setDistribution(category, DistributionType.PRIOR, distribution);
+                setDistribution(category, DistributionType.INFERRED, distribution);
+            } else {
+                setDistribution(category, DistributionType.PRIOR, SheepService.createUniformDistribution());
+                setDistribution(category, DistributionType.INFERRED, SheepService.createUniformDistribution());
+            }
+        }
+    }
+
     // Upserts the partial distributions by categories into this sheep
-    @Transactional
     public void upsertDistributionsFromDTO(Map<Category, Map<Grade, Double>> distributionsByCategoryDTO) {
         // the value passed in might be null in which case follow next steps as if no category is passed
         if (!organized) organizeDistributions();
@@ -289,7 +304,6 @@ public class Sheep {
         }
     }
 
-    @Transactional
     public void createDefaultDistributions() {
         if (!organized) organizeDistributions();
 
@@ -299,7 +313,6 @@ public class Sheep {
         }
     }
 
-    @Transactional
     public void setDistribution(Category category, DistributionType distributionType, Map<Grade, Double> distribution) {
         if (!organized) {
             organizeDistributions();
@@ -310,7 +323,6 @@ public class Sheep {
         upsertDistributionsByCategory(category, distributionType, distribution);
     }
 
-    @Transactional
     public void setDistribution(String categoryStr, String distributionTypeStr, Map<Grade, Double> distribution) {
         setDistribution(Category.valueOf(categoryStr), DistributionType.valueOf(distributionTypeStr), distribution);
     }

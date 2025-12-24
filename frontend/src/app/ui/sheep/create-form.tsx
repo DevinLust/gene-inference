@@ -75,15 +75,17 @@ export default function SheepForm() {
             </FeatureInProgress>
 
             {/* Parent Relationship */}
-            <label className="flex flex-col">
-                <span className="font-medium">Parent Relationship ID</span>
-                <input
-                    name="parentRelationshipId"
-                    type="text"
-                    placeholder="Optional: Enter relationship ID of parents"
-                    className="bg-gray-800 border border-gray-500 rounded p-2"
-                />
-            </label>
+            <FeatureInProgress>
+                <label className="flex flex-col">
+                    <span className="font-medium">Parent Relationship ID</span>
+                    <input
+                        name="parentRelationshipId"
+                        type="text"
+                        placeholder="Optional: Enter relationship ID of parents"
+                        className="bg-gray-800 border border-gray-500 rounded p-2"
+                    />
+                </label>
+            </FeatureInProgress>
 
             {/* Submit button */}
             <button

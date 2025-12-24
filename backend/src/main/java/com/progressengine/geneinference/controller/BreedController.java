@@ -2,7 +2,6 @@ package com.progressengine.geneinference.controller;
 
 import com.progressengine.geneinference.dto.BestPredictionDTO;
 import com.progressengine.geneinference.dto.PredictionResponseDTO;
-import com.progressengine.geneinference.model.Relationship;
 import com.progressengine.geneinference.model.Sheep;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.DistributionType;
@@ -11,13 +10,11 @@ import com.progressengine.geneinference.service.BreedingService;
 import com.progressengine.geneinference.service.InferenceEngine;
 import com.progressengine.geneinference.service.RelationshipService;
 import com.progressengine.geneinference.service.SheepService;
-import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import javax.management.relation.Relation;
 import java.util.*;
 
 @RestController

@@ -8,6 +8,7 @@ import com.progressengine.geneinference.model.enums.DistributionType;
 import com.progressengine.geneinference.model.enums.Grade;
 import com.progressengine.geneinference.service.SheepService;
 import jakarta.transaction.Transactional;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,18 +24,9 @@ public class SheepController {
         this.sheepService = sheepService;
     }
 
-    @Transactional
     @PostMapping(consumes = {"application/json", "application/json;charset=UTF-8"})
-    public ResponseEntity<?> addSheep(@RequestBody SheepNewRequestDTO sheepNewRequestDTO) {
-        Sheep sheep;
-        try {
-            sheep = sheepService.fromRequestDTO(sheepNewRequestDTO);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity
-                .badRequest()
-                .body(Map.of("message", e.getMessage()));
-        }
-        return ResponseEntity.ok().body(sheepService.saveSheep(sheep));
+    public ResponseEntity<?> addSheep(@Valid @RequestBody SheepNewRequestDTO sheepNewRequestDTO) {
+        return ResponseEntity.ok().body(sheepService.saveNewSheep(sheepNewRequestDTO));
     }
 
     @GetMapping
@@ -60,7 +52,7 @@ public class SheepController {
 
     @GetMapping("/{sheepId}")
     public SheepResponseDTO getSheep(@PathVariable Integer sheepId) {
-        Sheep sheep = sheepService.getSheepById(sheepId);
+        Sheep sheep = sheepService.findById(sheepId);
         return sheepService.toResponseDTO(sheep);
     }
 
@@ -79,39 +71,16 @@ public class SheepController {
         return ResponseEntity.ok(sheepService.getPartners(sheepId));
     }
 
-    @Transactional
     @PutMapping("/{sheepId}")
-    public ResponseEntity<?> replaceSheep(@PathVariable Integer sheepId, @RequestBody SheepReplaceRequestDTO replacementSheep) {
-        Sheep updatedSheep = sheepService.fromRequestDTO(replacementSheep);
-        updatedSheep.setId(sheepId);
-        return ResponseEntity.ok(sheepService.saveSheep(updatedSheep));
+    public ResponseEntity<?> replaceSheep(@PathVariable Integer sheepId, @Valid @RequestBody SheepReplaceRequestDTO replacementSheep) {
+        Sheep updatedSheep = sheepService.replaceSheep(sheepId, replacementSheep);
+        return ResponseEntity.ok(sheepService.toResponseDTO(updatedSheep));
     }
 
-    @Transactional
     @PatchMapping("/{sheepId}")
-    public ResponseEntity<?> updateSheep(@PathVariable Integer sheepId, @RequestBody SheepUpdateRequestDTO updateSheepModel) {
-        Sheep sheep = sheepService.findById(sheepId);
-
-        if (updateSheepModel.getName() != null) {
-            sheep.setName(updateSheepModel.getName());
-        }
-
-        Map<Category, SheepGenotypeDTO> updatedGenotypes = updateSheepModel.getGenotypes();
-        if (updatedGenotypes != null) {
-            for (Map.Entry<Category, SheepGenotypeDTO> entry : updatedGenotypes.entrySet()) {
-                GradePair genotype = entry.getValue().toGradePair();
-                sheep.setGenotype(entry.getKey(), genotype);
-            }
-        }
-
-        Map<Category, Map<Grade, Double>> updatedPriors = updateSheepModel.getDistributions();
-        if (updatedPriors != null) {
-            for (Map.Entry<Category, Map<Grade, Double>> entry : updatedPriors.entrySet()) {
-                sheep.setDistribution(entry.getKey(), DistributionType.PRIOR, entry.getValue());
-            }
-        }
-
-        return ResponseEntity.ok(sheepService.saveSheep(sheep));
+    public ResponseEntity<?> updateSheep(@PathVariable Integer sheepId, @Valid @RequestBody SheepUpdateRequestDTO updateSheepModel) {
+        Sheep updatedSheep = sheepService.updateSheep(sheepId, updateSheepModel);
+        return ResponseEntity.ok(sheepService.toResponseDTO(updatedSheep));
     }
 
     @DeleteMapping("/{sheepId}")
