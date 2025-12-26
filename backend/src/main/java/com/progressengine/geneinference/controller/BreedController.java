@@ -2,6 +2,7 @@ package com.progressengine.geneinference.controller;
 
 import com.progressengine.geneinference.model.Sheep;
 import com.progressengine.geneinference.service.BreedingService;
+import com.progressengine.geneinference.service.SheepService;
 import jakarta.validation.constraints.Positive;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -11,9 +12,11 @@ import org.springframework.web.bind.annotation.*;
 @Validated
 @RequestMapping(value = "/breed")
 public class BreedController {
+    private final SheepService sheepService;
     private  final BreedingService breedingService;
 
-    public BreedController(BreedingService breedingService) {
+    public BreedController(SheepService sheepService, BreedingService breedingService) {
+        this.sheepService = sheepService;
         this.breedingService = breedingService;
     }
 
@@ -21,14 +24,7 @@ public class BreedController {
     public ResponseEntity<?> breed(@Positive @PathVariable Integer sheep1Id, @Positive @PathVariable Integer sheep2Id, @RequestParam(name = "saveChild", defaultValue = "true") boolean saveChild) {
         Sheep newChild = breedingService.breedAndInferSheep(sheep1Id, sheep2Id, saveChild);
 
-        StringBuilder childResults = new StringBuilder();
-        childResults.append("Relationship ID: ").append(newChild.getParentRelationship().getId()).append("\n");
-
-        newChild.getGenotypes().forEach((category, genotype) ->
-                childResults.append(category).append(": ").append(genotype.phenotype()).append("\n")
-        );
-
-        return ResponseEntity.ok(childResults.toString());
+        return ResponseEntity.ok(sheepService.toResponseDTO(newChild));
     }
 
     @GetMapping("/{sheep1Id}/{sheep2Id}/predict")
