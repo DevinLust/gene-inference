@@ -1,7 +1,6 @@
 package com.progressengine.geneinference.repository;
 
 import com.progressengine.geneinference.model.Sheep;
-import com.progressengine.geneinference.model.enums.Grade;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;

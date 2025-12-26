@@ -38,7 +38,7 @@ public class GenotypesValidator implements ConstraintValidator<ValidGenotypes, M
                 valid = false;
                 continue;
             }
-            if (dto.getPhenotype() == null) {
+            if (dto.phenotype() == null) {
                 ctx.buildConstraintViolationWithTemplate("Category " + category + " has null phenotype")
                         .addConstraintViolation();
                 valid = false;

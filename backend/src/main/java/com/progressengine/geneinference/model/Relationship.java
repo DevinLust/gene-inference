@@ -1,6 +1,5 @@
 package com.progressengine.geneinference.model;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.Grade;
 import jakarta.persistence.*;

@@ -1,6 +1,9 @@
 package com.progressengine.geneinference.exception;
 
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.Path;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -9,6 +12,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class ApplicationExceptionHandler {
@@ -66,6 +70,30 @@ public class ApplicationExceptionHandler {
         return response;
     }
 
+    @ExceptionHandler(ConstraintViolationException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Map<String, String> handleConstraintViolation(ConstraintViolationException ex) {
+        return ex.getConstraintViolations().stream()
+                .collect(Collectors.toMap(
+                        v -> {
+                            Iterator<Path.Node> it = v.getPropertyPath().iterator();
+                            Path.Node last = null;
+                            while (it.hasNext()) {
+                                last = it.next();
+                            }
+                            return last != null ? last.getName() : "parameter";
+                        },
+                        ConstraintViolation::getMessage
+                ));
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    @ResponseStatus(HttpStatus.CONFLICT) // or BAD_REQUEST
+    public Map<String, String> handleIllegalState(IllegalStateException ex) {
+        return Map.of("message", ex.getMessage());
+    }
+
+
     private String buildPath(InvalidFormatException ife) {
         StringBuilder path = new StringBuilder();
 
@@ -84,6 +112,17 @@ public class ApplicationExceptionHandler {
         return path.isEmpty() ? "unknown" : path.toString();
     }
 
+    @ExceptionHandler(IncompleteGenotypeException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public Map<String, Object> handleIncompleteGenotype(IncompleteGenotypeException ex) {
+        return Map.of(
+                "message", ex.getMessage(),
+                "details", Map.of(
+                        "parent1MissingCategories", ex.getParent1Missing(),
+                        "parent2MissingCategories", ex.getParent2Missing()
+                )
+        );
+    }
 
 
 }

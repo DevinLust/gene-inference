@@ -108,11 +108,11 @@ public class Sheep {
         for (Map.Entry<Category, SheepGenotypeDTO> entry : genotypesDTO.entrySet()) {
             Category category = entry.getKey();
             SheepGenotypeDTO genotypeDTO = entry.getValue();
-            if (genotypeDTO.getPhenotype() == null) {
+            if (genotypeDTO.phenotype() == null) {
                 throw new IllegalArgumentException(formatErrorMessage("Phenotype of category " + category + " is null"));
             }
             SheepGenotype genotype = createIfAbsentSheepGenotype(category);
-            genotype.setGenotype(genotypeDTO.getPhenotype(),  genotypeDTO.getHiddenAllele());
+            genotype.setGenotype(genotypeDTO.phenotype(),  genotypeDTO.hiddenAllele());
         }
     }
 

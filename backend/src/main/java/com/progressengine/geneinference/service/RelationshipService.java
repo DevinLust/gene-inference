@@ -1,12 +1,10 @@
 package com.progressengine.geneinference.service;
 
 import com.progressengine.geneinference.dto.RelationshipResponseDTO;
+import com.progressengine.geneinference.exception.ResourceNotFoundException;
 import com.progressengine.geneinference.model.Relationship;
 import com.progressengine.geneinference.model.Sheep;
-import com.progressengine.geneinference.model.enums.Category;
-import com.progressengine.geneinference.model.enums.Grade;
 import com.progressengine.geneinference.repository.RelationshipRepository;
-import org.springdoc.api.OpenApiResourceNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -46,7 +44,7 @@ public class RelationshipService {
     public Relationship getRelationshipById(Integer relationshipId) {
         Optional<Relationship> optionalRelationship = relationshipRepository.findById(relationshipId);
         if (optionalRelationship.isEmpty()) {
-            throw new OpenApiResourceNotFoundException("Relationship not found");
+            throw new ResourceNotFoundException("Relationship not found");
         }
         return optionalRelationship.get();
     }
@@ -60,6 +58,7 @@ public class RelationshipService {
      * @param sheep1 - one of the two parent sheep
      * @param sheep2 - one of the two parent sheep
      * @return the relationship of these two sheep
+     * @throws {@code IllegalArgumentException} if the two sheep are the same
      */
     public Relationship findOrCreateRelationship(Sheep sheep1, Sheep sheep2) {
         relationshipValidation(sheep1, sheep2); // validates these two sheep can be in relationship
@@ -132,7 +131,12 @@ public class RelationshipService {
     }
 
 
-    // validates that these two sheep can be in a relationship
+    /** Validates that these two sheep can be in a relationship.
+     *
+     * @param sheep1 - the first parent sheep
+     * @param sheep2 - the second parent sheep
+     * @throws {@code IllegalArgumentException} if the two sheep are the same
+     */
     private static void relationshipValidation(Sheep sheep1, Sheep sheep2) {
         if (sheep1 == sheep2 || sheep1.getId().equals(sheep2.getId())) {
             throw new IllegalArgumentException("Cannot breed a sheep with itself!");
