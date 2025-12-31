@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState, useState, startTransition } from "react";
-import { createSheep, State } from "@/app/lib/actions";
+import { createSheep, CreateState } from "@/app/lib/actions";
 import DistributionForm from "./distributions-subform";
 import CategoryTag from "@/app/ui/category-tag";
 import FeatureInProgress from "@/app/ui/in-progress";
@@ -12,7 +12,7 @@ const grades: Grade[] = ["S", "A", "B", "C", "D", "E"];
 
 export default function SheepForm() {
     // Hook into the server action
-    const initialState: State = { message: null, errors: {} }
+    const initialState: CreateState = { message: null, errors: {} }
     const [state, formAction, isPending] = useActionState(createSheep, initialState);
 
     const [name, setName] = useState("");
@@ -162,7 +162,7 @@ export default function SheepForm() {
     );
 }
 
-function ServerResponse({ state }: { state: State }) {
+function ServerResponse({ state }: { state: CreateState }) {
     return <p className="text-red-500 font-medium">{state.message}</p>;
 }
 

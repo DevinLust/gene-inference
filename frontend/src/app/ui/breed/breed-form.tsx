@@ -1,10 +1,14 @@
 'use client';
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { breedSheep } from "@/app/lib/actions";
 
 export default function BreedForm() {
-    const [state, formAction] = useActionState(breedSheep, { message: "" });
+    const [state, formAction] = useActionState(breedSheep, { message: "", errors: {} });
+
+    const [sheep1Id, setSheep1Id] = useState("");
+
+    const [sheep2Id, setSheep2Id] = useState("");
 
     return (
         <form
@@ -19,10 +23,16 @@ export default function BreedForm() {
                 <input
                     name="parent1Id"
                     type="text"
+                    value={sheep1Id}
+                    onChange={(e) => setSheep1Id(e.target.value)}
                     placeholder="Enter first parent ID"
                     className="bg-gray-800 border border-gray-500 rounded p-2"
                 />
+                <div id="sheep1Id-error" aria-live="polite" aria-atomic="true">
+                    {state.errors?.sheep1Id && <p className="mt-2 text-sm text-red-500">{state.errors.sheep1Id}</p>}
+                </div>
             </label>
+
 
             {/* Parent 2 */}
             <label className="flex flex-col">
@@ -30,9 +40,14 @@ export default function BreedForm() {
                 <input
                     name="parent2Id"
                     type="text"
+                    value={sheep2Id}
+                    onChange={(e) => setSheep2Id(e.target.value)}
                     placeholder="Enter second parent ID"
                     className="bg-gray-800 border border-gray-500 rounded p-2"
                 />
+                <div id="sheep2Id-error" aria-live="polite" aria-atomic="true">
+                    {state.errors?.sheep2Id && <p className="mt-2 text-sm text-red-500">{state.errors.sheep2Id}</p>}
+                </div>
             </label>
 
             {/* Submit */}
@@ -44,11 +59,7 @@ export default function BreedForm() {
             </button>
 
             {/* Server response */}
-            {state?.message && (
-                <p className="text-green-600 font-medium">
-                    {state.message}
-                </p>
-            )}
+            {state?.message && <p className="text-red-500 font-medium">{state.message}</p>}
         </form>
     );
 }

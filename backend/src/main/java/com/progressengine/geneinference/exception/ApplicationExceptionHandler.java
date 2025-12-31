@@ -73,8 +73,9 @@ public class ApplicationExceptionHandler {
 
     @ExceptionHandler(ConstraintViolationException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public Map<String, String> handleConstraintViolation(ConstraintViolationException ex) {
-        return ex.getConstraintViolations().stream()
+    public Map<String, Object> handleConstraintViolation(ConstraintViolationException ex) {
+        Map<String, Object> response = new HashMap<>();
+        Map<String, String> fieldErrors = ex.getConstraintViolations().stream()
                 .collect(Collectors.toMap(
                         v -> {
                             Iterator<Path.Node> it = v.getPropertyPath().iterator();
@@ -86,6 +87,11 @@ public class ApplicationExceptionHandler {
                         },
                         ConstraintViolation::getMessage
                 ));
+        response.put("status", HttpStatus.BAD_REQUEST.value());
+        response.put("errors", fieldErrors);
+        response.put("message", "Validation failed");
+
+        return response;
     }
 
     @ExceptionHandler(IllegalStateException.class)

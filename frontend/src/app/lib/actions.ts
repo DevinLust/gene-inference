@@ -4,13 +4,21 @@ import { Grade, Category, SheepCreateDTO } from '@/app/lib/definitions';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
-export type State = {
+export type CreateState = {
     message?: string | null;
     errors?: {
         name?: string[];
         distributions?: string[];
         genotypes?: string[];
         parentRelationshipId?: string[];
+    };
+};
+
+export type BreedState = {
+    message?: string | null;
+    errors?: {
+        sheep1Id?: string;
+        sheep2Id?: string;
     };
 };
 
@@ -80,7 +88,7 @@ export async function formDataToSheepDTO(formData: FormData): Promise<SheepCreat
     };
 }
 
-export async function createSheep(prevState: State, formData: FormData) {
+export async function createSheep(prevState: CreateState, formData: FormData) {
     let newSheep: SheepCreateDTO;
     try {
         newSheep = await formDataToSheepDTO(formData);
@@ -95,8 +103,7 @@ export async function createSheep(prevState: State, formData: FormData) {
     });
 
     if (!res.ok) {
-        const error: State = await parseError(res);
-        return error;
+        return await parseError(res);
     }
 
 
@@ -104,12 +111,12 @@ export async function createSheep(prevState: State, formData: FormData) {
     redirect('/sheep');
 }
 
-export async function breedSheep(prevState: any, formData: FormData) {
+export async function breedSheep(prevState: BreedState, formData: FormData) {
     const parent1Id = formData.get("parent1Id") as string;
     const parent2Id = formData.get("parent2Id") as string;
 
     if (!parent1Id || !parent2Id || isNaN(Number(parent1Id)) || isNaN(Number(parent2Id))) {
-        return { message: "Borth parent Ids must be valid numbers"};
+        return { message: "Both parent Ids must be valid numbers", errors: {} };
     }
 
     const res = await fetch(`${API_BASE_URL}/breed/${parent1Id}/${parent2Id}`, {
@@ -118,15 +125,14 @@ export async function breedSheep(prevState: any, formData: FormData) {
     });
 
     if (!res.ok) {
-        const message = await parseError(res);
-        return { message: message }
+        return await parseError(res);
     }
 
     revalidatePath('/sheep');
     redirect('/sheep');
 }
 
-async function parseError(res: Response):Promise<State> {
+async function parseError(res: Response) {
     try {
         const contentType = res.headers.get("content-type");
 
