@@ -4,6 +4,16 @@ import { Grade, Category, SheepCreateDTO } from '@/app/lib/definitions';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
+export type State = {
+    message?: string | null;
+    errors?: {
+        name?: string[];
+        distributions?: string[];
+        genotypes?: string[];
+        parentRelationshipId?: string[];
+    };
+};
+
 if (!process.env.NEXT_PUBLIC_API_BASE_URL) {
   throw new Error("NEXT_PUBLIC_API_BASE_URL is not defined");
 }
@@ -19,7 +29,7 @@ export async function formDataToSheepDTO(formData: FormData): Promise<SheepCreat
         categories.map((c) => [
             c,
             {
-                phenotype: formData.get(`genotypes.${c}.phenotype`) as Grade,
+                phenotype: formData.get(`genotypes.${c}.phenotype`) as Grade || null,
                 hiddenAllele: (formData.get(`genotypes.${c}.hiddenAllele`) as Grade) || null,
             },
         ])
@@ -70,12 +80,12 @@ export async function formDataToSheepDTO(formData: FormData): Promise<SheepCreat
     };
 }
 
-export async function createSheep(prevState: any, formData: FormData) {
+export async function createSheep(prevState: State, formData: FormData) {
     let newSheep: SheepCreateDTO;
     try {
         newSheep = await formDataToSheepDTO(formData);
     } catch (err) {
-        return err instanceof Error && err.message ? { message: err.message } : { message: "Invalid form data" };
+        return err instanceof Error && err.message ? { message: err.message, errors: {} } : { message: "Invalid form data", errors: {} };
     }
 
     const res = await fetch(`${API_BASE_URL}/sheep`, {
@@ -85,10 +95,10 @@ export async function createSheep(prevState: any, formData: FormData) {
     });
 
     if (!res.ok) {
-        const message = await parseError(res);
-        console.log(`Error Message: ${message}`);
-        return { message: message }
+        const error: State = await parseError(res);
+        return error;
     }
+
 
     revalidatePath('/sheep');
     redirect('/sheep');
@@ -116,22 +126,18 @@ export async function breedSheep(prevState: any, formData: FormData) {
     redirect('/sheep');
 }
 
-async function parseError(res: Response) {
-  let errorMessage = "An unexpected error occurred";
+async function parseError(res: Response):Promise<State> {
+    try {
+        const contentType = res.headers.get("content-type");
 
-  try {
-    const contentType = res.headers.get("content-type");
+        if (contentType?.includes("application/json")) {
+            return await res.json(); // ← return full object
+        }
 
-    if (contentType?.includes("application/json")) {
-      const body = await res.json();
-      errorMessage = body.message || body.error || errorMessage;
-    } else {
-      errorMessage = await res.text();
+        return { message: await res.text() };
+    } catch {
+        return { message: "An unexpected error occurred" };
     }
-  } catch {
-    // fallback message already set
-  }
-
-  return errorMessage;
 }
+
 

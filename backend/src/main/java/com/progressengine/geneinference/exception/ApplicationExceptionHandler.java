@@ -66,6 +66,7 @@ public class ApplicationExceptionHandler {
 
         response.put("status", HttpStatus.BAD_REQUEST.value());
         response.put("errors", errors);
+        response.put("message", "Incomplete or invalid request");
 
         return response;
     }
