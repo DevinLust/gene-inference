@@ -137,7 +137,7 @@ export default function SheepForm() {
                     <span className="font-medium">Parent Relationship ID</span>
                     <input
                         name="parentRelationshipId"
-                        type="text"
+                        type="number"
                         value={parentRelationshipId}
                         onChange={(e) => setParentRelationshipId(e.target.value)}
                         placeholder="Optional: Enter relationship ID of parents"

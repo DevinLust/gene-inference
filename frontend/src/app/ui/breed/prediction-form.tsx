@@ -40,7 +40,8 @@ export default function SheepPredictionForm() {
 
             <div>
                 <input
-                    type="text"
+                    type="number"
+                    min={1}
                     placeholder="Sheep 1 ID"
                     value={sheep1}
                     onChange={(e) => setSheep1(e.target.value)}
@@ -53,7 +54,8 @@ export default function SheepPredictionForm() {
 
             <div>
                 <input
-                    type="text"
+                    type="number"
+                    min={1}
                     placeholder="Sheep 2 ID"
                     value={sheep2}
                     onChange={(e) => setSheep2(e.target.value)}

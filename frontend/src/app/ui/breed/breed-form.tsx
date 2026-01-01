@@ -22,7 +22,8 @@ export default function BreedForm() {
                 <span className="font-medium">Parent 1 ID</span>
                 <input
                     name="parent1Id"
-                    type="text"
+                    type="number"
+                    min={1}
                     value={sheep1Id}
                     onChange={(e) => setSheep1Id(e.target.value)}
                     placeholder="Enter first parent ID"
@@ -39,7 +40,8 @@ export default function BreedForm() {
                 <span className="font-medium">Parent 2 ID</span>
                 <input
                     name="parent2Id"
-                    type="text"
+                    type="number"
+                    min={1}
                     value={sheep2Id}
                     onChange={(e) => setSheep2Id(e.target.value)}
                     placeholder="Enter second parent ID"
