@@ -1,6 +1,7 @@
 'use server';
 
 import { Sheep, Prediction, BestPrediction, Relationship } from "./definitions";
+import { BreedState } from "./actions";
 import { notFound } from "next/navigation";
 
 if (!process.env.NEXT_PUBLIC_API_BASE_URL) {
@@ -28,18 +29,24 @@ export async function fetchSheepById(id: string): Promise<Sheep> {
     return await res.json() as Promise<Sheep>;
 }
 
-export async function fetchPrediction(sheep1Id: string, sheep2Id: string): Promise<Prediction> {
+// both prediction fetches need to return objects for inline error handling
+export async function fetchPrediction(sheep1Id: string, sheep2Id: string): Promise<Prediction | BreedState> {
     const res = await fetch(`${API_BASE_URL}/breed/${sheep1Id}/${sheep2Id}/predict`);
 
-    await checkStatus(res);
+    if (!res.ok) {
+        return await res.json();
+    }
 
     return await res.json() as Prediction;
 }
 
-export async function fetchBestPredictions(): Promise<BestPrediction[]> {
+// both prediction fetches need to return objects for inline error handling
+export async function fetchBestPredictions(): Promise<BestPrediction[] | BreedState> {
     const res = await fetch(`${API_BASE_URL}/breed/best-predictions`);
 
-    await checkStatus(res);
+    if (!res.ok) {
+        return await res.json();
+    }
 
     return await res.json() as BestPrediction[];
 }

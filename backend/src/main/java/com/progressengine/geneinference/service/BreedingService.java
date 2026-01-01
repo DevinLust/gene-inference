@@ -169,7 +169,7 @@ public class BreedingService {
         List<Sheep> allSheep = sheepService.getAllSheep();
         if (allSheep.size() < 2) {
             throw new IllegalStateException(
-                    "At least two sheep are required to compute predictions"
+                    "At least two sheep are required to compute best predictions"
             );
         }
 
