@@ -209,6 +209,7 @@ public class BreedingService {
                 predictions.add(new BestPredictionDTO(parent1, parent2, sheepToCategoryMap.get(parent1), sheepToCategoryMap.get(parent2), predictionMap));
             }
         }
+        predictions.sort(null);
 
         return predictions;
     }
