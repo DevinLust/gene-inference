@@ -8,7 +8,6 @@ import com.progressengine.geneinference.model.Sheep;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.DistributionType;
 import com.progressengine.geneinference.model.enums.Grade;
-import com.progressengine.geneinference.repository.RelationshipRepository;
 import com.progressengine.geneinference.repository.SheepRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
@@ -20,7 +19,7 @@ import java.util.stream.Collectors;
 public class SheepService {
 
     private final SheepRepository sheepRepository;
-    private final RelationshipRepository relationshipRepository;
+    private final RelationshipService relationshipService;
 
     public static Map<Grade, Double> createUniformDistribution() {
         Map<Grade, Double> uniformDistribution = new EnumMap<>(Grade.class);
@@ -34,9 +33,9 @@ public class SheepService {
         return uniformDistribution;
     }
 
-    public SheepService(RelationshipRepository relationshipRepository, SheepRepository sheepRepository) {
-        this.relationshipRepository = relationshipRepository;
+    public SheepService(SheepRepository sheepRepository, RelationshipService relationshipService) {
         this.sheepRepository = sheepRepository;
+        this.relationshipService = relationshipService;
     }
 
     public Sheep findById(Integer id) {
@@ -101,7 +100,7 @@ public class SheepService {
 
     @Transactional
     public List<SheepResponseDTO> getChildren(Integer sheepId) {
-        List<Relationship> relationships = relationshipRepository.findByParentId(sheepId);
+        List<Relationship> relationships = relationshipService.findRelationshipsByParent(sheepId);
 
         if (relationships.isEmpty()) {
             return List.of();
@@ -114,7 +113,7 @@ public class SheepService {
 
     @Transactional
     public List<SheepResponseDTO> getPartners(Integer sheepId) {
-        List<Relationship> relationships = relationshipRepository.findByParentId(sheepId);
+        List<Relationship> relationships = relationshipService.findRelationshipsByParent(sheepId);
 
         if (relationships.isEmpty()) {
             return List.of();
@@ -146,8 +145,7 @@ public class SheepService {
         existing.replaceDistributionsFromDTO(sheepReplaceRequestDTO.getDistributions());
 
         if (sheepReplaceRequestDTO.getParentRelationshipId() != null) {
-            Relationship relationship = relationshipRepository.findById(sheepReplaceRequestDTO.getParentRelationshipId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Invalid parentRelationshipId: " + sheepReplaceRequestDTO.getParentRelationshipId()));
+            Relationship relationship = relationshipService.findById(sheepReplaceRequestDTO.getParentRelationshipId());
             existing.setParentRelationship(relationship);
         } else {
             existing.setParentRelationship(null);
@@ -186,7 +184,7 @@ public class SheepService {
     public void deleteSheep(Integer sheepId) {
         Sheep sheep = findById(sheepId);
 
-        List<Relationship> relationships = relationshipRepository.findByParentId(sheepId);
+        List<Relationship> relationships = relationshipService.findRelationshipsByParent(sheepId);
         Set<Integer> relationshipIds = relationships.stream().map(Relationship::getId).collect(Collectors.toSet());
 
         List<Sheep> affectedChildren = sheepRepository.findAllByParentRelationship_IdIn(relationshipIds);
@@ -194,7 +192,7 @@ public class SheepService {
             child.setParentRelationship(null);
         }
 
-        relationshipRepository.deleteAll(relationships);
+        relationshipService.deleteAll(relationships);
 
         sheepRepository.delete(sheep);
     }
@@ -206,10 +204,10 @@ public class SheepService {
 
         sheep.upsertDistributionsFromDTO(dto.getDistributions());
 
-        if (dto.getParentRelationshipId() != null) {
-            Relationship relationship = relationshipRepository.findById(dto.getParentRelationshipId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Invalid parentRelationshipId: " + dto.getParentRelationshipId()));
-            sheep.setParentRelationship(relationship);
+        if (dto.getParent1Id() != null && dto.getParent2Id() != null) {
+            Sheep parent1 = findById(dto.getParent1Id());
+            Sheep parent2 = findById(dto.getParent2Id());
+            sheep.setParentRelationship(relationshipService.findOrCreateRelationship(parent1, parent2));
         }
 
         return sheep;

@@ -336,7 +336,7 @@ public class Sheep {
     }
 
     private String formatErrorMessage(String specificMessage) {
-        return String.format("Error in sheep: %d: %s", this.id, specificMessage);
+        return String.format("Error in sheep with id %d: %s", this.id, specificMessage);
     }
 
 }

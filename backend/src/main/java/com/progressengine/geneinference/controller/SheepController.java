@@ -3,6 +3,7 @@ package com.progressengine.geneinference.controller;
 import com.progressengine.geneinference.dto.*;
 import com.progressengine.geneinference.model.Sheep;
 import com.progressengine.geneinference.model.enums.Grade;
+import com.progressengine.geneinference.service.BreedingService;
 import com.progressengine.geneinference.service.SheepService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -18,14 +19,17 @@ import java.util.*;
 public class SheepController {
 
     private final SheepService sheepService;
+    private final BreedingService breedingService;
 
-    public SheepController(SheepService sheepService) {
+    public SheepController(SheepService sheepService, BreedingService breedingService) {
         this.sheepService = sheepService;
+        this.breedingService = breedingService;
     }
 
     @PostMapping(consumes = {"application/json", "application/json;charset=UTF-8"})
     public ResponseEntity<?> addSheep(@Valid @RequestBody SheepNewRequestDTO sheepNewRequestDTO) {
-        return ResponseEntity.ok().body(sheepService.saveNewSheep(sheepNewRequestDTO));
+        Sheep child = breedingService.createAndInferSheep(sheepNewRequestDTO);
+        return ResponseEntity.ok().body(sheepService.toResponseDTO(child));
     }
 
     @GetMapping

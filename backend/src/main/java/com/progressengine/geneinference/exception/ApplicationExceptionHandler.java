@@ -19,24 +19,31 @@ public class ApplicationExceptionHandler {
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public Map<String, String> handleHttpMessageNotReadable(HttpMessageNotReadableException ex) {
-        Map<String, String> errors = new HashMap<>();
+    public Map<String, Object> handleHttpMessageNotReadable(HttpMessageNotReadableException ex) {
+        Map<String, Object> response = new HashMap<>();
+        Map<String, Object> errors = new HashMap<>();
 
         Throwable cause = ex.getCause();
         if (cause instanceof InvalidFormatException ife) {
-            String path = buildPath(ife);
+            List<String> path = extractPath(ife);
 
-            errors.put(
+            putNestedError(
+                    errors,
                     path,
                     "Invalid value '" + ife.getValue() +
                             "'. Expected type: " + ife.getTargetType().getSimpleName()
             );
+
+            response.put("message", "Invalid request payload");
         } else {
-            errors.put("message", "Malformed JSON request");
+            response.put("message", "Malformed JSON request");
         }
 
-        return errors;
+        response.put("errors", errors);
+        response.put("status", HttpStatus.BAD_REQUEST.value());
+        return response;
     }
+
 
 
 
@@ -100,6 +107,17 @@ public class ApplicationExceptionHandler {
         return Map.of("message", ex.getMessage());
     }
 
+    @ExceptionHandler(IncompleteGenotypeException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public Map<String, Object> handleIncompleteGenotype(IncompleteGenotypeException ex) {
+        return Map.of(
+                "message", ex.getMessage(),
+                "details", Map.of(
+                        "parent1MissingCategories", ex.getParent1Missing(),
+                        "parent2MissingCategories", ex.getParent2Missing()
+                )
+        );
+    }
 
     private String buildPath(InvalidFormatException ife) {
         StringBuilder path = new StringBuilder();
@@ -119,16 +137,34 @@ public class ApplicationExceptionHandler {
         return path.isEmpty() ? "unknown" : path.toString();
     }
 
-    @ExceptionHandler(IncompleteGenotypeException.class)
-    @ResponseStatus(HttpStatus.CONFLICT)
-    public Map<String, Object> handleIncompleteGenotype(IncompleteGenotypeException ex) {
-        return Map.of(
-                "message", ex.getMessage(),
-                "details", Map.of(
-                        "parent1MissingCategories", ex.getParent1Missing(),
-                        "parent2MissingCategories", ex.getParent2Missing()
-                )
-        );
+    private List<String> extractPath(InvalidFormatException ex) {
+        return ex.getPath().stream()
+                .map(ref -> ref.getFieldName() != null
+                        ? ref.getFieldName()
+                        : String.valueOf(ref.getIndex()))
+                .toList();
+    }
+
+    @SuppressWarnings("unchecked")
+    private void putNestedError(
+            Map<String, Object> root,
+            List<String> path,
+            String message
+    ) {
+        Map<String, Object> current = root;
+
+        for (int i = 0; i < path.size(); i++) {
+            String key = path.get(i);
+
+            if (i == path.size() - 1) {
+                current
+                        .computeIfAbsent(key, k -> new ArrayList<String>());
+                ((List<String>) current.get(key)).add(message);
+            } else {
+                current = (Map<String, Object>)
+                        current.computeIfAbsent(key, k -> new HashMap<>());
+            }
+        }
     }
 
 

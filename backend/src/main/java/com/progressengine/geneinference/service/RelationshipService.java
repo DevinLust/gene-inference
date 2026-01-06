@@ -18,6 +18,13 @@ public class RelationshipService {
         this.relationshipRepository = relationshipRepository;
     }
 
+    public Relationship findById(Integer id) {
+        return relationshipRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Relationship with id " + id + " not found"
+                ));
+    }
+
     /**
      * Saves the given relationship in the database.
      *
@@ -124,6 +131,10 @@ public class RelationshipService {
         }
 
         return List.of(parent1Relationships, parent2Relationships);
+    }
+
+    public void deleteAll(Collection<Relationship> relationships) {
+        relationshipRepository.deleteAll(relationships);
     }
 
     public RelationshipResponseDTO toResponseDTO(Relationship relationship) {

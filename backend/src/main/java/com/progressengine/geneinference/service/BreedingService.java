@@ -2,6 +2,7 @@ package com.progressengine.geneinference.service;
 
 import com.progressengine.geneinference.dto.BestPredictionDTO;
 import com.progressengine.geneinference.dto.PredictionResponseDTO;
+import com.progressengine.geneinference.dto.SheepNewRequestDTO;
 import com.progressengine.geneinference.exception.BadRequestException;
 import com.progressengine.geneinference.exception.IncompleteGenotypeException;
 import com.progressengine.geneinference.model.Relationship;
@@ -64,7 +65,7 @@ public class BreedingService {
     }
 
     /**
-     * Attempts to breed the two sheep given by their id's and returns their
+     * Breed the two sheep given by their id's and returns their
      * random, unpersisted child.
      *
      * @param sheep1Id
@@ -87,7 +88,7 @@ public class BreedingService {
         // find/create the relationship of these two sheep
         Sheep sheep1 = sheepService.findById(sheep1Id);
         Sheep sheep2 = sheepService.findById(sheep2Id);
-        Relationship relationship = relationshipService.findOrCreateRelationship(sheep1, sheep2);;
+        Relationship relationship = relationshipService.findOrCreateRelationship(sheep1, sheep2);
 
         // create a new child from the two sheep
         Sheep newChild = breedNewSheep(relationship);
@@ -156,6 +157,60 @@ public class BreedingService {
         child.setParentRelationship(relationship);
 
         return child;
+    }
+
+
+    /**
+     * Create a new sheep from the given request. If the child
+     * comes from explicit parents it will assign the child and
+     * infer new distributions for everyone.
+     *
+     * @param childRequest
+     *     the Sheep request to be assigned as the new child
+     * @return
+     *     the child sheep produced by breeding the two parents
+     * @throws {@code ResourceNotFoundException}
+     *     if either parent sheep does not exist
+     */
+    @Transactional
+    public Sheep createAndInferSheep(SheepNewRequestDTO childRequest) {
+        Sheep child = sheepService.fromRequestDTO(childRequest);
+
+        Relationship relationship = child.getParentRelationship();
+        // check if there is nothing to assign or infer
+        if (relationship == null) {
+            return sheepService.saveSheep(child);
+        }
+
+
+        // check to make sure it logically makes sense for this to be a child of the relationship
+        // TODO - update the method to check that it will work
+        assignSheep(relationship, child);
+
+        // get the new joint distribution from the additional offspring data
+        inferenceEngine.findJointDistribution(relationship); // categorized for ensemble and loopy
+
+        // update the marginal distributions of the parents' using the joint distribution
+        inferenceEngine.updateMarginalProbabilities(relationship); // categorized for loopy
+
+        // infer child hidden distribution
+        inferenceEngine.inferChildHiddenDistribution(relationship,  child);
+
+        for (Category category : Category.values()) {
+            child.setDistribution(category, DistributionType.INFERRED, child.getDistribution(category, DistributionType.PRIOR));
+        }
+
+        return sheepService.saveSheep(child);
+    }
+
+    private void assignSheep(Relationship relationship, Sheep child) {
+        // check to make sure it logically makes sense for this to be a child of the relationship
+        // TODO - add business logic check here
+
+        // update phenotype frequency
+        for (Category category : Category.values()) {
+            relationship.updatePhenotypeFrequency(category, child.getPhenotype(category), 1);
+        }
     }
 
     public PredictionResponseDTO predictChild(Integer sheep1Id, Integer sheep2Id) {
