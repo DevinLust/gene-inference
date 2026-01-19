@@ -5,6 +5,7 @@ import com.progressengine.geneinference.dto.PredictionResponseDTO;
 import com.progressengine.geneinference.dto.SheepNewRequestDTO;
 import com.progressengine.geneinference.exception.BadRequestException;
 import com.progressengine.geneinference.exception.IncompleteGenotypeException;
+import com.progressengine.geneinference.model.FactorGraph;
 import com.progressengine.geneinference.model.Relationship;
 import com.progressengine.geneinference.model.Sheep;
 import com.progressengine.geneinference.model.enums.Category;
@@ -267,6 +268,19 @@ public class BreedingService {
         predictions.sort(null);
 
         return predictions;
+    }
+
+    @Transactional
+    public List<Map<Grade, Double>> recalculateAll() {
+        List<Sheep> allSheep = sheepService.getAllSheep();
+        List<Relationship> allRelationship = relationshipService.getAllRelationships();
+        for (Relationship relationship : allRelationship) {
+            inferenceEngine.findJointDistribution(relationship);
+        }
+
+        FactorGraph factorGraph = new FactorGraph(allSheep, allRelationship);
+        factorGraph.recalculateAllMessages();
+        return factorGraph.computeBeliefs();
     }
 
     // validates that these two sheep can be automatically bred within the app
