@@ -219,6 +219,18 @@ public class Sheep {
         return distributionsByCategoryDTO;
     }
 
+    public Map<Category, Map<Grade, Double>> getAllDistributionsByType(DistributionType distributionType) {
+        Map<Category, Map<Grade, Double>> distributionsByTypeDTO = new EnumMap<>(Category.class);
+
+        for (SheepDistribution dist : distributions) {
+            if (dist.getDistributionType() != distributionType) { continue; }
+            distributionsByTypeDTO
+                    .computeIfAbsent(dist.getCategory(), k -> new EnumMap<>(Grade.class))
+                    .put(dist.getGrade(), dist.getProbability());
+        }
+        return distributionsByTypeDTO;
+    }
+
     public Map<Grade, Double> getDistribution(Category category, DistributionType distributionType) {
         if (!organized) {
             organizeDistributions();
@@ -277,6 +289,19 @@ public class Sheep {
             } else {
                 setDistribution(category, DistributionType.PRIOR, SheepService.createUniformDistribution());
                 setDistribution(category, DistributionType.INFERRED, SheepService.createUniformDistribution());
+            }
+        }
+    }
+
+    public void setDistributionByType(Map<Category, Map<Grade, Double>> distributionsByCategoryDTO, DistributionType distributionType) {
+        if (!organized) organizeDistributions();
+
+        for (Category category : Category.values()) {
+            if (distributionsByCategoryDTO != null && distributionsByCategoryDTO.containsKey(category)) {
+                Map<Grade, Double> distribution = distributionsByCategoryDTO.get(category);
+                setDistribution(category, distributionType, distribution);
+            } else {
+                setDistribution(category, distributionType, SheepService.createUniformDistribution());
             }
         }
     }

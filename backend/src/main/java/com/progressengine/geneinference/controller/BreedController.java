@@ -37,8 +37,8 @@ public class BreedController {
         return ResponseEntity.ok(breedingService.bestPredictions());
     }
 
-    @GetMapping("/recalculate-beliefs")
-    public ResponseEntity<?> getRecalculateBeliefs() {
+    @PostMapping("/recalculate-beliefs")
+    public ResponseEntity<?> recalculateBeliefs() {
         return ResponseEntity.ok(breedingService.recalculateAll());
     }
 

@@ -3,12 +3,13 @@ package com.progressengine.geneinference.model;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.DistributionType;
 import com.progressengine.geneinference.model.enums.Grade;
+import com.progressengine.geneinference.service.SheepService;
 
 import java.util.*;
 
 public class FactorGraph {
 
-    private final int MAX_ITERATIONS = 100;
+    private final int MAX_ITERATIONS = 400;
     private final double epsilon = 0.05;
 
     private final Map<Node<?>, List<Node<?>>> adjacencyMatrix;
@@ -25,8 +26,10 @@ public class FactorGraph {
             sheepToNode.put(sheep, sheepNode);
         }
 
+        Map<Relationship, Node<Relationship>> relationshipToNode = new HashMap<>();
         for (Relationship relationship : allRelationships) {
             Node<Relationship> relationshipNode = new RelationshipNode(relationship);
+            relationshipToNode.put(relationship, relationshipNode);
             adjacencyMatrix.put(relationshipNode, new ArrayList<>());
 
             Node<Sheep> parent1 = sheepToNode.get(relationship.getParent1());
@@ -43,6 +46,19 @@ public class FactorGraph {
 
             adjacencyMatrix.get(parent2).add(relationshipNode);
             messageMap.put(new NodePair(parent2, relationshipNode), new SheepMessage(parent2, relationshipNode));
+        }
+
+        for (Sheep sheep : allSheep) {
+            if (sheep.getParentRelationship() == null) continue;
+
+            Node<Sheep> sheepNode = sheepToNode.get(sheep);
+            Node<Relationship> relationshipNode = relationshipToNode.get(sheep.getParentRelationship());
+
+            adjacencyMatrix.get(sheepNode).add(relationshipNode);
+            messageMap.put(new NodePair(sheepNode, relationshipNode), new SheepMessage(sheepNode, relationshipNode));
+
+            adjacencyMatrix.get(relationshipNode).add(sheepNode);
+            messageMap.put(new NodePair(relationshipNode, sheepNode), new ChildMessage(relationshipNode, sheepNode));
         }
     }
 
@@ -62,7 +78,7 @@ public class FactorGraph {
         return dependents;
     }
 
-    public Map<Grade, Double> computeMessage(Message message) {
+    public Map<Category, Map<Grade, Double>> computeMessage(Message message) {
         List<Message> operands = new ArrayList<>();
         Node<?> source = message.getSource();
         Node<?> target = message.getTarget();
@@ -88,8 +104,9 @@ public class FactorGraph {
 
         int iterations = 0;
         while (!frontier.isEmpty() && iterations < MAX_ITERATIONS) {
+            System.out.println("Size of queue: " + frontier.size());
             Message message = frontier.poll();
-            Map<Grade, Double> newMessage = computeMessage(message);
+            Map<Category, Map<Grade, Double>> newMessage = computeMessage(message);
 
             if (!reachedConvergence(message, newMessage)) {
                 message.setDistribution(newMessage);
@@ -102,33 +119,46 @@ public class FactorGraph {
         System.out.println("Iterations needed: " + iterations + " of " + MAX_ITERATIONS);
     }
 
-    public List<Map<Grade, Double>> computeBeliefs() {
-        List<Map<Grade, Double>> beliefs = new ArrayList<>();
+    public List<Map<Category, Map<Grade, Double>>> computeBeliefs() {
+        List<Map<Category, Map<Grade, Double>>> beliefs = new ArrayList<>();
         for (Node<?> node : adjacencyMatrix.keySet()) {
             if (node instanceof SheepNode) {
                 Sheep sheep = ((SheepNode) node).getValue();
-                Map<Grade, Double> belief = sheep.getDistribution(Category.SWIM, DistributionType.PRIOR);
+                // changed priors to start with uniform
+                Map<Category, Map<Grade, Double>> belief = new EnumMap<>(Category.class);
+                for (Category category : Category.values()) {
+                    belief.put(category, SheepService.createUniformDistribution());
+                }
                 for (Node<?> neighbor : adjacencyMatrix.get(node)) {
                     NodePair nodePair = new NodePair(neighbor, node);
                     Message message = messageMap.get(nodePair);
-                    productOfExperts(belief, message.getDistribution());
+                    for (Category category : Category.values()) {
+                        productOfExperts(belief.get(category), message.getDistribution().get(category));
+                    }
                 }
+                sheep.setDistributionByType(belief, DistributionType.INFERRED);
                 beliefs.add(belief);
             }
         }
         return beliefs;
     }
 
-    private boolean reachedConvergence(Message message, Map<Grade, Double> newMessage) {
-        Map<Grade, Double> oldMessage = message.getDistribution();
-        double distance = 0.0;
+    private boolean reachedConvergence(Message message, Map<Category, Map<Grade, Double>> newMessage) {
+        Map<Category, Map<Grade, Double>> oldMessage = message.getDistribution();
+        boolean converged = true;
 
-        for (Map.Entry<Grade, Double> entry : oldMessage.entrySet()) {
-            Grade key = entry.getKey();
-            Double value = entry.getValue();
-            distance += (value - newMessage.get(key)) * (value - newMessage.get(key));
+        for (Map.Entry<Category, Map<Grade, Double>> dist : oldMessage.entrySet()) {
+            Category category = dist.getKey();
+            double distance = 0.0;
+            for (Map.Entry<Grade, Double> entry : dist.getValue().entrySet()) {
+                Grade key = entry.getKey();
+                Double value = entry.getValue();
+                distance += (value - newMessage.get(category).get(key)) * (value - newMessage.get(category).get(key));
+            }
+            converged = converged && distance <= (epsilon * epsilon);
         }
-        return distance <= (epsilon * epsilon);
+
+        return converged;
     }
 
     private void productOfExperts(Map<Grade, Double> existingDistribution, Map<Grade, Double> newDistribution) {

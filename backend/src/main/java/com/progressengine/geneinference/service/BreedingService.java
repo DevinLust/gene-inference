@@ -271,7 +271,7 @@ public class BreedingService {
     }
 
     @Transactional
-    public List<Map<Grade, Double>> recalculateAll() {
+    public List<Map<Category, Map<Grade, Double>>> recalculateAll() {
         List<Sheep> allSheep = sheepService.getAllSheep();
         List<Relationship> allRelationship = relationshipService.getAllRelationships();
         for (Relationship relationship : allRelationship) {
@@ -280,7 +280,9 @@ public class BreedingService {
 
         FactorGraph factorGraph = new FactorGraph(allSheep, allRelationship);
         factorGraph.recalculateAllMessages();
-        return factorGraph.computeBeliefs();
+        List<Map<Category, Map<Grade, Double>>> newBeliefs = factorGraph.computeBeliefs();
+
+        return newBeliefs;
     }
 
     // validates that these two sheep can be automatically bred within the app
