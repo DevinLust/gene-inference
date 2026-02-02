@@ -55,17 +55,6 @@ public abstract class BaseInferenceEngine implements InferenceEngine {
         }
     }
 
-    // combine existing distribution with new distribution
-    protected void productOfExperts(Map<Grade, Double> existingDistribution, Map<Grade, Double> newDistribution) {
-
-        for (Map.Entry<Grade, Double> entry : existingDistribution.entrySet()) {
-            double newProbability = newDistribution.get(entry.getKey());
-            entry.setValue(entry.getValue() * newProbability);
-        }
-
-        normalizeScores(existingDistribution);
-    }
-
     // Maps a pair of hidden alleles to a conditional distribution based on the observed phenotype
     protected Map<GradePair, Map<Grade, Double>> findConditionalDistributions(Relationship relationship, Grade childPhenotype, Category category) {
         Grade phenotype1 = relationship.getParent1().getPhenotype(category);
@@ -76,7 +65,7 @@ public abstract class BaseInferenceEngine implements InferenceEngine {
         Map<GradePair, Map<Grade, Double>> conditionalDistributions = new HashMap<>();
         for (GradePair gradePair : jointDistribution.keySet()) {
             // find the probability the phenotype came from each parent
-            double[] parentProbabilities = probabilityAlleleFromParents(gradePair, phenotype1, phenotype2, childPhenotype);
+            double[] parentProbabilities = InferenceMath.probabilityAlleleFromParents(gradePair, phenotype1, phenotype2, childPhenotype);
 
             // get the distribution of the hidden child allele from the current genotypes
             Map<Grade, Double> genotypeDistribution = new EnumMap<>(Grade.class);
@@ -89,41 +78,6 @@ public abstract class BaseInferenceEngine implements InferenceEngine {
         }
 
         return conditionalDistributions;
-    }
-
-    // Returns the probability the given allele came from each parent given the assumed hidden alleles
-    protected double[] probabilityAlleleFromParents(GradePair hiddenAlleles, Grade phenotype1, Grade phenotype2, Grade allele) {
-        double[] probabilities = new double[2];
-
-        double totalProbabilityOfAllele = 0.0;
-        double probabilityOfAlleleGivenParent1 = 0.0;
-        if (phenotype1.equals(allele)) {
-            probabilityOfAlleleGivenParent1 += 0.5;
-            totalProbabilityOfAllele += 0.25;
-        }
-        if (hiddenAlleles.getFirst().equals(allele)) {
-            probabilityOfAlleleGivenParent1 += 0.5;
-            totalProbabilityOfAllele += 0.25;
-        }
-
-        double probabilityOfAlleleGivenParent2 = 0.0;
-        if (phenotype2.equals(allele)) {
-            probabilityOfAlleleGivenParent2 += 0.5;
-            totalProbabilityOfAllele += 0.25;
-        }
-        if (hiddenAlleles.getSecond().equals(allele)) {
-            probabilityOfAlleleGivenParent2 += 0.5;
-            totalProbabilityOfAllele += 0.25;
-        }
-
-        if (totalProbabilityOfAllele == 0) {
-            return probabilities;
-        }
-
-        // multiply each ratio by 0.5 as the probability that each parent is chosen
-        probabilities[0] = (0.5 * probabilityOfAlleleGivenParent1) /  totalProbabilityOfAllele;
-        probabilities[1] = (0.5 * probabilityOfAlleleGivenParent2) /  totalProbabilityOfAllele;
-        return probabilities;
     }
 
     // Returns a relative multinomial score based on the given hidden alleles, phenotypes, and phenotype frequency seen in the relationship
@@ -148,17 +102,6 @@ public abstract class BaseInferenceEngine implements InferenceEngine {
         }
 
         return score;
-    }
-
-    // normalize the given Map of scores regardless of the key type
-    protected <T> void normalizeScores(Map<T, Double> scores) {
-        double sum = scores.values().stream().mapToDouble(Double::doubleValue).sum();
-
-        if (sum == 0) { return; }
-
-        for (Map.Entry<T, Double> entry : scores.entrySet()) {
-            entry.setValue(entry.getValue() / sum);
-        }
     }
 
     protected void fillMissingValuesWithZero(Map<Grade, Double> scores) {

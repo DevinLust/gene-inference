@@ -33,7 +33,7 @@ public class NaiveInference extends BaseInferenceEngine {
                 }
             }
 
-            normalizeScores(intermediateScores);
+            InferenceMath.normalizeScores(intermediateScores);
             relationship.setJointDistribution(category, intermediateScores);
         }
     }

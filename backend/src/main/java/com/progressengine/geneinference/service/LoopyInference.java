@@ -74,11 +74,11 @@ public class LoopyInference extends EnsembleInference {
 
         // parent1 belief
         Map<Grade, Double> parent1Belief = new EnumMap<>(parent1MessageToRelationship);
-        productOfExperts(parent1Belief, halfJointMarginal(currentRelationship, parent2MessageToRelationship, false, category));
+        InferenceMath.productOfExperts(parent1Belief, halfJointMarginal(currentRelationship, parent2MessageToRelationship, false, category));
 
         // parent2 belief
         Map<Grade, Double> parent2Belief = new EnumMap<>(parent2MessageToRelationship);
-        productOfExperts(parent2Belief, halfJointMarginal(currentRelationship, parent1MessageToRelationship, true, category));
+        InferenceMath.productOfExperts(parent2Belief, halfJointMarginal(currentRelationship, parent1MessageToRelationship, true, category));
 
         return List.of(parent1Belief, parent2Belief);
     }
@@ -99,7 +99,7 @@ public class LoopyInference extends EnsembleInference {
             if (!relationship.getId().equals(currentRelationship.getId())) {
                 Sheep secondaryParent = relationship.getParent1().getId().equals(currentParent.getId()) ? relationship.getParent2() : relationship.getParent1();
                 boolean firstParent = relationship.getParent1().getId().equals(secondaryParent.getId()); // whether the secondary parent is the first or not
-                productOfExperts(overallMessage, halfJointMarginal(relationship, secondaryParent.getDistribution(category, DistributionType.INFERRED), firstParent, category));
+                InferenceMath.productOfExperts(overallMessage, halfJointMarginal(relationship, secondaryParent.getDistribution(category, DistributionType.INFERRED), firstParent, category));
             }
         }
     }
@@ -130,7 +130,7 @@ public class LoopyInference extends EnsembleInference {
 
             newHalfMarginal.merge(targetGrade, probability * weightDistribution.get(weightGrade), Double::sum);
         }
-        normalizeScores(newHalfMarginal);
+        InferenceMath.normalizeScores(newHalfMarginal);
 
         return newHalfMarginal;
     }

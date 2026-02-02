@@ -53,50 +53,5 @@ public abstract class Message {
         this.distribution =  distribution;
     }
 
-    protected <T> void normalizeScores(Map<T, Double> scores) {
-        double sum = scores.values().stream().mapToDouble(Double::doubleValue).sum();
-
-        if (sum == 0) { return; }
-
-        for (Map.Entry<T, Double> entry : scores.entrySet()) {
-            entry.setValue(entry.getValue() / sum);
-        }
-    }
-
-    // Returns the probability the given allele came from each parent given the assumed hidden alleles
-    protected double[] probabilityAlleleFromParents(GradePair hiddenAlleles, Grade phenotype1, Grade phenotype2, Grade allele) {
-        double[] probabilities = new double[2];
-
-        double totalProbabilityOfAllele = 0.0;
-        double probabilityOfAlleleGivenParent1 = 0.0;
-        if (phenotype1.equals(allele)) {
-            probabilityOfAlleleGivenParent1 += 0.5;
-            totalProbabilityOfAllele += 0.25;
-        }
-        if (hiddenAlleles.getFirst().equals(allele)) {
-            probabilityOfAlleleGivenParent1 += 0.5;
-            totalProbabilityOfAllele += 0.25;
-        }
-
-        double probabilityOfAlleleGivenParent2 = 0.0;
-        if (phenotype2.equals(allele)) {
-            probabilityOfAlleleGivenParent2 += 0.5;
-            totalProbabilityOfAllele += 0.25;
-        }
-        if (hiddenAlleles.getSecond().equals(allele)) {
-            probabilityOfAlleleGivenParent2 += 0.5;
-            totalProbabilityOfAllele += 0.25;
-        }
-
-        if (totalProbabilityOfAllele == 0) {
-            return probabilities;
-        }
-
-        // multiply each ratio by 0.5 as the probability that each parent is chosen
-        probabilities[0] = (0.5 * probabilityOfAlleleGivenParent1) /  totalProbabilityOfAllele;
-        probabilities[1] = (0.5 * probabilityOfAlleleGivenParent2) /  totalProbabilityOfAllele;
-        return probabilities;
-    }
-
     abstract Map<Category, Map<Grade, Double>> computeMessage(List<Message> operands);
 }

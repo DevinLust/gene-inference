@@ -3,6 +3,7 @@ package com.progressengine.geneinference.model;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.DistributionType;
 import com.progressengine.geneinference.model.enums.Grade;
+import com.progressengine.geneinference.service.InferenceMath;
 import com.progressengine.geneinference.service.SheepService;
 
 import java.util.*;
@@ -97,14 +98,14 @@ public class FactorGraph {
     public void recalculateAllMessages() {
         Queue<Message> frontier = new ArrayDeque<>();
         for (Message message : messageMap.values()) {
-            if (message instanceof RelationshipMessage) {
+            if (message instanceof RelationshipMessage || message instanceof ChildMessage) {
                 frontier.add(message);
             }
         }
 
         int iterations = 0;
         while (!frontier.isEmpty() && iterations < MAX_ITERATIONS) {
-            System.out.println("Size of queue: " + frontier.size());
+            System.out.println("Size of queue: " + frontier.size()); // remove after testing
             Message message = frontier.poll();
             Map<Category, Map<Grade, Double>> newMessage = computeMessage(message);
 
@@ -125,15 +126,12 @@ public class FactorGraph {
             if (node instanceof SheepNode) {
                 Sheep sheep = ((SheepNode) node).getValue();
                 // changed priors to start with uniform
-                Map<Category, Map<Grade, Double>> belief = new EnumMap<>(Category.class);
-                for (Category category : Category.values()) {
-                    belief.put(category, SheepService.createUniformDistribution());
-                }
+                Map<Category, Map<Grade, Double>> belief = newBelief();
                 for (Node<?> neighbor : adjacencyMatrix.get(node)) {
                     NodePair nodePair = new NodePair(neighbor, node);
                     Message message = messageMap.get(nodePair);
                     for (Category category : Category.values()) {
-                        productOfExperts(belief.get(category), message.getDistribution().get(category));
+                        InferenceMath.productOfExperts(belief.get(category), message.getDistribution().get(category));
                     }
                 }
                 sheep.setDistributionByType(belief, DistributionType.INFERRED);
@@ -161,22 +159,11 @@ public class FactorGraph {
         return converged;
     }
 
-    private void productOfExperts(Map<Grade, Double> existingDistribution, Map<Grade, Double> newDistribution) {
-        for (Map.Entry<Grade, Double> entry : existingDistribution.entrySet()) {
-            double newProbability = newDistribution.get(entry.getKey());
-            entry.setValue(entry.getValue() * newProbability);
+    private Map<Category, Map<Grade, Double>> newBelief() {
+        Map<Category, Map<Grade, Double>> result = new EnumMap<>(Category.class);
+        for (Category category : Category.values()) {
+            result.put(category, SheepService.createUniformDistribution());
         }
-
-        normalizeScores(existingDistribution);
-    }
-
-    private <T> void normalizeScores(Map<T, Double> scores) {
-        double sum = scores.values().stream().mapToDouble(Double::doubleValue).sum();
-
-        if (sum == 0) { return; }
-
-        for (Map.Entry<T, Double> entry : scores.entrySet()) {
-            entry.setValue(entry.getValue() / sum);
-        }
+        return result;
     }
 }
