@@ -39,7 +39,7 @@ public class SheepService {
     }
 
     public Sheep findById(Integer id) {
-        return sheepRepository.findById(id)
+        return sheepRepository.findWithAllById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Sheep with id " + id + " not found"
                 ));
@@ -54,7 +54,7 @@ public class SheepService {
     }
 
     public List<Sheep> getAllSheep() {
-        return sheepRepository.findAll();
+        return sheepRepository.findAllForInference();
     }
 
     /**
@@ -74,7 +74,7 @@ public class SheepService {
         }
 
         Set<String> gradeStrings = grades.stream().map(Grade::name).collect(Collectors.toSet());
-        return sheepRepository.findSheepHavingAnyGradeAndNameNative(gradeStrings, name);
+        return sheepRepository.findSheepHavingAnyGradeAndName(grades, name);
     }
 
 

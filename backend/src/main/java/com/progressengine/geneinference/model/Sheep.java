@@ -12,6 +12,13 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Entity
+@NamedEntityGraph(
+        name = "Sheep.withDistributionsAndGenotypes",
+        attributeNodes = {
+                @NamedAttributeNode("distributions"),
+                @NamedAttributeNode("genotypes")
+        }
+)
 public class Sheep {
 
     @Id
@@ -19,11 +26,11 @@ public class Sheep {
     private Integer id;
     private String name;
 
-    @OneToMany(mappedBy = "sheep", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<SheepGenotype> genotypes = new ArrayList<>();
+    @OneToMany(mappedBy = "sheep", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    private Set<SheepGenotype> genotypes = new HashSet<>();
 
-    @OneToMany(mappedBy = "sheep", cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
-    private List<SheepDistribution> distributions = new ArrayList<>();
+    @OneToMany(mappedBy = "sheep", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    private Set<SheepDistribution> distributions = new HashSet<>();
 
     @Transient
     private Map<Category, Map<DistributionType, Map<Grade, SheepDistribution>>> distributionsByCategory = new EnumMap<>(Category.class);
@@ -153,6 +160,7 @@ public class Sheep {
         setHiddenAllele(Category.valueOf(categoryStr), hiddenAllele);
     }
 
+
     // experimental List of SheepDistribution
     private void validateDistribution(Map<Grade, Double> distribution) {
         // Validate all Grades are present
@@ -173,7 +181,6 @@ public class Sheep {
         }
     }
 
-    @PostLoad
     public void organizeDistributions() {
         if (distributions == null) return;
 
@@ -187,6 +194,7 @@ public class Sheep {
         }
         organized = true;
     }
+
 
     private Map<Grade, SheepDistribution> getDistributionByCategoryAndType(Category category,  DistributionType distributionType) {
         if (!distributionsByCategory.containsKey(category)) {
@@ -207,6 +215,7 @@ public class Sheep {
         return typeMap.get(distributionType);
     }
 
+
     public Map<Category, Map<DistributionType, Map<Grade, Double>>> getAllDistributions() {
         Map<Category, Map<DistributionType, Map<Grade, Double>>> distributionsByCategoryDTO = new EnumMap<>(Category.class);
 
@@ -218,6 +227,7 @@ public class Sheep {
         }
         return distributionsByCategoryDTO;
     }
+
 
     public Map<Category, Map<Grade, Double>> getAllDistributionsByType(DistributionType distributionType) {
         Map<Category, Map<Grade, Double>> distributionsByTypeDTO = new EnumMap<>(Category.class);
@@ -231,6 +241,7 @@ public class Sheep {
         return distributionsByTypeDTO;
     }
 
+
     public Map<Grade, Double> getDistribution(Category category, DistributionType distributionType) {
         if (!organized) {
             organizeDistributions();
@@ -242,15 +253,18 @@ public class Sheep {
                 .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getProbability()));
     }
 
+
     public Map<Grade, Double> getDistribution(String categoryStr, String distributionTypeStr) {
         return getDistribution(Category.valueOf(categoryStr), DistributionType.valueOf(distributionTypeStr));
     }
+
 
     private Map<Grade, SheepDistribution> createIfAbsentDistributionByCategoryAndType(Category category, DistributionType distributionType) {
         return distributionsByCategory
                 .computeIfAbsent(category, k -> new EnumMap<>(DistributionType.class))
                 .computeIfAbsent(distributionType, k -> new EnumMap<>(Grade.class));
     }
+
 
     private void upsertDistributionsByCategory(Category category, DistributionType distributionType, Map<Grade, Double> distribution) {
         Map<Grade, SheepDistribution> distMap = createIfAbsentDistributionByCategoryAndType(category, distributionType);
@@ -271,11 +285,13 @@ public class Sheep {
         }
     }
 
+
     private boolean missingDistributionByCategory(Category category, DistributionType distributionType) {
         if (distributionsByCategory == null) organizeDistributions();
         if (distributionsByCategory.get(category) == null) return true;
         return !distributionsByCategory.get(category).containsKey(distributionType);
     }
+
 
     // Replaces the distributions by categories into this sheep and resets the rest
     public void replaceDistributionsFromDTO(Map<Category, Map<Grade, Double>> distributionsByCategoryDTO) {
@@ -293,6 +309,7 @@ public class Sheep {
         }
     }
 
+
     public void setDistributionByType(Map<Category, Map<Grade, Double>> distributionsByCategoryDTO, DistributionType distributionType) {
         if (!organized) organizeDistributions();
 
@@ -305,6 +322,7 @@ public class Sheep {
             }
         }
     }
+
 
     // Upserts the partial distributions by categories into this sheep
     public void upsertDistributionsFromDTO(Map<Category, Map<Grade, Double>> distributionsByCategoryDTO) {
@@ -329,6 +347,7 @@ public class Sheep {
         }
     }
 
+
     public void createDefaultDistributions() {
         if (!organized) organizeDistributions();
 
@@ -338,27 +357,30 @@ public class Sheep {
         }
     }
 
+
     public void setDistribution(Category category, DistributionType distributionType, Map<Grade, Double> distribution) {
         if (!organized) {
             organizeDistributions();
         }
-
         validateDistribution(distribution);
-
         upsertDistributionsByCategory(category, distributionType, distribution);
     }
+
 
     public void setDistribution(String categoryStr, String distributionTypeStr, Map<Grade, Double> distribution) {
         setDistribution(Category.valueOf(categoryStr), DistributionType.valueOf(distributionTypeStr), distribution);
     }
 
+
     public Relationship getParentRelationship() {
         return parentRelationship;
     }
 
+
     public void setParentRelationship(Relationship parentRelationship) {
         this.parentRelationship = parentRelationship;
     }
+
 
     private String formatErrorMessage(String specificMessage) {
         return String.format("Error in sheep with id %d: %s", this.id, specificMessage);

@@ -5,13 +5,14 @@ import com.progressengine.geneinference.model.enums.DistributionType;
 import com.progressengine.geneinference.model.enums.Grade;
 import com.progressengine.geneinference.service.InferenceMath;
 import com.progressengine.geneinference.service.SheepService;
+import jakarta.transaction.Transactional;
 
 import java.util.*;
 
 public class FactorGraph {
 
     private final int MAX_ITERATIONS = 400;
-    private final double epsilon = 0.05;
+    private final double epsilon = 0.01;
 
     private final Map<Node<?>, List<Node<?>>> adjacencyMatrix;
     private final Map<NodePair, Message> messageMap;
@@ -98,26 +99,26 @@ public class FactorGraph {
     public void recalculateAllMessages() {
         Queue<Message> frontier = new ArrayDeque<>();
         for (Message message : messageMap.values()) {
-            if (message instanceof RelationshipMessage || message instanceof ChildMessage) {
+            if (message instanceof RelationshipMessage) {
                 frontier.add(message);
             }
         }
 
         int iterations = 0;
         while (!frontier.isEmpty() && iterations < MAX_ITERATIONS) {
-            System.out.println("Size of queue: " + frontier.size()); // remove after testing
+            //System.out.println("Size of queue: " + frontier.size()); // remove after testing
             Message message = frontier.poll();
             Map<Category, Map<Grade, Double>> newMessage = computeMessage(message);
 
             if (!reachedConvergence(message, newMessage)) {
                 message.setDistribution(newMessage);
                 frontier.addAll(dependentsOf(message));
+                iterations++;
             }
-            iterations++;
         }
 
         // TODO - remove this after initial testing
-        System.out.println("Iterations needed: " + iterations + " of " + MAX_ITERATIONS);
+        //System.out.println("Iterations needed: " + iterations + " of " + MAX_ITERATIONS);
     }
 
     public List<Map<Category, Map<Grade, Double>>> computeBeliefs() {

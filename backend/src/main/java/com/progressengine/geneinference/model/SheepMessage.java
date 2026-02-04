@@ -36,7 +36,10 @@ public class SheepMessage extends Message {
     @Override
     public Map<Category, Map<Grade, Double>> computeMessage(List<Message> messages) {
         Sheep sheep = source.getValue();
-        Map<Category, Map<Grade, Double>> distribution = sheep.getAllDistributionsByType(DistributionType.PRIOR);
+        Map<Category, Map<Grade, Double>> distribution = new EnumMap<>(Category.class);
+        for (Category category : Category.values()) {
+            distribution.put(category, SheepService.createUniformDistribution());
+        }
 
         for (Message message : messages) {
             Map<Category, Map<Grade, Double>> messageDist = message.getDistribution();
