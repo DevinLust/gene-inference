@@ -1,6 +1,7 @@
 package com.progressengine.geneinference.exception;
 
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
+import com.progressengine.geneinference.dto.ErrorResponse;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Path;
@@ -104,7 +105,7 @@ public class ApplicationExceptionHandler {
     @ExceptionHandler(IllegalStateException.class)
     @ResponseStatus(HttpStatus.CONFLICT) // or BAD_REQUEST
     public Map<String, String> handleIllegalState(IllegalStateException ex) {
-        return Map.of("message", ex.getMessage());
+        return Map.of("message", ex.getMessage(), "trace", Arrays.toString(ex.getStackTrace()));
     }
 
     @ExceptionHandler(IncompleteGenotypeException.class)
@@ -118,6 +119,22 @@ public class ApplicationExceptionHandler {
                 )
         );
     }
+
+    @ExceptionHandler(ExcessAlleleDiversityException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleExcessAlleleDiversity(
+            ExcessAlleleDiversityException ex
+    ) {
+        return ErrorResponse.builder()
+                .error("GENETIC_CONSTRAINT_VIOLATION")
+                .message(ex.getMessage())
+                .details(Map.of(
+                        "previousAlleles", ex.getOldAlleleSet(),
+                        "newAllele", ex.getNewAllele(),
+                        "category",  ex.getCategory()
+                )).build();
+    }
+
 
     private String buildPath(InvalidFormatException ife) {
         StringBuilder path = new StringBuilder();

@@ -72,5 +72,14 @@ public class RelationshipPhenotypeFrequency {
             this.frequency += additionalOccurrences;
         }
     }
+
+    public void removeFrequency(Integer occurrences) {
+        if (this.frequency == null) {
+            throw new IllegalStateException("Cannot remove occurrences from null frequency");
+        } else if (this.frequency < occurrences) {
+            throw new IllegalStateException("Frequency is less than occurrences to remove. Category: " + category + ", Frequency: " + frequency + ", Occurrences: " + occurrences);
+        }
+        this.frequency -= occurrences;
+    }
 }
 

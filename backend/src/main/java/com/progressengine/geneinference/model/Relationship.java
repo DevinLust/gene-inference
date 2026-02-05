@@ -1,5 +1,6 @@
 package com.progressengine.geneinference.model;
 
+import com.progressengine.geneinference.exception.ExcessAlleleDiversityException;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.Grade;
 import jakarta.persistence.*;
@@ -48,6 +49,7 @@ public class Relationship {
         this.parent2 = parent2;
     }
 
+
     public Integer getId() {
         return id;
     }
@@ -79,10 +81,14 @@ public class Relationship {
         organizePhenotypeFrequencies();
     }
 
+
     private void organizeJointDistributions() {
         if (jointDistributions == null) return;
 
         jointDistributionsByCategory = new EnumMap<>(Category.class);
+        for (Category category : Category.values()) {
+            jointDistributionsByCategory.put(category, new HashMap<>());
+        }
 
         for (RelationshipJointDistribution dist : jointDistributions) {
             GradePair gradePairKey = new GradePair(dist.getGrade1(), dist.getGrade2());
@@ -93,10 +99,14 @@ public class Relationship {
         jointDistributionsOrganized = true;
     }
 
+
     private void organizePhenotypeFrequencies() {
         if (phenotypeFrequencies == null) return;
 
         phenotypeFrequenciesByCategory = new EnumMap<>(Category.class);
+        for (Category category : Category.values()) {
+            phenotypeFrequenciesByCategory.put(category, new EnumMap<>(Grade.class));
+        }
 
         for (RelationshipPhenotypeFrequency freq : phenotypeFrequencies) {
             phenotypeFrequenciesByCategory
@@ -106,12 +116,14 @@ public class Relationship {
         phenotypeFrequenciesOrganized = true;
     }
 
+
     private Map<GradePair, RelationshipJointDistribution> getDistributionByCategory(Category category) {
         if (!jointDistributionsByCategory.containsKey(category)) {
             throw new IllegalStateException("Distribution not initialized for category " + category);
         }
         return jointDistributionsByCategory.get(category);
     }
+
 
     public Map<GradePair, Double> getJointDistribution(Category category) {
         if (!jointDistributionsOrganized) organizeJointDistributions();
@@ -125,10 +137,12 @@ public class Relationship {
         return getJointDistribution(Category.valueOf(categoryStr));
     }
 
+
     private Map<GradePair, RelationshipJointDistribution> createIfAbsentDistributionByCategory(Category category) {
         return jointDistributionsByCategory
                 .computeIfAbsent(category, k -> new HashMap<>());
     }
+
 
     @Transactional
     public void setJointDistribution(Category category, Map<GradePair, Double> jointDistribution) {
@@ -168,6 +182,7 @@ public class Relationship {
         setJointDistribution(Category.valueOf(categoryStr), jointDistribution);
     }
 
+
     // experimental List of RelationshipPhenotypeFrequency
     private Map<Grade, RelationshipPhenotypeFrequency> getPhenotypeFrequenciesByCategory(Category category) {
         if (!phenotypeFrequenciesByCategory.containsKey(category)) {
@@ -175,6 +190,7 @@ public class Relationship {
         }
         return phenotypeFrequenciesByCategory.get(category);
     }
+
 
     public Map<Grade, Integer> getPhenotypeFrequencies(Category category) {
         if (!phenotypeFrequenciesOrganized) organizePhenotypeFrequencies();
@@ -188,9 +204,11 @@ public class Relationship {
         return getPhenotypeFrequencies(Category.valueOf(categoryStr));
     }
 
+
     private Map<Grade, RelationshipPhenotypeFrequency> createIfAbsentPhenotypeFrequencies(Category category) {
         return phenotypeFrequenciesByCategory.computeIfAbsent(category, k -> new EnumMap<>(Grade.class));
     }
+
 
     public Map<Category, Map<Grade, Integer>> getAllPhenotypeFrequencies() {
         if (!phenotypeFrequenciesOrganized) organizePhenotypeFrequencies();
@@ -198,6 +216,7 @@ public class Relationship {
         return this.phenotypeFrequenciesByCategory.entrySet().stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, e -> getPhenotypeFrequencies(e.getKey())));
     }
+
 
     @Transactional
     public void setPhenotypeFrequencies(Category category, Map<Grade, Integer> phenotypeFrequencies) {
@@ -224,12 +243,67 @@ public class Relationship {
         setPhenotypeFrequencies(Category.valueOf(categoryStr), phenotypeFrequencies);
     }
 
-    public void updatePhenotypeFrequency(Category category, Grade grade, int additionalOccurrences) {
+
+    private void addPhenotypeFrequency(Category category, Grade grade) {
         Map<Grade, RelationshipPhenotypeFrequency> freqMap = createIfAbsentPhenotypeFrequencies(category);
         freqMap.computeIfAbsent(grade, k -> {
             RelationshipPhenotypeFrequency newFreq = new RelationshipPhenotypeFrequency(this, category, k);
             this.phenotypeFrequencies.add(newFreq);
             return newFreq;
-        }).addFrequency(additionalOccurrences);
+        }).addFrequency(1);
+    }
+
+
+    public void addChildToRelationship(Sheep child) {
+        Relationship parent = child.getParentRelationship();
+        if (parent != null && this.id.equals(parent.getId())) return;
+
+        checkForExcessAlleles(child);
+        for (Category category : Category.values()) {
+            addPhenotypeFrequency(category, child.getPhenotype(category));
+        }
+
+        child.setParentRelationship(this);
+    }
+
+
+    public void removeChildFromRelationship(Sheep child) {
+        Relationship parent = child.getParentRelationship();
+
+        if (parent == null || !this.id.equals(parent.getId())) {
+            throw new IllegalArgumentException("Sheep is not a child of this relationship");
+        }
+
+        for (Category category : Category.values()) {
+            Map<Grade, RelationshipPhenotypeFrequency> freqMap = getPhenotypeFrequenciesByCategory(category);
+            freqMap.get(child.getPhenotype(category)).removeFrequency(1);
+        }
+
+        child.setParentRelationship(null);
+    }
+
+
+    // throws ExcessAlleleDiversityException if adding this child would result in more potential alleles than possible
+    private void checkForExcessAlleles(Sheep child) {
+        for (Category category : Category.values()) {
+            Grade newAllele = child.getPhenotype(category);
+            Map<Grade, Integer> phenotypeFrequency = getPhenotypeFrequencies(category);
+            // add each parent phenotype to the map so they get counted
+            phenotypeFrequency.merge(this.getParent1().getPhenotype(category), 1, Integer::sum);
+            phenotypeFrequency.merge(this.getParent2().getPhenotype(category), 1, Integer::sum);
+            phenotypeFrequency.merge(newAllele, 1, Integer::sum);
+
+            Set<Grade> nonZeroCounts = EnumSet.noneOf(Grade.class);
+            for (Map.Entry<Grade, Integer> entry : phenotypeFrequency.entrySet()) {
+                if (entry.getValue() > 0) {
+                    nonZeroCounts.add(entry.getKey());
+                }
+            }
+            int maxDistinct = this.getParent1().getPhenotype(category).equals(this.getParent2().getPhenotype(category)) ? 3 : 4;
+            if (nonZeroCounts.size() > maxDistinct) {
+                nonZeroCounts.remove(newAllele);
+                throw new ExcessAlleleDiversityException("Adding this sheep would result in " + (maxDistinct + 1) + " distinct alleles when only " + maxDistinct + " are possible", nonZeroCounts, newAllele, category);
+            }
+        }
     }
 }

@@ -192,6 +192,12 @@ public class SheepService {
             child.setParentRelationship(null);
         }
 
+        // remove the sheep as a child if it has a parent relationship
+        Relationship parentRelationship = sheep.getParentRelationship();
+        if (parentRelationship != null) {
+            parentRelationship.removeChildFromRelationship(sheep);
+        }
+
         relationshipService.deleteAll(relationships);
 
         sheepRepository.delete(sheep);
@@ -203,12 +209,6 @@ public class SheepService {
         sheep.setGenotypes(dto.getGenotypes());
 
         sheep.upsertDistributionsFromDTO(dto.getDistributions());
-
-        if (dto.getParent1Id() != null && dto.getParent2Id() != null) {
-            Sheep parent1 = findById(dto.getParent1Id());
-            Sheep parent2 = findById(dto.getParent2Id());
-            sheep.setParentRelationship(relationshipService.findOrCreateRelationship(parent1, parent2));
-        }
 
         return sheep;
     }

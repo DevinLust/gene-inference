@@ -147,15 +147,12 @@ public class BreedingService {
                 newHiddenAllele = random.nextBoolean() ? parent1.getPhenotype(category) : parent1.getHiddenAllele(category);
             }
 
-
             child.setPhenotype(category, newPhenotype);
             child.setHiddenAllele(category, newHiddenAllele);
-            relationship.updatePhenotypeFrequency(category, newPhenotype, 1);
         }
+        relationship.addChildToRelationship(child);
         child.createDefaultDistributions();
         // ---------------------------------------------------------------------------------
-
-        child.setParentRelationship(relationship);
 
         return child;
     }
@@ -176,17 +173,18 @@ public class BreedingService {
     @Transactional
     public Sheep createAndInferSheep(SheepNewRequestDTO childRequest) {
         Sheep child = sheepService.fromRequestDTO(childRequest);
+        if (childRequest.getParent1Id() != null && childRequest.getParent2Id() != null) {
+            Sheep parent1 = sheepService.findById(childRequest.getParent1Id());
+            Sheep parent2 = sheepService.findById(childRequest.getParent2Id());
+            Relationship parentRelationship = relationshipService.findOrCreateRelationship(parent1, parent2);
+            parentRelationship.addChildToRelationship(child);
+        }
 
         Relationship relationship = child.getParentRelationship();
         // check if there is nothing to assign or infer
         if (relationship == null) {
             return sheepService.saveSheep(child);
         }
-
-
-        // check to make sure it logically makes sense for this to be a child of the relationship
-        // TODO - update the method to check that it will work
-        assignSheep(relationship, child);
 
         // get the new joint distribution from the additional offspring data
         inferenceEngine.findJointDistribution(relationship); // categorized for ensemble and loopy
@@ -204,15 +202,6 @@ public class BreedingService {
         return sheepService.saveSheep(child);
     }
 
-    private void assignSheep(Relationship relationship, Sheep child) {
-        // check to make sure it logically makes sense for this to be a child of the relationship
-        // TODO - add business logic check here
-
-        // update phenotype frequency
-        for (Category category : Category.values()) {
-            relationship.updatePhenotypeFrequency(category, child.getPhenotype(category), 1);
-        }
-    }
 
     public PredictionResponseDTO predictChild(Integer sheep1Id, Integer sheep2Id) {
         Sheep sheep1 = sheepService.findById(sheep1Id);
