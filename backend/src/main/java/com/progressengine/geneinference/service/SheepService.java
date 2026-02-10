@@ -139,6 +139,10 @@ public class SheepService {
     public Sheep replaceSheep(Integer sheepId, SheepReplaceRequestDTO sheepReplaceRequestDTO) {
         Sheep existing = findById(sheepId);
 
+        if (existing.getParentRelationship() != null) {
+            existing.getParentRelationship().removeChildFromRelationship(existing);
+        }
+
         existing.setName(sheepReplaceRequestDTO.getName());
         existing.setGenotypes(sheepReplaceRequestDTO.getGenotypes());
 
@@ -146,7 +150,7 @@ public class SheepService {
 
         if (sheepReplaceRequestDTO.getParentRelationshipId() != null) {
             Relationship relationship = relationshipService.findById(sheepReplaceRequestDTO.getParentRelationshipId());
-            existing.setParentRelationship(relationship);
+            relationship.addChildToRelationship(existing);
         } else {
             existing.setParentRelationship(null);
         }
@@ -163,12 +167,7 @@ public class SheepService {
         }
 
         Map<Category, SheepGenotypeDTO> updatedGenotypes = updateSheepModel.getGenotypes();
-        if (updatedGenotypes != null) {
-            for (Map.Entry<Category, SheepGenotypeDTO> entry : updatedGenotypes.entrySet()) {
-                GradePair genotype = entry.getValue().toGradePair();
-                sheep.setGenotype(entry.getKey(), genotype);
-            }
-        }
+        sheep.updateGenotypes(updatedGenotypes);
 
         Map<Category, Map<Grade, Double>> updatedPriors = updateSheepModel.getDistributions();
         if (updatedPriors != null) {

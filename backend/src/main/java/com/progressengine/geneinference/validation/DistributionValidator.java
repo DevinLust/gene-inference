@@ -35,7 +35,7 @@ public class DistributionValidator
                 continue; // move on to next category
             }
 
-            // 1️⃣ Check all grades present
+            // Check all grades present
             EnumSet<Grade> missingGrades = EnumSet.allOf(Grade.class);
             missingGrades.removeAll(dist.keySet());
             if (!missingGrades.isEmpty()) {
@@ -45,7 +45,7 @@ public class DistributionValidator
                 ).addConstraintViolation();
             }
 
-            // 2️⃣ Check values in range
+            // Check values in range
             for (Map.Entry<Grade, Double> gentry : dist.entrySet()) {
                 double v = gentry.getValue();
                 if (v < 0.0 || v > 1.0) {
@@ -57,7 +57,7 @@ public class DistributionValidator
                 }
             }
 
-            // 3️⃣ Check sum ≈ 1
+            // Check sum ≈ 1
             double sum = dist.values().stream().mapToDouble(Double::doubleValue).sum();
             if (Math.abs(sum - 1.0) > 1e-6) {
                 valid = false;

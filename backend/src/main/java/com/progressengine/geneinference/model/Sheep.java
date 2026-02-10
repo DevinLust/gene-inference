@@ -123,6 +123,18 @@ public class Sheep {
         }
     }
 
+    public void updateGenotypes(Map<Category, SheepGenotypeDTO> updatedGenotypes) {
+        if (this.parentRelationship != null) {
+            this.parentRelationship.updateChildPhenotypeFrequencies(this, updatedGenotypes);
+        } else if (updatedGenotypes != null && !updatedGenotypes.isEmpty()) {
+            for (Map.Entry<Category, SheepGenotypeDTO> entry : updatedGenotypes.entrySet()) {
+                Category category = entry.getKey();
+                GradePair genotype = entry.getValue().toGradePair();
+                createIfAbsentSheepGenotype(category).setGenotype(genotype);
+            }
+        }
+    }
+
     @Transactional
     public void setGenotype(Category category, GradePair genotype) {
         createIfAbsentSheepGenotype(category).setGenotype(genotype);
