@@ -16,7 +16,8 @@ import java.util.stream.Collectors;
         name = "Sheep.withDistributionsAndGenotypes",
         attributeNodes = {
                 @NamedAttributeNode("distributions"),
-                @NamedAttributeNode("genotypes")
+                @NamedAttributeNode("genotypes"),
+                @NamedAttributeNode("birthRecord")
         }
 )
 public class Sheep {
@@ -42,6 +43,9 @@ public class Sheep {
     @JoinColumn(name = "parent_relationship_id")
     private Relationship parentRelationship; // foreign key to Relationship
 
+    @OneToOne(mappedBy = "child", optional = true)
+    private BirthRecord birthRecord;
+
     public Sheep() {
     }
 
@@ -61,7 +65,17 @@ public class Sheep {
         this.name = name;
     }
 
-    // experimental List of Genotypes
+    public BirthRecord getBirthRecord() {
+        return birthRecord;
+    }
+
+    public void setBirthRecord(BirthRecord birthRecord) {
+        this.birthRecord = birthRecord;
+    }
+
+
+
+    /** Genotypes ------------------------------------------------------------------------------ */
     public Map<Category, SheepGenotypeDTO> getGenotypes() {
         Map<Category, SheepGenotypeDTO> genotypesByCategory = new EnumMap<>(Category.class);
 
@@ -135,6 +149,14 @@ public class Sheep {
         }
     }
 
+    public Grade evolvePhenotype(Category category) {
+        SheepGenotype genotype = findSheepGenotype(category);
+        Grade newPhenotype = genotype.getPhenotype().promoteOnce();
+        genotype.setPhenotype(newPhenotype);
+        return newPhenotype;
+    }
+
+
     @Transactional
     public void setGenotype(Category category, GradePair genotype) {
         createIfAbsentSheepGenotype(category).setGenotype(genotype);
@@ -171,9 +193,11 @@ public class Sheep {
     public void setHiddenAllele(String categoryStr, Grade hiddenAllele) {
         setHiddenAllele(Category.valueOf(categoryStr), hiddenAllele);
     }
+    // -------------------------------------------------------------------------------------------
 
 
-    // experimental List of SheepDistribution
+
+    /** SheepDistribution ------------------------------------------------------------------------- */
     private void validateDistribution(Map<Grade, Double> distribution) {
         // Validate all Grades are present
         Set<Grade> missingGrades = EnumSet.allOf(Grade.class);
@@ -392,6 +416,7 @@ public class Sheep {
     public void setParentRelationship(Relationship parentRelationship) {
         this.parentRelationship = parentRelationship;
     }
+    // -------------------------------------------------------------------------------------------
 
 
     private String formatErrorMessage(String specificMessage) {

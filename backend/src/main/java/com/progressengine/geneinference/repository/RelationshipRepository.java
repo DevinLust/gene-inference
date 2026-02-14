@@ -1,6 +1,7 @@
 package com.progressengine.geneinference.repository;
 
 import com.progressengine.geneinference.model.Relationship;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,6 +13,7 @@ import java.util.Optional;
 @Repository
 public interface RelationshipRepository extends JpaRepository<Relationship, Integer> {
 
+    @EntityGraph(attributePaths = {"birthRecords", "birthRecords.phenotypesAtBirth"})
     Optional<Relationship> findByParent1_IdAndParent2_Id(Integer parent1Id, Integer parent2Id);
 
     @Query("SELECT r FROM Relationship r WHERE r.parent1.id = :parentId OR r.parent2.id = :parentId")

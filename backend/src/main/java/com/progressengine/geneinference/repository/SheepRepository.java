@@ -36,7 +36,7 @@ public interface SheepRepository extends JpaRepository<Sheep, Integer>, JpaSpeci
             @Param("name") String name
     );
 
-    @EntityGraph(attributePaths = {"genotypes", "distributions"})
+    @EntityGraph(attributePaths = {"genotypes", "distributions", "birthRecord"})
     @Query("""
         SELECT DISTINCT s
         FROM Sheep s
@@ -58,7 +58,8 @@ public interface SheepRepository extends JpaRepository<Sheep, Integer>, JpaSpeci
 
     @EntityGraph(attributePaths = {
             "distributions",
-            "genotypes"
+            "genotypes",
+            "birthRecord"
     })
     Optional<Sheep> findWithAllById(Integer id);
 

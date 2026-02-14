@@ -59,7 +59,7 @@ public abstract class BaseInferenceEngine implements InferenceEngine {
     protected Map<GradePair, Map<Grade, Double>> findConditionalDistributions(Relationship relationship, Grade childPhenotype, Category category) {
         Grade phenotype1 = relationship.getParent1().getPhenotype(category);
         Grade phenotype2 = relationship.getParent2().getPhenotype(category);
-        Map<GradePair, Double> jointDistribution = relationship.getJointDistribution(category);
+        Map<GradePair, Double> jointDistribution = relationship.getJointDistributionsExperimental().get(category);
 
         // find the probability distribution of the hidden allele given both genotypes
         Map<GradePair, Map<Grade, Double>> conditionalDistributions = new HashMap<>();

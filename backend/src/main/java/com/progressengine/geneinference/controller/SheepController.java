@@ -2,6 +2,7 @@ package com.progressengine.geneinference.controller;
 
 import com.progressengine.geneinference.dto.*;
 import com.progressengine.geneinference.model.Sheep;
+import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.Grade;
 import com.progressengine.geneinference.service.BreedingService;
 import com.progressengine.geneinference.service.SheepService;
@@ -72,6 +73,11 @@ public class SheepController {
     @GetMapping("/{sheepId}/partners")
     public ResponseEntity<?> getPartners(@Positive @PathVariable Integer sheepId) {
         return ResponseEntity.ok(sheepService.getPartners(sheepId));
+    }
+
+    @PostMapping("/{id}/evolve/{category}")
+    public ResponseEntity<?> evolve(@PathVariable Integer id, @PathVariable Category category) {
+        return ResponseEntity.ok(sheepService.evolvePhenotype(id, category));
     }
 
     @PutMapping("/{sheepId}")

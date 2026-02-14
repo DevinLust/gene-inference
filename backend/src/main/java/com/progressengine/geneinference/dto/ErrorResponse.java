@@ -7,6 +7,7 @@ public class ErrorResponse {
     private String error;
     private String message;
     private Map<String, Object> details;
+    private String trace;
 
     public String getError() {
         return error;
@@ -18,6 +19,10 @@ public class ErrorResponse {
 
     public Map<String, Object> getDetails() {
         return details;
+    }
+
+    public String getTrace() {
+        return trace;
     }
 
     public static Builder builder() {
@@ -39,6 +44,11 @@ public class ErrorResponse {
 
         public Builder details(Map<String, Object> details) {
             response.details = details;
+            return this;
+        }
+
+        public Builder trace(String trace) {
+            response.trace = trace;
             return this;
         }
 

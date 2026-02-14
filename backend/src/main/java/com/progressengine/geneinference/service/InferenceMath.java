@@ -3,19 +3,31 @@ package com.progressengine.geneinference.service;
 import com.progressengine.geneinference.model.GradePair;
 import com.progressengine.geneinference.model.enums.Grade;
 
-import java.util.Map;
+import java.util.*;
 
 public final class InferenceMath {
 
-    // combine existing distribution with new distribution
-    public static void productOfExperts(Map<Grade, Double> existingDistribution, Map<Grade, Double> newDistribution) {
+    public static <T> void validateDistribution(Map<T, Double> distribution) {
+        // Validate sum ≈ 1.0
+        double total = distribution.values().stream()
+                .mapToDouble(Double::doubleValue)
+                .sum();
 
-        for (Map.Entry<Grade, Double> entry : existingDistribution.entrySet()) {
-            double newProbability = newDistribution.get(entry.getKey());
+        if (Math.abs(total - 1.0) > 1e-6) {
+            throw new IllegalArgumentException("Distribution probabilities must sum to 1.0 (±1e-6). Actual sum: " + total);
+        }
+    }
+
+    // combine existing distribution with new distribution
+    public static <T> void productOfExperts(Map<T, Double> existingDistribution, Map<T, Double> newDistribution) {
+        for (Map.Entry<T, Double> entry : existingDistribution.entrySet()) {
+            T key = entry.getKey();
+            double newProbability = newDistribution.getOrDefault(key, 0.0);
             entry.setValue(entry.getValue() * newProbability);
         }
 
         normalizeScores(existingDistribution);
+        validateDistribution(existingDistribution);
     }
 
     // Returns the probability the given allele came from each parent given the assumed hidden alleles
@@ -53,6 +65,20 @@ public final class InferenceMath {
         return probabilities;
     }
 
+    public static Map<GradePair, Double> multinomialJointScores(Grade phenotype1, Grade phenotype2, Map<Grade, Integer> phenotypeFrequency) {
+        Map<GradePair, Double> multinomialDistribution = new HashMap<>();
+        for (Grade grade1 : Grade.values()) {
+            for (Grade grade2 : Grade.values()) {
+                GradePair gradePair = new GradePair(grade1, grade2);
+                double multiScore = multinomialScore(gradePair, phenotype1, phenotype2, phenotypeFrequency);
+                multinomialDistribution.put(gradePair, multiScore);
+            }
+        }
+        normalizeScores(multinomialDistribution);
+        validateDistribution(multinomialDistribution);
+        return multinomialDistribution;
+    }
+
     // normalize the given Map of scores regardless of the key type
     public static <T> void normalizeScores(Map<T, Double> scores) {
         double sum = scores.values().stream().mapToDouble(Double::doubleValue).sum();
@@ -68,5 +94,29 @@ public final class InferenceMath {
         for (Grade grade : Grade.values()) {
             scores.putIfAbsent(grade, 0.0);
         }
+    }
+
+    // Returns a relative multinomial score based on the given hidden alleles, phenotypes, and phenotype frequency seen in the relationship
+    private static double multinomialScore(GradePair hiddenPair, Grade phenotype1, Grade phenotype2, Map<Grade, Integer> phenotypeFrequency) {
+        double score = 1000000.0; // A multiplicative constant to help keep scores from getting too small quickly
+
+        // each occurrence of a grade adds 1/4 to the probability of that grade
+        Map<Grade, Double> probabilityToDraw = new EnumMap<>(Grade.class);
+        probabilityToDraw.merge(phenotype1, 0.25, Double::sum);
+        probabilityToDraw.merge(phenotype2, 0.25, Double::sum);
+        probabilityToDraw.merge(hiddenPair.getFirst(), 0.25, Double::sum);
+        probabilityToDraw.merge(hiddenPair.getSecond(), 0.25, Double::sum);
+
+        for (Grade grade : Grade.values()) {
+            Double probability = probabilityToDraw.getOrDefault(grade, 0.0);
+            Integer frequency = phenotypeFrequency.getOrDefault(grade, 0);
+            if (probability == 0.0 && frequency > 0) {
+                score = 0.0;
+            } else if (frequency > 0) {
+                score *= Math.exp(frequency * Math.log(probability));
+            }
+        }
+
+        return score;
     }
 }

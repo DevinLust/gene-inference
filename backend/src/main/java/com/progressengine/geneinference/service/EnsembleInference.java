@@ -62,7 +62,7 @@ public class EnsembleInference extends BaseInferenceEngine {
         Map<GradePair, Map<Grade, Double>> conditionalDistributions = findConditionalDistributions(relationship, childPhenotype, category);
 
         // get a true joint distribution by multiplying each joint probability by the respective marginals and normalizing
-        Map<GradePair, Double> jointDistribution = relationship.getJointDistribution(category);
+        Map<GradePair, Double> jointDistribution = relationship.getJointDistributionsExperimental().get(category);
         // sum all conditional distributions from each genotype multiplied by the joint probability of that genotype
         for (Map.Entry<GradePair, Double> entry : jointDistribution.entrySet()) {
             GradePair gradePair = entry.getKey();

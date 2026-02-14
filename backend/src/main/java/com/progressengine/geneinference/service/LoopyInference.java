@@ -120,7 +120,7 @@ public class LoopyInference extends EnsembleInference {
      */
     private Map<Grade, Double> halfJointMarginal(Relationship relationship, Map<Grade, Double> weightDistribution, boolean firstParentAsWeight, Category category) {
         Map<Grade, Double> newHalfMarginal = new EnumMap<>(Grade.class);
-        Map<GradePair, Double> jointDistribution = relationship.getJointDistribution(category);
+        Map<GradePair, Double> jointDistribution = relationship.getJointDistributionsExperimental().get(category);
 
         for (Map.Entry<GradePair, Double> entry : jointDistribution.entrySet()) {
             GradePair pair = entry.getKey();

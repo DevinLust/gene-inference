@@ -39,10 +39,11 @@ public class ChildMessage extends RelationshipMessage {
         Message parent1Message = messages.get(0);
         Message parent2Message = messages.get(1);
 
-        Map<Category, Map<GradePair, Double>> jointDistributions = new EnumMap<>(Category.class);
-        for (Category category : Category.values()) {
-            jointDistributions.put(category, relationship.getJointDistribution(category));
-        }
+        // TODO - experimental joint dist
+        Map<Category, Map<GradePair, Double>> jointDistributions = relationship.getJointDistributionsExperimental();
+//        for (Category category : Category.values()) {
+//            jointDistributions.put(category, relationship.getJointDistribution(category));
+//        }
 
         // incorporate the parent messages into the joint distribution
         incorporateParents(jointDistributions, parent1Message, parent2Message);
@@ -74,14 +75,15 @@ public class ChildMessage extends RelationshipMessage {
     // Iterates through possible hidden pairs and weighting and accumulating their distributions
     private Map<Category, Map<Grade, Double>> accumulateConditionals(Map<Category, Map<GradePair, Double>> jointDistributions, Relationship relationship, Sheep child) {
         Map<Category, Map<Grade, Double>> result = new EnumMap<>(Category.class);
+        Map<Category, PhenotypeAtBirth> phenotypesAtBirth = child.getBirthRecord().getPhenotypesAtBirthOrganized();
 
         for (Category category : Category.values()) {
             Map<Grade, Double> catResult = new EnumMap<>(Grade.class);
             fillMissingWithZero(catResult);
             Map<GradePair, Double> jointDistribution = jointDistributions.get(category);
-            Grade parent1Phenotype = relationship.getParent1().getPhenotype(category);
-            Grade parent2Phenotype = relationship.getParent2().getPhenotype(category);
-            Grade childPhenotype = child.getPhenotype(category);
+            Grade parent1Phenotype = phenotypesAtBirth.get(category).parent1();
+            Grade parent2Phenotype = phenotypesAtBirth.get(category).parent2();
+            Grade childPhenotype = phenotypesAtBirth.get(category).child();
 
             for (Map.Entry<GradePair, Double> entry : jointDistribution.entrySet()) {
                 GradePair pair = entry.getKey();

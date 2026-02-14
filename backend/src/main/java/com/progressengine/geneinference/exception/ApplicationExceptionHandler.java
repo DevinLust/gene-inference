@@ -132,7 +132,9 @@ public class ApplicationExceptionHandler {
                         "previousAlleles", ex.getOldAlleleSet(),
                         "newAllele", ex.getNewAllele(),
                         "category",  ex.getCategory()
-                )).build();
+                ))
+                .trace(Arrays.toString(ex.getStackTrace()))
+                .build();
     }
 
 

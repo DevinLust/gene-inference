@@ -129,6 +129,12 @@ public class SheepService {
                 }).toList();
     }
 
+    public SheepResponseDTO evolvePhenotype(Integer sheepId, Category category) {
+        Sheep sheep = findById(sheepId);
+        sheep.evolvePhenotype(category);
+        return toResponseDTO(saveSheep(sheep));
+    }
+
     @Transactional
     public Sheep saveNewSheep(SheepNewRequestDTO sheepNewRequestDTO) {
         Sheep sheep = fromRequestDTO(sheepNewRequestDTO);

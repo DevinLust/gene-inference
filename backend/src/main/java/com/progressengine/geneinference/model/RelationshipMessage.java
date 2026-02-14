@@ -48,10 +48,11 @@ public class RelationshipMessage extends Message {
 
         boolean firstParentAsWeight = relationship.getParent2().equals(targetSheep);
         Map<Category, Map<Grade, Double>> weightDistribution = messages.getFirst().getDistribution();
-        Map<Category, Map<GradePair, Double>> jointDistributions = new EnumMap<>(Category.class);
-        for (Category category : Category.values()) {
-            jointDistributions.put(category, relationship.getJointDistribution(category));
-        }
+        // TODO - experimental cached values
+        Map<Category, Map<GradePair, Double>> jointDistributions = relationship.getJointDistributionsExperimental();
+//        for (Category category : Category.values()) {
+//            jointDistributions.put(category, relationship.getJointDistribution(category));
+//        }
 
         // need to incorporate child messages into the joint before marginalization
         for (int i = 1; i < messages.size(); i++) {
@@ -67,14 +68,15 @@ public class RelationshipMessage extends Message {
 
     protected void incorporateChildMessage(Map<Category, Map<GradePair, Double>> jointDistributions, Message message, Sheep parent1, Sheep parent2) {
         Sheep child = (Sheep) message.getSource().getValue();
+        Map<Category, PhenotypeAtBirth> phenotypesAtBirth = child.getBirthRecord().getPhenotypesAtBirthOrganized();
         for (Category category : Category.values()) {
             Map<GradePair, Double> jointDistribution = jointDistributions.get(category);
 
             Map<Grade, Double> childDistribution = message.getDistribution().get(category);
 
-            Grade childPhenotype = child.getPhenotype(category);
-            Grade phenotype1 = parent1.getPhenotype(category);
-            Grade phenotype2 = parent2.getPhenotype(category);
+            Grade childPhenotype = phenotypesAtBirth.get(category).child();
+            Grade phenotype1 = phenotypesAtBirth.get(category).parent1();
+            Grade phenotype2 = phenotypesAtBirth.get(category).parent2();
 
             // each hidden pair is scaled by how likely the phenotype is to come from one and how
             // likely the other contributed the hidden allele
