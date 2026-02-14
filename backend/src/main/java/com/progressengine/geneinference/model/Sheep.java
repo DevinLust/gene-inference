@@ -1,5 +1,6 @@
 package com.progressengine.geneinference.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.progressengine.geneinference.dto.SheepGenotypeDTO;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.DistributionType;
@@ -149,11 +150,10 @@ public class Sheep {
         }
     }
 
-    public Grade evolvePhenotype(Category category) {
+    public void evolvePhenotype(Category category) {
         SheepGenotype genotype = findSheepGenotype(category);
         Grade newPhenotype = genotype.getPhenotype().promoteOnce();
         genotype.setPhenotype(newPhenotype);
-        return newPhenotype;
     }
 
 
@@ -408,8 +408,10 @@ public class Sheep {
     }
 
 
+    @JsonIgnore
     public Relationship getParentRelationship() {
-        return parentRelationship;
+        if (birthRecord == null) return null;
+        return birthRecord.getParentRelationship();
     }
 
 
