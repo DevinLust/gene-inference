@@ -26,6 +26,7 @@ public class Relationship {
     private Sheep parent2; // foreign key to Sheep
 
     @OneToMany(mappedBy = "relationship", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @Deprecated
     private List<RelationshipJointDistribution> jointDistributions = new ArrayList<>();
 
     @Transient
@@ -36,6 +37,7 @@ public class Relationship {
 
     // One-to-many mapping to phenotype frequencies
     @OneToMany(mappedBy = "relationship", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Deprecated
     private List<RelationshipPhenotypeFrequency> phenotypeFrequencies = new ArrayList<>();
 
     @Transient
@@ -94,18 +96,20 @@ public class Relationship {
     }
 
     // Experimental BrithRecords
-    private void recordBirth(Sheep child) {
+    private BirthRecord recordBirth(Sheep child) {
         BirthRecord birthRecord = BirthRecord.create(this, child.getGenotypes(), child);
         birthRecords.add(birthRecord);
         frequencyCacheDirty = true;
         jointCacheDirty = true;
+        return birthRecord;
     }
 
-    private void recordBirth(Map<Category, SheepGenotypeDTO> childGenotypes) {
+    private BirthRecord recordBirth(Map<Category, SheepGenotypeDTO> childGenotypes) {
         BirthRecord birthRecord = BirthRecord.create(this, childGenotypes, null);
         birthRecords.add(birthRecord);
         frequencyCacheDirty = true;
         jointCacheDirty = true;
+        return birthRecord;
     }
 
     public Map<Category, Map<GradePair, Double>> getJointDistributionsExperimental() {
@@ -199,7 +203,6 @@ public class Relationship {
     private Map<Category, Map<GradePair, Map<Grade, Integer>>> copyFrequencyCache() {
         checkDirtyFrequencyCache();
 
-        System.out.println(phenotypeFrequencyCache);
         Map<Category, Map<GradePair, Map<Grade, Integer>>> result = new EnumMap<>(Category.class);
         for (Category category : Category.values()) {
             result.put(category, new HashMap<>());
@@ -396,26 +399,26 @@ public class Relationship {
     }
 
 
-    public void addChildToRelationshipExperimental(Sheep child) {
+    public BirthRecord addChildToRelationshipExperimental(Sheep child) {
         Relationship parent = child.getBirthRecord() != null ? child.getBirthRecord().getParentRelationship() : null;
         if (parent != null && this.id.equals(parent.getId())) {
-            return;
+            return child.getBirthRecord();
         } else if (parent != null) {
             throw new IllegalStateException("This child already belongs to a different relationship");
         }
 
         checkForExcessAllelesExperimental(child.getGenotypes());
-        recordBirth(child);
+        return recordBirth(child);
     }
 
 
-    public void addChildInformationToRelationship(Sheep child) {
+    public BirthRecord addChildInformationToRelationship(Sheep child) {
         if (child.getBirthRecord() != null) {
             throw new IllegalStateException("This child already belongs to a relationship");
         }
 
         checkForExcessAllelesExperimental(child.getGenotypes());
-        recordBirth(child.getGenotypes());
+        return recordBirth(child.getGenotypes());
     }
 
 

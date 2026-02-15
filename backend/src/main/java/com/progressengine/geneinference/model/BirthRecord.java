@@ -41,6 +41,9 @@ public class BirthRecord {
         }
 
         record.child = savedChildRef;
+        if (savedChildRef != null && savedChildRef.getBirthRecord() != record) {
+            savedChildRef.setBirthRecord(record);
+        }
         return record;
     }
 

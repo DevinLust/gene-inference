@@ -218,6 +218,16 @@ public class SheepService {
         return sheep;
     }
 
+    public Sheep fromRequestDTO(SheepBreedRequestDTO dto) {
+        Sheep sheep = new Sheep();
+        sheep.setName(dto.getName());
+        sheep.setGenotypes(dto.getGenotypes());
+
+        sheep.upsertDistributionsFromDTO(dto.getDistributions());
+
+        return sheep;
+    }
+
     public SheepResponseDTO toResponseDTO(Sheep sheep) {
         SheepResponseDTO responseDTO = new SheepResponseDTO();
         responseDTO.setId(sheep.getId());

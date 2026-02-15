@@ -4,11 +4,14 @@ import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.Grade;
 import com.progressengine.geneinference.validation.ValidDistribution;
 import com.progressengine.geneinference.validation.ValidGenotypes;
+import com.progressengine.geneinference.validation.ValidParents;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 
 import java.util.Map;
 
-public class SheepNewRequestDTO {
+@ValidParents
+public class SheepBreedRequestDTO {
     private String name;
 
     @NotNull
@@ -17,6 +20,12 @@ public class SheepNewRequestDTO {
 
     @ValidDistribution
     private Map<Category, Map<Grade, Double>> distributions;
+
+    @Positive(message = "parent1Id must be positive if present")
+    private Integer parent1Id;
+
+    @Positive(message = "parent2Id must be positive if present")
+    private Integer parent2Id;
 
 
     public String getName() {
@@ -43,12 +52,31 @@ public class SheepNewRequestDTO {
         this.distributions = distributions;
     }
 
+    public Integer getParent1Id() {
+        return parent1Id;
+    }
+
+    public void setParent1Id(Integer parent1Id) {
+        this.parent1Id = parent1Id;
+    }
+
+    public Integer getParent2Id() {
+        return parent2Id;
+    }
+
+    public void setParent2Id(Integer parent2Id) {
+        this.parent2Id = parent2Id;
+    }
+
     @Override
     public String toString() {
         return "SheepDTO{" +
                 "name='" + name + '\'' +
                 ", genotypes=" + genotypes +
                 ", distributions=" + distributions +
+                ", parent1Id=" + parent1Id +
+                ", parent2Id=" + parent2Id +
                 '}';
     }
 }
+

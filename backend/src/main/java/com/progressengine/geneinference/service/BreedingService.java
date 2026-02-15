@@ -1,8 +1,6 @@
 package com.progressengine.geneinference.service;
 
-import com.progressengine.geneinference.dto.BestPredictionDTO;
-import com.progressengine.geneinference.dto.PredictionResponseDTO;
-import com.progressengine.geneinference.dto.SheepNewRequestDTO;
+import com.progressengine.geneinference.dto.*;
 import com.progressengine.geneinference.exception.BadRequestException;
 import com.progressengine.geneinference.exception.IncompleteGenotypeException;
 import com.progressengine.geneinference.model.BirthRecord;
@@ -56,7 +54,7 @@ public class BreedingService {
      *     if the sheep ids refer to the same sheep
      */
     @Transactional
-    public Sheep breedAndInferSheep(Integer sheep1Id, Integer sheep2Id, boolean saveChild) {
+    public BirthRecord breedAndInferSheep(Integer sheep1Id, Integer sheep2Id, boolean saveChild) {
         if (sheep1Id.equals(sheep2Id)) {
             throw new BadRequestException("Parent sheep IDs must be different");
         }
@@ -72,24 +70,12 @@ public class BreedingService {
         Sheep newChild = breedNewSheep(relationship);
 
         // save new child if told and create a BirthRecord for the event
+        BirthRecord birthRecord;
         if (saveChild) {
-            relationship.addChildToRelationshipExperimental(sheepService.saveSheep(newChild));
+            birthRecord = relationship.addChildToRelationshipExperimental(sheepService.saveSheep(newChild));
         } else {
-            relationship.addChildInformationToRelationship(newChild);
+            birthRecord = relationship.addChildInformationToRelationship(newChild);
         }
-
-        // TODO - remember to remove
-        System.out.println(relationship.getJointDistributionsExperimental());
-
-        // get the new joint distribution from the additional offspring data
-        //inferenceEngine.findJointDistribution(relationship); // categorized for ensemble and loopy
-        /* ----------------------------------------------------------------------------------------- */
-
-        // update the marginal distributions of the parents' using the joint distribution
-        //inferenceEngine.updateMarginalProbabilities(relationship); // categorized for loopy
-
-        // infer child hidden distribution
-        //inferenceEngine.inferChildHiddenDistribution(relationship,  newChild);
 
         for (Category category : Category.values()) {
             newChild.setDistribution(category, DistributionType.INFERRED, newChild.getDistribution(category, DistributionType.PRIOR));
@@ -97,7 +83,7 @@ public class BreedingService {
 
         // TODO - propagate probability to other partners and children
 
-        return newChild;
+        return birthRecord;
     }
 
 
@@ -160,39 +146,39 @@ public class BreedingService {
      *     if either parent sheep does not exist
      */
     @Transactional
-    public Sheep createAndInferSheep(SheepNewRequestDTO childRequest) {
+    public BirthRecord createAndInferSheep(SheepBreedRequestDTO childRequest, boolean saveChild) {
         // TODO -- add a way to add information but not save it
         Sheep child = sheepService.fromRequestDTO(childRequest);
-
-        // check if there is nothing to infer
-        if (childRequest.getParent1Id() == null || childRequest.getParent2Id() == null) {
-            return sheepService.saveSheep(child);
-        }
 
         Sheep parent1 = sheepService.findById(childRequest.getParent1Id());
         Sheep parent2 = sheepService.findById(childRequest.getParent2Id());
         Relationship relationship = relationshipService.findOrCreateRelationship(parent1, parent2);
         /* ----------------------------------------------------------------------------------------
         * possibly belongs in relationship domain for invariant control */
-        relationship.addChildToRelationshipExperimental(sheepService.saveSheep(child));
-
-        // get the new joint distribution from the additional offspring data
-        //inferenceEngine.findJointDistribution(relationship); // categorized for ensemble and loopy
-        /* ---------------------------------------------------------------------------------------- */
-
-        // update the marginal distributions of the parents' using the joint distribution
-        //inferenceEngine.updateMarginalProbabilities(relationship); // categorized for loopy
-
-        // infer child hidden distribution
-        //inferenceEngine.inferChildHiddenDistribution(relationship,  child);
+        BirthRecord birthRecord;
+        if (saveChild) {
+            birthRecord = relationship.addChildToRelationshipExperimental(sheepService.saveSheep(child));
+        } else {
+            birthRecord = relationship.addChildInformationToRelationship(child);
+        }
 
         for (Category category : Category.values()) {
             child.setDistribution(category, DistributionType.INFERRED, child.getDistribution(category, DistributionType.PRIOR));
         }
 
-        return child;
+        return birthRecord;
     }
 
+    public BirthRecordDTO toResponseDTO(BirthRecord birthRecord) {
+        BirthRecordDTO dto = new BirthRecordDTO();
+        dto.setId(birthRecord.getId());
+        dto.setParentRelationshipId(birthRecord.getParentRelationship().getId());
+        if (birthRecord.getChild() != null) {
+            dto.setChildId(birthRecord.getChild().getId());
+        }
+        dto.setPhenotypesAtBirth(birthRecord.getPhenotypesAtBirthOrganized());
+        return dto;
+    }
 
     public PredictionResponseDTO predictChild(Integer sheep1Id, Integer sheep2Id) {
         Sheep sheep1 = sheepService.findById(sheep1Id);
