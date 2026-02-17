@@ -16,6 +16,7 @@ public interface RelationshipRepository extends JpaRepository<Relationship, Inte
     @EntityGraph(attributePaths = {"birthRecords", "birthRecords.phenotypesAtBirth"})
     Optional<Relationship> findByParent1_IdAndParent2_Id(Integer parent1Id, Integer parent2Id);
 
+    @EntityGraph(attributePaths = {"birthRecords", "birthRecords.phenotypesAtBirth", "birthRecords.child"})
     @Query("SELECT r FROM Relationship r WHERE r.parent1.id = :parentId OR r.parent2.id = :parentId")
     List<Relationship> findByParentId(@Param("parentId") Integer parentId);
 

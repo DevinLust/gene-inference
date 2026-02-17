@@ -95,6 +95,10 @@ public class Relationship {
         this.parent2 = parent2;
     }
 
+    public List<BirthRecord> getBirthRecords() {
+        return birthRecords;
+    }
+
     // Experimental BrithRecords
     private BirthRecord recordBirth(Sheep child) {
         BirthRecord birthRecord = BirthRecord.create(this, child.getGenotypes(), child);
@@ -216,6 +220,11 @@ public class Relationship {
             }
         }
         return result;
+    }
+
+    private void invalidateCaches() {
+        jointCacheDirty = true;
+        frequencyCacheDirty = true;
     }
 
 
@@ -383,31 +392,18 @@ public class Relationship {
             freq.setFrequency(phenotypeFrequency);
         }
     }
-    @Transactional
-    public void setPhenotypeFrequencies(String categoryStr, Map<Grade, Integer> phenotypeFrequencies) {
-        setPhenotypeFrequencies(Category.valueOf(categoryStr), phenotypeFrequencies);
-    }
 
 
-    private void addPhenotypeFrequency(Category category, Grade grade) {
-        Map<Grade, RelationshipPhenotypeFrequency> freqMap = createIfAbsentPhenotypeFrequencies(category);
-        freqMap.computeIfAbsent(grade, k -> {
-            RelationshipPhenotypeFrequency newFreq = new RelationshipPhenotypeFrequency(this, category, k);
-            this.phenotypeFrequencies.add(newFreq);
-            return newFreq;
-        }).addFrequency(1);
-    }
-
-
-    public BirthRecord addChildToRelationshipExperimental(Sheep child) {
+    public BirthRecord addChildToRelationship(Sheep child) {
         Relationship parent = child.getBirthRecord() != null ? child.getBirthRecord().getParentRelationship() : null;
-        if (parent != null && this.id.equals(parent.getId())) {
+        if (this.equals(parent)) {
             return child.getBirthRecord();
         } else if (parent != null) {
             throw new IllegalStateException("This child already belongs to a different relationship");
         }
 
         checkForExcessAllelesExperimental(child.getGenotypes());
+        invalidateCaches();
         return recordBirth(child);
     }
 
@@ -418,39 +414,27 @@ public class Relationship {
         }
 
         checkForExcessAllelesExperimental(child.getGenotypes());
+        invalidateCaches();
         return recordBirth(child.getGenotypes());
     }
 
 
-    public void addChildToRelationship(Sheep child) {
-        Relationship parent = child.getParentRelationship();
-        if (parent != null && this.id.equals(parent.getId())) return;
-
-        checkForExcessAlleles(child);
-        for (Category category : Category.values()) {
-            addPhenotypeFrequency(category, child.getPhenotype(category));
-        }
-
-        child.setParentRelationship(this);
-    }
-
-
     public void removeChildFromRelationship(Sheep child) {
-        Relationship parent = child.getParentRelationship();
+        BirthRecord birthRecord = child.getBirthRecord();
 
-        if (parent == null || !this.id.equals(parent.getId())) {
-            throw new IllegalArgumentException("Sheep is not a child of this relationship");
+        if (birthRecord == null || !this.equals(birthRecord.getParentRelationship())) {
+            throw new IllegalStateException("Sheep is not a child of this relationship");
         }
 
-        for (Category category : Category.values()) {
-            Map<Grade, RelationshipPhenotypeFrequency> freqMap = getPhenotypeFrequenciesByCategory(category);
-            freqMap.get(child.getPhenotype(category)).removeFrequency(1);
-        }
-
-        child.setParentRelationship(null);
+        birthRecords.remove(birthRecord);
+        child.setBirthRecord(null);
+        birthRecord.setChild(null);
+        birthRecord.setParentRelationship(null);
+        invalidateCaches();
     }
 
 
+    // TODO - update for birthRecords when constraints are figured out
     public void updateChildPhenotypeFrequencies(Sheep child, Map<Category, SheepGenotypeDTO> updatedGenotypes) {
         if (!this.id.equals(child.getParentRelationship().getId())) throw new IllegalArgumentException("Sheep is not a child of this relationship");
         if (updatedGenotypes == null || updatedGenotypes.isEmpty()) return;
@@ -563,5 +547,17 @@ public class Relationship {
             nonZeroCounts.remove(newAllele);
             throw new ExcessAlleleDiversityException("This operation would result in " + (maxDistinct + 1) + " distinct alleles when only " + maxDistinct + " are possible", nonZeroCounts, newAllele, category);
         }
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Relationship other)) return false;
+        return id != null && id.equals(other.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
     }
 }

@@ -5,6 +5,7 @@ import com.progressengine.geneinference.model.Sheep;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.DistributionType;
 import com.progressengine.geneinference.model.enums.Grade;
+import com.progressengine.geneinference.testutil.DomainFixtures;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,7 +33,7 @@ public class EnsembleInferenceTest extends InferenceEngineTest {
     @Test
     void testUpdateMarginalDistribution() {
         // Arrange
-        Sheep parent1 = createTestSheep(Map.of(
+        Sheep parent1 = DomainFixtures.createTestSheep(Map.of(
                 Category.SWIM, Grade.B,
                 Category.FLY, Grade.C,
                 Category.RUN, Grade.D,
@@ -40,7 +41,7 @@ public class EnsembleInferenceTest extends InferenceEngineTest {
                 Category.STAMINA, Grade.E
         ), 1);
 
-        Sheep parent2 = createTestSheep(Map.of(
+        Sheep parent2 = DomainFixtures.createTestSheep(Map.of(
                 Category.SWIM, Grade.B,
                 Category.FLY, Grade.A,
                 Category.RUN, Grade.A,
@@ -48,7 +49,7 @@ public class EnsembleInferenceTest extends InferenceEngineTest {
                 Category.STAMINA, Grade.S
         ), 2);
 
-        Relationship relationship = createTestRelationship(parent1, parent2, Map.ofEntries(
+        Relationship relationship = DomainFixtures.createTestRelationship(parent1, parent2, Map.ofEntries(
                 Map.entry(Category.SWIM, Map.ofEntries(
                         Map.entry(Grade.C, 1)
                 )),
@@ -97,7 +98,7 @@ public class EnsembleInferenceTest extends InferenceEngineTest {
     @Test
     void testInferChildDistributionChild1() {
         // Arrange
-        Sheep parent1 = createTestSheep(Map.of(
+        Sheep parent1 = DomainFixtures.createTestSheep(Map.of(
                 Category.SWIM, Grade.B,
                 Category.FLY, Grade.C,
                 Category.RUN, Grade.D,
@@ -105,7 +106,7 @@ public class EnsembleInferenceTest extends InferenceEngineTest {
                 Category.STAMINA, Grade.E
         ), 1);
 
-        Sheep parent2 = createTestSheep(Map.of(
+        Sheep parent2 = DomainFixtures.createTestSheep(Map.of(
                 Category.SWIM, Grade.B,
                 Category.FLY, Grade.A,
                 Category.RUN, Grade.A,
@@ -113,7 +114,7 @@ public class EnsembleInferenceTest extends InferenceEngineTest {
                 Category.STAMINA, Grade.S
         ), 2);
 
-        Relationship relationship = createTestRelationship(parent1, parent2, Map.ofEntries(
+        Relationship relationship = DomainFixtures.createTestRelationship(parent1, parent2, Map.ofEntries(
                 Map.entry(Category.SWIM, Map.ofEntries(
                         Map.entry(Grade.B, 53),
                         Map.entry(Grade.C, 24),
@@ -139,7 +140,7 @@ public class EnsembleInferenceTest extends InferenceEngineTest {
                 ))
         ), 1);
 
-        Sheep child = createTestSheep(Map.of(
+        Sheep child = DomainFixtures.createTestSheep(Map.of(
                 Category.SWIM, Grade.D,
                 Category.FLY, Grade.A,
                 Category.RUN, Grade.D,
@@ -170,7 +171,7 @@ public class EnsembleInferenceTest extends InferenceEngineTest {
     @Test
     void testInferChildDistributionChild2() {
         // Arrange
-        Sheep parent1 = createTestSheep(Map.of(
+        Sheep parent1 = DomainFixtures.createTestSheep(Map.of(
                 Category.SWIM, Grade.B,
                 Category.FLY, Grade.C,
                 Category.RUN, Grade.D,
@@ -178,7 +179,7 @@ public class EnsembleInferenceTest extends InferenceEngineTest {
                 Category.STAMINA, Grade.E
         ), 1);
 
-        Sheep parent2 = createTestSheep(Map.of(
+        Sheep parent2 = DomainFixtures.createTestSheep(Map.of(
                 Category.SWIM, Grade.B,
                 Category.FLY, Grade.A,
                 Category.RUN, Grade.A,
@@ -186,7 +187,7 @@ public class EnsembleInferenceTest extends InferenceEngineTest {
                 Category.STAMINA, Grade.S
         ), 2);
 
-        Relationship relationship = createTestRelationship(parent1, parent2, Map.ofEntries(
+        Relationship relationship = DomainFixtures.createTestRelationship(parent1, parent2, Map.ofEntries(
                 Map.entry(Category.SWIM, Map.ofEntries(
                         Map.entry(Grade.C, 1)
                 )),
@@ -204,7 +205,7 @@ public class EnsembleInferenceTest extends InferenceEngineTest {
                 ))
         ), 1);
 
-        Sheep child = createTestSheep(Map.of(
+        Sheep child = DomainFixtures.createTestSheep(Map.of(
                 Category.SWIM, Grade.C,
                 Category.FLY, Grade.C,
                 Category.RUN, Grade.D,

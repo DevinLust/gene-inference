@@ -72,7 +72,7 @@ public class BreedingService {
         // save new child if told and create a BirthRecord for the event
         BirthRecord birthRecord;
         if (saveChild) {
-            birthRecord = relationship.addChildToRelationshipExperimental(sheepService.saveSheep(newChild));
+            birthRecord = relationship.addChildToRelationship(sheepService.saveSheep(newChild));
         } else {
             birthRecord = relationship.addChildInformationToRelationship(newChild);
         }
@@ -157,7 +157,7 @@ public class BreedingService {
         * possibly belongs in relationship domain for invariant control */
         BirthRecord birthRecord;
         if (saveChild) {
-            birthRecord = relationship.addChildToRelationshipExperimental(sheepService.saveSheep(child));
+            birthRecord = relationship.addChildToRelationship(sheepService.saveSheep(child));
         } else {
             birthRecord = relationship.addChildInformationToRelationship(child);
         }

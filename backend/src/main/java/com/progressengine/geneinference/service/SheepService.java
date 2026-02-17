@@ -2,7 +2,7 @@ package com.progressengine.geneinference.service;
 
 import com.progressengine.geneinference.dto.*;
 import com.progressengine.geneinference.exception.ResourceNotFoundException;
-import com.progressengine.geneinference.model.GradePair;
+import com.progressengine.geneinference.model.BirthRecord;
 import com.progressengine.geneinference.model.Relationship;
 import com.progressengine.geneinference.model.Sheep;
 import com.progressengine.geneinference.model.enums.Category;
@@ -100,15 +100,10 @@ public class SheepService {
 
     @Transactional
     public List<SheepResponseDTO> getChildren(Integer sheepId) {
-        List<Relationship> relationships = relationshipService.findRelationshipsByParent(sheepId);
+        List<Integer> childIds = sheepRepository.findSavedChildIdsRearedBy(sheepId);
+        if (childIds.isEmpty()) return List.of();
 
-        if (relationships.isEmpty()) {
-            return List.of();
-        }
-
-        List<Integer> relationshipIds = relationships.stream().map(Relationship::getId).toList();
-
-        return sheepRepository.findAllByParentRelationship_IdIn(relationshipIds).stream().map(this::toResponseDTO).toList();
+        return sheepRepository.findWithAllByIdIn(childIds).stream().map(this::toResponseDTO).toList();
     }
 
     @Transactional
@@ -158,7 +153,7 @@ public class SheepService {
             Relationship relationship = relationshipService.findById(sheepReplaceRequestDTO.getParentRelationshipId());
             relationship.addChildToRelationship(existing);
         } else {
-            existing.setParentRelationship(null);
+            existing.setBirthRecord(null);
         }
 
         return sheepRepository.save(existing);
@@ -190,11 +185,16 @@ public class SheepService {
         Sheep sheep = findById(sheepId);
 
         List<Relationship> relationships = relationshipService.findRelationshipsByParent(sheepId);
-        Set<Integer> relationshipIds = relationships.stream().map(Relationship::getId).collect(Collectors.toSet());
 
-        List<Sheep> affectedChildren = sheepRepository.findAllByParentRelationship_IdIn(relationshipIds);
-        for (Sheep child : affectedChildren) {
-            child.setParentRelationship(null);
+        // set all children as founder sheep
+        for (Relationship relationship : relationships) {
+            for (BirthRecord br : relationship.getBirthRecords()) {
+                Sheep child = br.getChild();
+                if (child != null) {
+                    br.setChild(null);
+                    child.setBirthRecord(null);
+                }
+            }
         }
 
         // remove the sheep as a child if it has a parent relationship

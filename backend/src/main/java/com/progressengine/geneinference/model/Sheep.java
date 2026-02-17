@@ -40,10 +40,10 @@ public class Sheep {
     @Transient
     private boolean organized = false;
 
-    @ManyToOne
-    @JoinColumn(name = "parent_relationship_id")
-    @Deprecated
-    private Relationship parentRelationship; // foreign key to Relationship
+//    @ManyToOne
+//    @JoinColumn(name = "parent_relationship_id")
+//    @Deprecated
+//    private Relationship parentRelationship; // foreign key to Relationship
 
     @OneToOne(mappedBy = "child", optional = true)
     private BirthRecord birthRecord;
@@ -140,8 +140,9 @@ public class Sheep {
     }
 
     public void updateGenotypes(Map<Category, SheepGenotypeDTO> updatedGenotypes) {
-        if (this.parentRelationship != null) {
-            this.parentRelationship.updateChildPhenotypeFrequencies(this, updatedGenotypes);
+        if (this.birthRecord != null) {
+            Relationship parentRelationship = this.birthRecord.getParentRelationship();
+            parentRelationship.updateChildPhenotypeFrequencies(this, updatedGenotypes);
         } else if (updatedGenotypes != null && !updatedGenotypes.isEmpty()) {
             for (Map.Entry<Category, SheepGenotypeDTO> entry : updatedGenotypes.entrySet()) {
                 Category category = entry.getKey();
@@ -416,9 +417,9 @@ public class Sheep {
     }
 
 
-    public void setParentRelationship(Relationship parentRelationship) {
-        this.parentRelationship = parentRelationship;
-    }
+//    public void setParentRelationship(Relationship parentRelationship) {
+//        this.parentRelationship = parentRelationship;
+//    }
     // -------------------------------------------------------------------------------------------
 
 

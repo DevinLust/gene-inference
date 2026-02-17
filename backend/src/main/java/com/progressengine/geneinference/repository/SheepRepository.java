@@ -16,7 +16,20 @@ import java.util.Set;
 
 @Repository
 public interface SheepRepository extends JpaRepository<Sheep, Integer>, JpaSpecificationExecutor<Sheep> {
-    List<Sheep> findAllByParentRelationship_IdIn(Collection<Integer> parentRelationshipIds);
+    @Query("""
+    select distinct c.id
+    from BirthRecord br
+    join br.parentRelationship r
+    join br.child c
+    where (r.parent1.id = :parentId or r.parent2.id = :parentId)
+  """)
+    List<Integer> findSavedChildIdsRearedBy(@Param("parentId") Integer parentId);
+
+    @EntityGraph(attributePaths = {"genotypes", "distributions"})
+    @Query("select distinct s from Sheep s where s.id in :ids")
+    List<Sheep> findWithAllByIdIn(@Param("ids") List<Integer> ids);
+
+    //List<Sheep> findAllByParentRelationship_IdIn(Collection<Integer> parentRelationshipIds);
 
     @Query(value = """
         SELECT s.*
