@@ -1,10 +1,9 @@
 package com.progressengine.geneinference.controller;
 
 import com.progressengine.geneinference.dto.SheepBreedRequestDTO;
+import com.progressengine.geneinference.mapper.DomainMapper;
 import com.progressengine.geneinference.model.BirthRecord;
-import com.progressengine.geneinference.model.Sheep;
 import com.progressengine.geneinference.service.BreedingService;
-import com.progressengine.geneinference.service.SheepService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import org.springframework.http.ResponseEntity;
@@ -25,14 +24,14 @@ public class BreedController {
     public ResponseEntity<?> breed(@Positive @PathVariable Integer sheep1Id, @Positive @PathVariable Integer sheep2Id, @RequestParam(name = "saveChild", defaultValue = "true") boolean saveChild) {
         BirthRecord birthRecord = breedingService.breedAndInferSheep(sheep1Id, sheep2Id, saveChild);
 
-        return ResponseEntity.ok(breedingService.toResponseDTO(birthRecord));
+        return ResponseEntity.ok(DomainMapper.toResponseDTO(birthRecord));
     }
 
     @PostMapping(value = "/record-birth")
     public ResponseEntity<?> createChild(@Valid @RequestBody SheepBreedRequestDTO sheepBreedRequestDTO, @RequestParam(name = "saveChild", defaultValue = "true") boolean saveChild) {
         BirthRecord birthRecord = breedingService.createAndInferSheep(sheepBreedRequestDTO, saveChild);
 
-        return ResponseEntity.ok(breedingService.toResponseDTO(birthRecord));
+        return ResponseEntity.ok(DomainMapper.toResponseDTO(birthRecord));
     }
 
     @GetMapping("/{sheep1Id}/{sheep2Id}/predict")

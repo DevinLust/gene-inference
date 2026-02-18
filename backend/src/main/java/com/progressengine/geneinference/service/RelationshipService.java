@@ -2,9 +2,14 @@ package com.progressengine.geneinference.service;
 
 import com.progressengine.geneinference.dto.RelationshipResponseDTO;
 import com.progressengine.geneinference.exception.ResourceNotFoundException;
+import com.progressengine.geneinference.model.BirthRecord;
+import com.progressengine.geneinference.model.GradePair;
 import com.progressengine.geneinference.model.Relationship;
 import com.progressengine.geneinference.model.Sheep;
+import com.progressengine.geneinference.model.enums.Category;
+import com.progressengine.geneinference.repository.BirthRecordRepository;
 import com.progressengine.geneinference.repository.RelationshipRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -13,9 +18,11 @@ import java.util.*;
 public class RelationshipService {
 
     private final RelationshipRepository relationshipRepository;
+    private final BirthRecordRepository birthRecordRepository;
 
-    public RelationshipService(RelationshipRepository relationshipRepository) {
+    public RelationshipService(RelationshipRepository relationshipRepository, BirthRecordRepository birthRecordRepository) {
         this.relationshipRepository = relationshipRepository;
+        this.birthRecordRepository = birthRecordRepository;
     }
 
     public Relationship findById(Integer id) {
@@ -105,6 +112,10 @@ public class RelationshipService {
         return filterRelationshipsByParent(parent1.getId(), parent2.getId(), limitPerParent);
     }
 
+    public List<BirthRecord> findBirthRecordsByCategoryAndEpoch(Integer relationshipId, Category category, GradePair epoch) {
+        return birthRecordRepository.findBirthRecordsByParentPhenotypes(relationshipId, category, epoch.getFirst(), epoch.getSecond());
+    }
+
     /**
      * returns two lists of up to the given limit of relationships associated
      * with the corresponding parent order.
@@ -137,8 +148,25 @@ public class RelationshipService {
         relationshipRepository.deleteAll(relationships);
     }
 
-    public RelationshipResponseDTO toResponseDTO(Relationship relationship) {
-        return new RelationshipResponseDTO(relationship);
+    public BirthRecord findBirthRecordById(Integer id) {
+        return birthRecordRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Birth record not found"));
+    }
+
+    @Transactional
+    public void deleteBirthRecord(Integer birthRecordId) {
+        BirthRecord br = findBirthRecordById(birthRecordId);
+        Relationship rel = br.getParentRelationship(); // managed
+
+        // If this birth record is linked to a saved child sheep, detach both sides
+        Sheep child = br.getChild();
+        if (child != null) {
+            br.setChild(null);            // owning side
+            child.setBirthRecord(null);   // inverse side
+        }
+
+        rel.removeBirthRecord(br);
+        birthRecordRepository.deleteById(birthRecordId); // might not be needed
     }
 
 

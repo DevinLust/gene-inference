@@ -1,6 +1,7 @@
 package com.progressengine.geneinference.controller;
 
 import com.progressengine.geneinference.dto.*;
+import com.progressengine.geneinference.mapper.DomainMapper;
 import com.progressengine.geneinference.model.Sheep;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.Grade;
@@ -27,14 +28,14 @@ public class SheepController {
     @PostMapping(consumes = {"application/json", "application/json;charset=UTF-8"})
     public ResponseEntity<?> addSheep(@Valid @RequestBody SheepNewRequestDTO sheepNewRequestDTO) {
         Sheep child = sheepService.saveNewSheep(sheepNewRequestDTO);
-        return ResponseEntity.ok().body(sheepService.toResponseDTO(child));
+        return ResponseEntity.ok().body(DomainMapper.toResponseDTO(child));
     }
 
     @GetMapping
     public List<SheepResponseDTO> getAllSheep() {
         List<Sheep> sheepList = sheepService.getAllSheep();
         return sheepList.stream()
-                .map(sheepService::toResponseDTO)
+                .map(DomainMapper::toResponseDTO)
                 .toList();
     }
 
@@ -47,14 +48,14 @@ public class SheepController {
         Set<Grade> gradeSet = grades == null ? Collections.emptySet() : new HashSet<>(grades);
 
         return sheepService.filterSheep(name, gradeSet).stream()
-                .map(sheepService::toResponseDTO)
+                .map(DomainMapper::toResponseDTO)
                 .toList();
     }
 
     @GetMapping("/{sheepId}")
     public SheepResponseDTO getSheep(@Positive @PathVariable Integer sheepId) {
         Sheep sheep = sheepService.findById(sheepId);
-        return sheepService.toResponseDTO(sheep);
+        return DomainMapper.toResponseDTO(sheep);
     }
 
     @GetMapping("/{sheepId}/parents")
@@ -80,13 +81,13 @@ public class SheepController {
     @PutMapping("/{sheepId}")
     public ResponseEntity<?> replaceSheep(@Positive @PathVariable Integer sheepId, @Valid @RequestBody SheepReplaceRequestDTO replacementSheep) {
         Sheep updatedSheep = sheepService.replaceSheep(sheepId, replacementSheep);
-        return ResponseEntity.ok(sheepService.toResponseDTO(updatedSheep));
+        return ResponseEntity.ok(DomainMapper.toResponseDTO(updatedSheep));
     }
 
     @PatchMapping("/{sheepId}")
     public ResponseEntity<?> updateSheep(@Positive @PathVariable Integer sheepId, @Valid @RequestBody SheepUpdateRequestDTO updateSheepModel) {
         Sheep updatedSheep = sheepService.updateSheep(sheepId, updateSheepModel);
-        return ResponseEntity.ok(sheepService.toResponseDTO(updatedSheep));
+        return ResponseEntity.ok(DomainMapper.toResponseDTO(updatedSheep));
     }
 
     @DeleteMapping("/{sheepId}")

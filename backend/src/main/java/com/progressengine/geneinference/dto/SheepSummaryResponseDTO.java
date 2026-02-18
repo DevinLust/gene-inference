@@ -6,9 +6,9 @@ public class SheepSummaryResponseDTO {
     private final Integer id;
     private final String name;
 
-    public SheepSummaryResponseDTO(Sheep sheep) {
-        this.id = sheep.getId();
-        this.name = sheep.getName();
+    public SheepSummaryResponseDTO(Integer id, String name) {
+        this.id = id;
+        this.name = name;
     }
 
     public Integer getId() {

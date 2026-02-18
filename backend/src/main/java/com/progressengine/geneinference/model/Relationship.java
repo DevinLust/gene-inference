@@ -227,6 +227,12 @@ public class Relationship {
         frequencyCacheDirty = true;
     }
 
+    public void removeBirthRecord(BirthRecord br) {
+        birthRecords.remove(br);
+        br.setParentRelationship(null); // helps orphanRemoval trigger reliably
+        invalidateCaches();
+    }
+
 
     // experimental List of RelationshipJointDistribution
     @PostLoad

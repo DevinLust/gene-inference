@@ -2,6 +2,7 @@ package com.progressengine.geneinference.service;
 
 import com.progressengine.geneinference.dto.*;
 import com.progressengine.geneinference.exception.ResourceNotFoundException;
+import com.progressengine.geneinference.mapper.DomainMapper;
 import com.progressengine.geneinference.model.BirthRecord;
 import com.progressengine.geneinference.model.Relationship;
 import com.progressengine.geneinference.model.Sheep;
@@ -93,8 +94,8 @@ public class SheepService {
         parents.sort((a, b) -> a.getId().compareTo(b.getId()));
 
         return Map.of(
-                "parent1", toResponseDTO(parents.get(0)),
-                "parent2", toResponseDTO(parents.get(1))
+                "parent1", DomainMapper.toResponseDTO(parents.get(0)),
+                "parent2", DomainMapper.toResponseDTO(parents.get(1))
         );
     }
 
@@ -103,7 +104,7 @@ public class SheepService {
         List<Integer> childIds = sheepRepository.findSavedChildIdsRearedBy(sheepId);
         if (childIds.isEmpty()) return List.of();
 
-        return sheepRepository.findWithAllByIdIn(childIds).stream().map(this::toResponseDTO).toList();
+        return sheepRepository.findWithAllByIdIn(childIds).stream().map(DomainMapper::toResponseDTO).toList();
     }
 
     @Transactional
@@ -117,9 +118,9 @@ public class SheepService {
         return relationships.stream()
                 .map(rel -> {
                     if (rel.getParent1().getId().equals(sheepId)) {
-                        return toResponseDTO(rel.getParent2());
+                        return DomainMapper.toResponseDTO(rel.getParent2());
                     } else {
-                        return toResponseDTO(rel.getParent1());
+                        return DomainMapper.toResponseDTO(rel.getParent1());
                     }
                 }).toList();
     }
@@ -127,12 +128,12 @@ public class SheepService {
     public SheepResponseDTO evolvePhenotype(Integer sheepId, Category category) {
         Sheep sheep = findById(sheepId);
         sheep.evolvePhenotype(category);
-        return toResponseDTO(saveSheep(sheep));
+        return DomainMapper.toResponseDTO(saveSheep(sheep));
     }
 
     @Transactional
     public Sheep saveNewSheep(SheepNewRequestDTO sheepNewRequestDTO) {
-        Sheep sheep = fromRequestDTO(sheepNewRequestDTO);
+        Sheep sheep = DomainMapper.fromRequestDTO(sheepNewRequestDTO);
         return sheepRepository.save(sheep);
     }
 
@@ -206,39 +207,5 @@ public class SheepService {
         relationshipService.deleteAll(relationships);
 
         sheepRepository.delete(sheep);
-    }
-
-    public Sheep fromRequestDTO(SheepNewRequestDTO dto) {
-        Sheep sheep = new Sheep();
-        sheep.setName(dto.getName());
-        sheep.setGenotypes(dto.getGenotypes());
-
-        sheep.upsertDistributionsFromDTO(dto.getDistributions());
-
-        return sheep;
-    }
-
-    public Sheep fromRequestDTO(SheepBreedRequestDTO dto) {
-        Sheep sheep = new Sheep();
-        sheep.setName(dto.getName());
-        sheep.setGenotypes(dto.getGenotypes());
-
-        sheep.upsertDistributionsFromDTO(dto.getDistributions());
-
-        return sheep;
-    }
-
-    public SheepResponseDTO toResponseDTO(Sheep sheep) {
-        SheepResponseDTO responseDTO = new SheepResponseDTO();
-        responseDTO.setId(sheep.getId());
-        responseDTO.setName(sheep.getName());
-        responseDTO.setGenotypes(sheep.getGenotypes());
-        responseDTO.setDistributions(sheep.getAllDistributions());
-
-        if (sheep.getParentRelationship() != null) {
-            responseDTO.setParentRelationshipId(sheep.getParentRelationship().getId());
-        }
-
-        return responseDTO;
     }
 }

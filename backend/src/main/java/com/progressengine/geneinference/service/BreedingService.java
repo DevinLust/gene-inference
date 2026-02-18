@@ -3,16 +3,17 @@ package com.progressengine.geneinference.service;
 import com.progressengine.geneinference.dto.*;
 import com.progressengine.geneinference.exception.BadRequestException;
 import com.progressengine.geneinference.exception.IncompleteGenotypeException;
-import com.progressengine.geneinference.model.BirthRecord;
-import com.progressengine.geneinference.model.FactorGraph;
-import com.progressengine.geneinference.model.Relationship;
-import com.progressengine.geneinference.model.Sheep;
+import com.progressengine.geneinference.exception.ResourceNotFoundException;
+import com.progressengine.geneinference.mapper.DomainMapper;
+import com.progressengine.geneinference.model.*;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.DistributionType;
 import com.progressengine.geneinference.model.enums.Grade;
 
+import com.progressengine.geneinference.repository.BirthRecordRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.crossstore.ChangeSetPersister;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -26,11 +27,13 @@ public class BreedingService {
     private final SheepService sheepService;
     private final RelationshipService relationshipService;
     private final InferenceEngine inferenceEngine;
+    private final BirthRecordRepository birthRecordRepository;
 
-    public BreedingService(SheepService sheepService, RelationshipService relationshipService, @Qualifier("loopy") InferenceEngine inferenceEngine) {
+    public BreedingService(SheepService sheepService, RelationshipService relationshipService, @Qualifier("loopy") InferenceEngine inferenceEngine, BirthRecordRepository birthRecordRepository) {
         this.sheepService = sheepService;
         this.relationshipService = relationshipService;
         this.inferenceEngine = inferenceEngine;
+        this.birthRecordRepository = birthRecordRepository;
     }
 
 
@@ -148,7 +151,7 @@ public class BreedingService {
     @Transactional
     public BirthRecord createAndInferSheep(SheepBreedRequestDTO childRequest, boolean saveChild) {
         // TODO -- add a way to add information but not save it
-        Sheep child = sheepService.fromRequestDTO(childRequest);
+        Sheep child = DomainMapper.fromRequestDTO(childRequest);
 
         Sheep parent1 = sheepService.findById(childRequest.getParent1Id());
         Sheep parent2 = sheepService.findById(childRequest.getParent2Id());
@@ -169,15 +172,25 @@ public class BreedingService {
         return birthRecord;
     }
 
-    public BirthRecordDTO toResponseDTO(BirthRecord birthRecord) {
-        BirthRecordDTO dto = new BirthRecordDTO();
-        dto.setId(birthRecord.getId());
-        dto.setParentRelationshipId(birthRecord.getParentRelationship().getId());
-        if (birthRecord.getChild() != null) {
-            dto.setChildId(birthRecord.getChild().getId());
+    public BirthRecord findBirthRecordById(Integer id) {
+        return birthRecordRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Birth record not found"));
+    }
+
+    @Transactional
+    public void deleteBirthRecord(Integer birthRecordId) {
+        BirthRecord br = findBirthRecordById(birthRecordId);
+        Relationship rel = br.getParentRelationship(); // managed
+
+        // If this birth record is linked to a saved child sheep, detach both sides
+        Sheep child = br.getChild();
+        if (child != null) {
+            br.setChild(null);            // owning side
+            child.setBirthRecord(null);   // inverse side
         }
-        dto.setPhenotypesAtBirth(birthRecord.getPhenotypesAtBirthOrganized());
-        return dto;
+
+        rel.removeBirthRecord(br);
+        birthRecordRepository.deleteById(birthRecordId); // might not be needed
     }
 
     public PredictionResponseDTO predictChild(Integer sheep1Id, Integer sheep2Id) {
@@ -228,7 +241,9 @@ public class BreedingService {
                 Sheep parent1 = bestSheepList.get(i);
                 Sheep parent2 = bestSheepList.get(j);
                 Map<Category, Map<Grade, Double>> predictionMap = inferenceEngine.predictChildrenDistributions(parent1, parent2);
-                predictions.add(new BestPredictionDTO(parent1, parent2, sheepToCategoryMap.get(parent1), sheepToCategoryMap.get(parent2), predictionMap));
+                SheepSummaryResponseDTO parent1Summary = new SheepSummaryResponseDTO(parent1.getId(), parent1.getName());
+                SheepSummaryResponseDTO parent2Summary = new SheepSummaryResponseDTO(parent2.getId(), parent2.getName());
+                predictions.add(new BestPredictionDTO(parent1Summary, parent2Summary, sheepToCategoryMap.get(parent1), sheepToCategoryMap.get(parent2), predictionMap));
             }
         }
         predictions.sort(null);
