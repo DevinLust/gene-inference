@@ -13,7 +13,6 @@ import com.progressengine.geneinference.model.enums.Grade;
 import com.progressengine.geneinference.repository.BirthRecordRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.data.crossstore.ChangeSetPersister;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -83,8 +82,6 @@ public class BreedingService {
         for (Category category : Category.values()) {
             newChild.setDistribution(category, DistributionType.INFERRED, newChild.getDistribution(category, DistributionType.PRIOR));
         }
-
-        // TODO - propagate probability to other partners and children
 
         return birthRecord;
     }
@@ -255,9 +252,6 @@ public class BreedingService {
     public List<Map<Category, Map<Grade, Double>>> recalculateAll() {
         List<Sheep> allSheep = sheepService.getAllSheep();
         List<Relationship> allRelationship = relationshipService.getAllRelationships();
-        for (Relationship relationship : allRelationship) {
-            inferenceEngine.findJointDistribution(relationship);
-        }
 
         FactorGraph factorGraph = new FactorGraph(allSheep, allRelationship);
         factorGraph.recalculateAllMessages();

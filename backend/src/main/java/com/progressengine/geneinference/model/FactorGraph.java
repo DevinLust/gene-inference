@@ -103,7 +103,6 @@ public class FactorGraph {
         int MAX_ITERATIONS = messageMap.size() * 20;
         int iterations = 0;
         while (!frontier.isEmpty() && iterations < MAX_ITERATIONS) {
-            System.out.println("Size of queue: " + frontier.size()); // remove after testing
             Message message = frontier.poll();
             Map<Category, Map<Grade, Double>> newMessage = computeMessage(message);
 
@@ -113,9 +112,6 @@ public class FactorGraph {
                 iterations++;
             }
         }
-
-        // TODO - remove this after initial testing
-        System.out.println("Iterations needed: " + iterations + " of " + MAX_ITERATIONS);
     }
 
     public List<Map<Category, Map<Grade, Double>>> computeBeliefs() {

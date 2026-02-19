@@ -81,7 +81,7 @@ public class DomainFixtures {
                 brp.setAllPhenotypes(choice.parents, choice.child);
                 br.getPhenotypesAtBirth().add(brp);
             }
-            relationship.getBirthRecords().add(br);
+            relationship.addBirthRecord(br);
         }
 
         return relationship;

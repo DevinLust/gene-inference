@@ -96,7 +96,7 @@ public class Relationship {
     }
 
     public List<BirthRecord> getBirthRecords() {
-        return birthRecords;
+        return Collections.unmodifiableList(birthRecords);
     }
 
     // Experimental BrithRecords
@@ -225,6 +225,12 @@ public class Relationship {
     private void invalidateCaches() {
         jointCacheDirty = true;
         frequencyCacheDirty = true;
+    }
+
+    public void addBirthRecord(BirthRecord birthRecord) {
+        birthRecords.add(birthRecord);
+        birthRecord.setParentRelationship(this);
+        invalidateCaches();
     }
 
     public void removeBirthRecord(BirthRecord br) {
@@ -442,7 +448,8 @@ public class Relationship {
 
     // TODO - update for birthRecords when constraints are figured out
     public void updateChildPhenotypeFrequencies(Sheep child, Map<Category, SheepGenotypeDTO> updatedGenotypes) {
-        if (!this.id.equals(child.getParentRelationship().getId())) throw new IllegalArgumentException("Sheep is not a child of this relationship");
+        BirthRecord birthRecord = child.getBirthRecord();
+        if (birthRecord == null || !this.equals(birthRecord.getParentRelationship())) throw new IllegalArgumentException("Sheep is not a child of this relationship");
         if (updatedGenotypes == null || updatedGenotypes.isEmpty()) return;
 
         Map<Category, GradePair> phenotypeDeltas = new EnumMap<>(Category.class);
