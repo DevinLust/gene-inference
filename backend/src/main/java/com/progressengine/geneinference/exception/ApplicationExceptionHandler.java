@@ -133,7 +133,6 @@ public class ApplicationExceptionHandler {
                         "newAllele", ex.getNewAllele(),
                         "category",  ex.getCategory()
                 ))
-                .trace(Arrays.toString(ex.getStackTrace()))
                 .build();
     }
 

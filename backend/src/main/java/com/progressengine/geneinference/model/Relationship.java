@@ -9,7 +9,6 @@ import jakarta.persistence.*;
 import jakarta.transaction.Transactional;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Entity
 public class Relationship {
@@ -25,24 +24,6 @@ public class Relationship {
     @JoinColumn(name = "parent2_id")
     private Sheep parent2; // foreign key to Sheep
 
-    @OneToMany(mappedBy = "relationship", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
-    @Deprecated
-    private List<RelationshipJointDistribution> jointDistributions = new ArrayList<>();
-
-    @Transient
-    private Map<Category, Map<GradePair, RelationshipJointDistribution>> jointDistributionsByCategory = new EnumMap<>(Category.class);
-
-    @Transient
-    private boolean jointDistributionsOrganized = false;
-
-    // One-to-many mapping to phenotype frequencies
-    @OneToMany(mappedBy = "relationship", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Deprecated
-    private List<RelationshipPhenotypeFrequency> phenotypeFrequencies = new ArrayList<>();
-
-    @Transient
-    private Map<Category, Map<Grade, RelationshipPhenotypeFrequency>> phenotypeFrequenciesByCategory = new EnumMap<>(Category.class);
-
     @Transient
     private Map<Category, Map<GradePair, Double>> jointDistributionCache;
 
@@ -55,9 +36,6 @@ public class Relationship {
 
     @Transient
     private boolean frequencyCacheDirty = true;
-
-    @Transient
-    private boolean phenotypeFrequenciesOrganized = false;
 
     @OneToMany(mappedBy = "parentRelationship", cascade = CascadeType.ALL, orphanRemoval = true)
     private final List<BirthRecord> birthRecords = new ArrayList<>();
@@ -95,9 +73,11 @@ public class Relationship {
         this.parent2 = parent2;
     }
 
+
     public List<BirthRecord> getBirthRecords() {
         return Collections.unmodifiableList(birthRecords);
     }
+
 
     // Experimental BrithRecords
     private BirthRecord recordBirth(Sheep child) {
@@ -108,6 +88,7 @@ public class Relationship {
         return birthRecord;
     }
 
+
     private BirthRecord recordBirth(Map<Category, SheepGenotypeDTO> childGenotypes) {
         BirthRecord birthRecord = BirthRecord.create(this, childGenotypes, null);
         birthRecords.add(birthRecord);
@@ -116,11 +97,13 @@ public class Relationship {
         return birthRecord;
     }
 
-    public Map<Category, Map<GradePair, Double>> getJointDistributionsExperimental() {
+
+    public Map<Category, Map<GradePair, Double>> getJointDistributions() {
         checkDirtyJointCache();
 
         return copyJointCache();
     }
+
 
     private void checkDirtyJointCache() {
         if (jointCacheDirty || jointDistributionCache == null) {
@@ -129,9 +112,10 @@ public class Relationship {
         }
     }
 
+
     private Map<Category, Map<GradePair, Double>> computeJointCache() {
         Map<Category, Map<GradePair, Double>> result = new EnumMap<>(Category.class);
-        Map<Category, Map<GradePair, Map<Grade, Integer>>> phenotypeRecordFrequencies = getFrequenciesExperimental();
+        Map<Category, Map<GradePair, Map<Grade, Integer>>> phenotypeRecordFrequencies = copyFrequencyCache();
 
         for (Category category : Category.values()) {
             Map<GradePair, Double> jointEpoch = uniformJointDistribution();
@@ -149,6 +133,7 @@ public class Relationship {
         return result;
     }
 
+
     private Map<GradePair, Double> uniformJointDistribution() {
         Map<GradePair, Double> result = new HashMap<>();
         for (Grade g1 : Grade.values()) {
@@ -159,6 +144,7 @@ public class Relationship {
         InferenceMath.normalizeScores(result);
         return result;
     }
+
 
     private Map<Category, Map<GradePair, Double>> copyJointCache() {
         checkDirtyJointCache();
@@ -174,11 +160,13 @@ public class Relationship {
         return result;
     }
 
-    public Map<Category, Map<GradePair, Map<Grade, Integer>>> getFrequenciesExperimental() {
+
+    public Map<Category, Map<GradePair, Map<Grade, Integer>>> getPhenotypeFrequencies() {
         checkDirtyFrequencyCache();
 
         return copyFrequencyCache();
     }
+
 
     private void checkDirtyFrequencyCache() {
         if (frequencyCacheDirty || phenotypeFrequencyCache == null) {
@@ -186,6 +174,7 @@ public class Relationship {
             frequencyCacheDirty = false;
         }
     }
+
 
     private Map<Category, Map<GradePair, Map<Grade, Integer>>> aggregateFrequenciesFromBirthRecords() {
         Map<Category, Map<GradePair, Map<Grade, Integer>>> result = new EnumMap<>(Category.class);
@@ -203,6 +192,7 @@ public class Relationship {
         }
         return result;
     }
+
 
     private Map<Category, Map<GradePair, Map<Grade, Integer>>> copyFrequencyCache() {
         checkDirtyFrequencyCache();
@@ -222,16 +212,19 @@ public class Relationship {
         return result;
     }
 
+
     private void invalidateCaches() {
         jointCacheDirty = true;
         frequencyCacheDirty = true;
     }
+
 
     public void addBirthRecord(BirthRecord birthRecord) {
         birthRecords.add(birthRecord);
         birthRecord.setParentRelationship(this);
         invalidateCaches();
     }
+
 
     public void removeBirthRecord(BirthRecord br) {
         birthRecords.remove(br);
@@ -240,169 +233,35 @@ public class Relationship {
     }
 
 
-    // experimental List of RelationshipJointDistribution
-    @PostLoad
-    private void postLoad() {
-        organizeJointDistributions();
-        organizePhenotypeFrequencies();
-    }
-
-
-    private void organizeJointDistributions() {
-        if (jointDistributions == null) return;
-
-        jointDistributionsByCategory = new EnumMap<>(Category.class);
-        for (Category category : Category.values()) {
-            jointDistributionsByCategory.put(category, new HashMap<>());
-        }
-
-        for (RelationshipJointDistribution dist : jointDistributions) {
-            GradePair gradePairKey = new GradePair(dist.getGrade1(), dist.getGrade2());
-            jointDistributionsByCategory
-                    .computeIfAbsent(dist.getCategory(), k -> new HashMap<>())
-                    .put(gradePairKey, dist);
-        }
-        jointDistributionsOrganized = true;
-    }
-
-
-    private void organizePhenotypeFrequencies() {
-        if (phenotypeFrequencies == null) return;
-
-        phenotypeFrequenciesByCategory = new EnumMap<>(Category.class);
-        for (Category category : Category.values()) {
-            phenotypeFrequenciesByCategory.put(category, new EnumMap<>(Grade.class));
-        }
-
-        for (RelationshipPhenotypeFrequency freq : phenotypeFrequencies) {
-            phenotypeFrequenciesByCategory
-                    .computeIfAbsent(freq.getCategory(), k -> new EnumMap<>(Grade.class))
-                    .put(freq.getAllele(), freq);
-        }
-        phenotypeFrequenciesOrganized = true;
-    }
-
-
-    private Map<GradePair, RelationshipJointDistribution> getDistributionByCategory(Category category) {
-        if (!jointDistributionsByCategory.containsKey(category)) {
-            throw new IllegalStateException("Distribution not initialized for category " + category);
-        }
-        return jointDistributionsByCategory.get(category);
-    }
-
-
     public Map<GradePair, Double> getJointDistribution(Category category) {
-        if (!jointDistributionsOrganized) organizeJointDistributions();
-
-        Map<GradePair, RelationshipJointDistribution> jointDistMap = getDistributionByCategory(category);
-
-        return jointDistMap.entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getProbability()));
-    }
-    public Map<GradePair, Double> getJointDistribution(String categoryStr) {
-        return getJointDistribution(Category.valueOf(categoryStr));
-    }
-
-
-    private Map<GradePair, RelationshipJointDistribution> createIfAbsentDistributionByCategory(Category category) {
-        return jointDistributionsByCategory
-                .computeIfAbsent(category, k -> new HashMap<>());
+        return copyJointCache().get(category);
     }
 
 
     @Transactional
     public void setJointDistribution(Category category, Map<GradePair, Double> jointDistribution) {
-        if  (!jointDistributionsOrganized) organizeJointDistributions();
+        // no op
+    }
 
-        int expectedSize = Grade.values().length * Grade.values().length;
-        if (jointDistribution.size() != expectedSize) {
-            throw new IllegalArgumentException("Joint Distribution does not meet expected size: " + expectedSize + " | Actual size: " + jointDistribution.size());
+
+    // return the phenotype frequencies of the current epoch
+    public Map<Grade, Integer> getCurrentPhenotypeFrequencies(Category category) {
+        Map<GradePair, Map<Grade, Integer>> epochFreq = copyFrequencyCache().get(category);
+        GradePair parents = new GradePair(parent1.getPhenotype(category), parent2.getPhenotype(category));
+
+        return epochFreq.get(parents);
+    }
+
+
+    public Map<Category, Map<Grade, Integer>> getAllCurrentPhenotypeFrequencies() {
+        Map<Category, Map<Grade, Integer>> result = new EnumMap<>(Category.class);
+        Map<Category, Map<GradePair, Map<Grade, Integer>>> cache = copyFrequencyCache();
+        for (Category category : Category.values()) {
+            GradePair currentPair = new GradePair(parent1.getPhenotype(category), parent2.getPhenotype(category));
+            Map<GradePair, Map<Grade, Integer>> epochFreq = cache.get(category);
+            result.put(category, epochFreq.getOrDefault(currentPair, new EnumMap<>(Grade.class)));
         }
-
-        // Validate sum ≈ 1.0
-        double total = jointDistribution.values().stream()
-                .mapToDouble(Double::doubleValue)
-                .sum();
-        if (Math.abs(total - 1.0) > 1e-6) {
-            throw new IllegalArgumentException("Joint distribution probabilities must sum to 1.0 (±1e-6). Actual sum: " + total);
-        }
-
-        Map<GradePair, RelationshipJointDistribution> jointDistMap = createIfAbsentDistributionByCategory(category);
-
-        for (Map.Entry<GradePair, Double> entry : jointDistribution.entrySet()) {
-            GradePair gradePairKey = entry.getKey();
-            Double probability = entry.getValue();
-            RelationshipJointDistribution dist = jointDistMap.computeIfAbsent(
-                    gradePairKey,
-                    key -> {
-                        RelationshipJointDistribution newDist = new RelationshipJointDistribution(this, category, key);
-                        jointDistributions.add(newDist);
-                        return newDist;
-                    }
-            );
-            dist.setProbability(probability);
-        }
-    }
-    @Transactional
-    public void setJointDistribution(String categoryStr, Map<GradePair, Double> jointDistribution) {
-        setJointDistribution(Category.valueOf(categoryStr), jointDistribution);
-    }
-
-
-    // experimental List of RelationshipPhenotypeFrequency
-    private Map<Grade, RelationshipPhenotypeFrequency> getPhenotypeFrequenciesByCategory(Category category) {
-        if (!phenotypeFrequenciesByCategory.containsKey(category)) {
-            throw new IllegalStateException("Phenotype frequency for category " + category + " not initialized");
-        }
-        return phenotypeFrequenciesByCategory.get(category);
-    }
-
-
-    public Map<Grade, Integer> getPhenotypeFrequencies(Category category) {
-        if (!phenotypeFrequenciesOrganized) organizePhenotypeFrequencies();
-
-        Map<Grade, RelationshipPhenotypeFrequency> freqMap = getPhenotypeFrequenciesByCategory(category);
-
-        return freqMap.entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getFrequency()));
-    }
-    public Map<Grade, Integer> getPhenotypeFrequencies(String categoryStr) {
-        return getPhenotypeFrequencies(Category.valueOf(categoryStr));
-    }
-
-
-    private Map<Grade, RelationshipPhenotypeFrequency> createIfAbsentPhenotypeFrequencies(Category category) {
-        return phenotypeFrequenciesByCategory.computeIfAbsent(category, k -> new EnumMap<>(Grade.class));
-    }
-
-
-    public Map<Category, Map<Grade, Integer>> getAllPhenotypeFrequencies() {
-        if (!phenotypeFrequenciesOrganized) organizePhenotypeFrequencies();
-
-        return this.phenotypeFrequenciesByCategory.entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, e -> getPhenotypeFrequencies(e.getKey())));
-    }
-
-
-    @Transactional
-    public void setPhenotypeFrequencies(Category category, Map<Grade, Integer> phenotypeFrequencies) {
-         if (phenotypeFrequenciesOrganized) organizePhenotypeFrequencies();
-
-        Map<Grade, RelationshipPhenotypeFrequency> freqMap = createIfAbsentPhenotypeFrequencies(category);
-
-        for (Map.Entry<Grade, Integer> entry : phenotypeFrequencies.entrySet()) {
-            Grade grade = entry.getKey();
-            Integer phenotypeFrequency = entry.getValue();
-            RelationshipPhenotypeFrequency freq = freqMap.computeIfAbsent(
-                    grade,
-                    key -> {
-                        RelationshipPhenotypeFrequency newFreq = new RelationshipPhenotypeFrequency(this, category, key);
-                        this.phenotypeFrequencies.add(newFreq);
-                        return newFreq;
-                    }
-            );
-            freq.setFrequency(phenotypeFrequency);
-        }
+        return result;
     }
 
 
@@ -448,33 +307,33 @@ public class Relationship {
 
     // TODO - update for birthRecords when constraints are figured out
     public void updateChildPhenotypeFrequencies(Sheep child, Map<Category, SheepGenotypeDTO> updatedGenotypes) {
-        BirthRecord birthRecord = child.getBirthRecord();
-        if (birthRecord == null || !this.equals(birthRecord.getParentRelationship())) throw new IllegalArgumentException("Sheep is not a child of this relationship");
-        if (updatedGenotypes == null || updatedGenotypes.isEmpty()) return;
-
-        Map<Category, GradePair> phenotypeDeltas = new EnumMap<>(Category.class);
-        for (Map.Entry<Category, SheepGenotypeDTO> entry : updatedGenotypes.entrySet()) {
-            Category category = entry.getKey();
-            GradePair genotype = entry.getValue().toGradePair();
-
-            Grade currentPhenotype = child.getPhenotype(category);
-            Grade newPhenotype = genotype.getFirst();
-            phenotypeDeltas.compute(category, (k, v) -> currentPhenotype != newPhenotype ? new GradePair(currentPhenotype, newPhenotype) : null);
-        }
-
-        checkForExcessAlleles(phenotypeDeltas);
-
-        for (Map.Entry<Category, SheepGenotypeDTO> entry : updatedGenotypes.entrySet()) {
-            Category category = entry.getKey();
-            GradePair genotype = entry.getValue().toGradePair();
-            child.setGenotype(category, genotype);
-        }
-        for (Map.Entry<Category, GradePair> entry : phenotypeDeltas.entrySet()) {
-            Map<Grade, RelationshipPhenotypeFrequency> freqMap = getPhenotypeFrequenciesByCategory(entry.getKey());
-            GradePair delta = entry.getValue();
-            freqMap.get(delta.getFirst()).removeFrequency(1);
-            freqMap.get(delta.getSecond()).addFrequency(1);
-        }
+//        BirthRecord birthRecord = child.getBirthRecord();
+//        if (birthRecord == null || !this.equals(birthRecord.getParentRelationship())) throw new IllegalArgumentException("Sheep is not a child of this relationship");
+//        if (updatedGenotypes == null || updatedGenotypes.isEmpty()) return;
+//
+//        Map<Category, GradePair> phenotypeDeltas = new EnumMap<>(Category.class);
+//        for (Map.Entry<Category, SheepGenotypeDTO> entry : updatedGenotypes.entrySet()) {
+//            Category category = entry.getKey();
+//            GradePair genotype = entry.getValue().toGradePair();
+//
+//            Grade currentPhenotype = child.getPhenotype(category);
+//            Grade newPhenotype = genotype.getFirst();
+//            phenotypeDeltas.compute(category, (k, v) -> currentPhenotype != newPhenotype ? new GradePair(currentPhenotype, newPhenotype) : null);
+//        }
+//
+//        checkForExcessAlleles(phenotypeDeltas);
+//
+//        for (Map.Entry<Category, SheepGenotypeDTO> entry : updatedGenotypes.entrySet()) {
+//            Category category = entry.getKey();
+//            GradePair genotype = entry.getValue().toGradePair();
+//            child.setGenotype(category, genotype);
+//        }
+//        for (Map.Entry<Category, GradePair> entry : phenotypeDeltas.entrySet()) {
+//            Map<Grade, RelationshipPhenotypeFrequency> freqMap = getPhenotypeFrequenciesByCategory(entry.getKey());
+//            GradePair delta = entry.getValue();
+//            freqMap.get(delta.getFirst()).removeFrequency(1);
+//            freqMap.get(delta.getSecond()).addFrequency(1);
+//        }
     }
 
 
@@ -497,6 +356,7 @@ public class Relationship {
         }
     }
 
+
     private Set<Grade> hiddenAlleleDiversity(Map<GradePair, Map<Grade, Integer>> epochMap) {
         if (epochMap == null || epochMap.isEmpty()) return Collections.emptySet();
 
@@ -515,11 +375,12 @@ public class Relationship {
         return definitiveHiddenAlleles;
     }
 
+
     // throws ExcessAlleleDiversityException if adding this child would result in more potential alleles than possible
     private void checkForExcessAlleles(Sheep child) {
         for (Category category : Category.values()) {
             Grade newAllele = child.getPhenotype(category);
-            Map<Grade, Integer> phenotypeFrequency = getPhenotypeFrequencies(category);
+            Map<Grade, Integer> phenotypeFrequency = getCurrentPhenotypeFrequencies(category);
             // add each parent phenotype to the map so they get counted
             phenotypeFrequency.merge(this.getParent1().getPhenotype(category), 1, Integer::sum);
             phenotypeFrequency.merge(this.getParent2().getPhenotype(category), 1, Integer::sum);
@@ -529,6 +390,7 @@ public class Relationship {
         }
     }
 
+
     // throws ExcessAlleleDiversityException if changing these phenotypes would result in excessive alleles
     private void checkForExcessAlleles(Map<Category, GradePair> phenotypeDeltas) {
         for (Map.Entry<Category, GradePair> entry : phenotypeDeltas.entrySet()) {
@@ -536,7 +398,7 @@ public class Relationship {
             Grade oldAllele = entry.getValue().getFirst();
             Grade newAllele = entry.getValue().getSecond();
 
-            Map<Grade, Integer> phenotypeFrequency = getPhenotypeFrequencies(category);
+            Map<Grade, Integer> phenotypeFrequency = getCurrentPhenotypeFrequencies(category);
             phenotypeFrequency.merge(oldAllele, -1, Integer::sum);
             phenotypeFrequency.merge(newAllele, 1, Integer::sum);
 
@@ -544,6 +406,7 @@ public class Relationship {
         }
 
     }
+
 
     private void validatePhenotypeFrequency(Category category, Map<Grade, Integer> phenotypeFrequency, Grade newAllele) {
         Set<Grade> nonZeroCounts = EnumSet.noneOf(Grade.class);
@@ -561,6 +424,7 @@ public class Relationship {
             throw new ExcessAlleleDiversityException("This operation would result in " + (maxDistinct + 1) + " distinct alleles when only " + maxDistinct + " are possible", nonZeroCounts, newAllele, category);
         }
     }
+
 
     @Override
     public boolean equals(Object o) {

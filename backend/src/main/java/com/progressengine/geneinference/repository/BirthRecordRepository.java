@@ -12,6 +12,11 @@ import java.util.List;
 import java.util.Optional;
 
 public interface BirthRecordRepository extends JpaRepository<BirthRecord, Integer> {
+    @EntityGraph(attributePaths = {
+            "phenotypesAtBirth",
+            "parentRelationship",
+            "child"
+    })
     @Query("""
         select distinct br
         from BirthRecord br

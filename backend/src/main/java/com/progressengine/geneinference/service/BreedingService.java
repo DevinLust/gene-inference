@@ -174,22 +174,6 @@ public class BreedingService {
                 .orElseThrow(() -> new ResourceNotFoundException("Birth record not found"));
     }
 
-    @Transactional
-    public void deleteBirthRecord(Integer birthRecordId) {
-        BirthRecord br = findBirthRecordById(birthRecordId);
-        Relationship rel = br.getParentRelationship(); // managed
-
-        // If this birth record is linked to a saved child sheep, detach both sides
-        Sheep child = br.getChild();
-        if (child != null) {
-            br.setChild(null);            // owning side
-            child.setBirthRecord(null);   // inverse side
-        }
-
-        rel.removeBirthRecord(br);
-        birthRecordRepository.deleteById(birthRecordId); // might not be needed
-    }
-
     public PredictionResponseDTO predictChild(Integer sheep1Id, Integer sheep2Id) {
         Sheep sheep1 = sheepService.findById(sheep1Id);
         Sheep sheep2 = sheepService.findById(sheep2Id);

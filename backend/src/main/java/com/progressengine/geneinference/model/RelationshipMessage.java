@@ -49,7 +49,7 @@ public class RelationshipMessage extends Message {
         boolean firstParentAsWeight = relationship.getParent2().equals(targetSheep);
         Map<Category, Map<Grade, Double>> weightDistribution = messages.getFirst().getDistribution();
         // TODO - experimental cached values
-        Map<Category, Map<GradePair, Double>> jointDistributions = relationship.getJointDistributionsExperimental();
+        Map<Category, Map<GradePair, Double>> jointDistributions = relationship.getJointDistributions();
 //        for (Category category : Category.values()) {
 //            jointDistributions.put(category, relationship.getJointDistribution(category));
 //        }

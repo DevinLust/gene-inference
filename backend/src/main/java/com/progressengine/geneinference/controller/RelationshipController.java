@@ -36,7 +36,7 @@ public class RelationshipController {
 
     @GetMapping("/{relationshipId}")
     public RelationshipResponseDTO getRelationship(@Positive @PathVariable Integer relationshipId) {
-        Relationship relationship = relationshipService.getRelationshipById(relationshipId);
+        Relationship relationship = relationshipService.getRelationshipWithBirthsById(relationshipId);
         return DomainMapper.toResponseDTO(relationship);
     }
 

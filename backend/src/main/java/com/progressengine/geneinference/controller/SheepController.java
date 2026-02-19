@@ -78,11 +78,12 @@ public class SheepController {
         return ResponseEntity.ok(sheepService.evolvePhenotype(id, category));
     }
 
-    @PutMapping("/{sheepId}")
-    public ResponseEntity<?> replaceSheep(@Positive @PathVariable Integer sheepId, @Valid @RequestBody SheepReplaceRequestDTO replacementSheep) {
-        Sheep updatedSheep = sheepService.replaceSheep(sheepId, replacementSheep);
-        return ResponseEntity.ok(DomainMapper.toResponseDTO(updatedSheep));
-    }
+//    @Deprecated
+//    @PutMapping("/{sheepId}")
+//    public ResponseEntity<?> replaceSheep(@Positive @PathVariable Integer sheepId, @Valid @RequestBody SheepReplaceRequestDTO replacementSheep) {
+//        Sheep updatedSheep = sheepService.replaceSheep(sheepId, replacementSheep);
+//        return ResponseEntity.ok(DomainMapper.toResponseDTO(updatedSheep));
+//    }
 
     @PatchMapping("/{sheepId}")
     public ResponseEntity<?> updateSheep(@Positive @PathVariable Integer sheepId, @Valid @RequestBody SheepUpdateRequestDTO updateSheepModel) {

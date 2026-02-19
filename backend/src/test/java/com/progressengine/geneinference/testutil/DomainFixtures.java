@@ -24,16 +24,21 @@ public class DomainFixtures {
         return sheep;
     }
 
-    public static Relationship createTestRelationship(Sheep parent1, Sheep parent2, Map<Category, Map<Grade, Integer>> offspringPhenotypeFrequency) {
+    public static Relationship createEmptyRelationship(Sheep parent1, Sheep parent2) {
         Relationship relationship = new Relationship();
         relationship.setParent1(parent1);
         relationship.setParent2(parent2);
-        if (offspringPhenotypeFrequency != null) {
-            for (Map.Entry<Category, Map<Grade, Integer>> entry : offspringPhenotypeFrequency.entrySet()) {
-                relationship.setPhenotypeFrequencies(entry.getKey(), entry.getValue());
-            }
-        }
         return relationship;
+    }
+
+    public static Relationship createTestRelationship(Sheep parent1, Sheep parent2, Map<Category, Map<Grade, Integer>> offspringPhenotypeFrequency) {
+        Map<Category, Map<GradePair, Map<Grade, Integer>>> modifiedFreq = new EnumMap<>(Category.class);
+        for (Category category : Category.values()) {
+            GradePair pair = new GradePair(parent1.getPhenotype(category), parent2.getPhenotype(category));
+            modifiedFreq.computeIfAbsent(category, k -> new HashMap<>())
+                    .put(pair, offspringPhenotypeFrequency.get(category));
+        }
+        return createPopulatedRelationship(parent1, parent2, modifiedFreq);
     }
 
     public static Relationship createTestRelationship(Sheep parent1, Sheep parent2, Map<Category, Map<Grade, Integer>> offspringPhenotypeFrequency, int relationshipId) {
@@ -43,6 +48,10 @@ public class DomainFixtures {
     }
 
     public static Relationship createPopulatedRelationship(Sheep parent1, Sheep parent2, Map<Category, Map<GradePair, Map<Grade, Integer>>> offspringPhenotypeFrequency) {
+        if (offspringPhenotypeFrequency == null) {
+            return createEmptyRelationship(parent1, parent2);
+        }
+
         // validate totals per category are equal
         Integer expectedTotal = null;
         for (Category cat : Category.values()) {
@@ -58,10 +67,7 @@ public class DomainFixtures {
 
         int birthsToCreate = expectedTotal != null ? expectedTotal : 0;
         if (birthsToCreate == 0) {
-            Relationship empty = new Relationship();
-            empty.setParent1(parent1);
-            empty.setParent2(parent2);
-            return empty;
+            return createEmptyRelationship(parent1, parent2);
         }
 
         Relationship relationship = new Relationship();
@@ -93,6 +99,7 @@ public class DomainFixtures {
         }
         int total = 0;
         for (Map<Grade, Integer> epochMap : categoryFrequency.values()) {
+            if (epochMap == null || epochMap.isEmpty()) { continue; }
             total += epochMap.values().stream().reduce(0, Integer::sum);
         }
         return total;

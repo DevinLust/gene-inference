@@ -40,7 +40,7 @@ public class ChildMessage extends RelationshipMessage {
         Message parent2Message = messages.get(1);
 
         // TODO - experimental joint dist
-        Map<Category, Map<GradePair, Double>> jointDistributions = relationship.getJointDistributionsExperimental();
+        Map<Category, Map<GradePair, Double>> jointDistributions = relationship.getJointDistributions();
 //        for (Category category : Category.values()) {
 //            jointDistributions.put(category, relationship.getJointDistribution(category));
 //        }

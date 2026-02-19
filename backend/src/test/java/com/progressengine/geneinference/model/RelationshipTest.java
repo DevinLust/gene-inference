@@ -29,7 +29,7 @@ public class RelationshipTest {
                 Category.POWER, Grade.C,
                 Category.STAMINA, Grade.S
         ));
-        Relationship relationship = DomainFixtures.createTestRelationship(parent1, parent2, null);
+        Relationship relationship = DomainFixtures.createEmptyRelationship(parent1, parent2);
 
         Sheep child = DomainFixtures.createTestSheep(Map.of(
                 Category.SWIM, Grade.C,
@@ -68,7 +68,7 @@ public class RelationshipTest {
                 Category.POWER, Grade.C,
                 Category.STAMINA, Grade.S
         ));
-        Relationship relationship = DomainFixtures.createTestRelationship(parent1, parent2, null);
+        Relationship relationship = DomainFixtures.createEmptyRelationship(parent1, parent2);
 
         Sheep child = DomainFixtures.createTestSheep(Map.of(
                 Category.SWIM, Grade.C,
@@ -105,7 +105,7 @@ public class RelationshipTest {
                 Category.POWER, Grade.C,
                 Category.STAMINA, Grade.S
         ));
-        Relationship rel1 = DomainFixtures.createTestRelationship(parent1, parent2, null);
+        Relationship rel1 = DomainFixtures.createEmptyRelationship(parent1, parent2);
 
         // Arrange
         Sheep parent3 = DomainFixtures.createTestSheep(Map.of(
@@ -123,7 +123,7 @@ public class RelationshipTest {
                 Category.POWER, Grade.C,
                 Category.STAMINA, Grade.S
         ));
-        Relationship rel2 = DomainFixtures.createTestRelationship(parent3, parent4, null);
+        Relationship rel2 = DomainFixtures.createEmptyRelationship(parent3, parent4);
 
         Sheep child = DomainFixtures.createTestSheep(Map.of(
                 Category.SWIM, Grade.C,
@@ -158,7 +158,7 @@ public class RelationshipTest {
                 Category.POWER, Grade.C,
                 Category.STAMINA, Grade.S
         ));
-        Relationship relationship = DomainFixtures.createTestRelationship(parent1, parent2, null);
+        Relationship relationship = DomainFixtures.createEmptyRelationship(parent1, parent2);
 
         Sheep child = DomainFixtures.createTestSheep(Map.of(
                 Category.SWIM, Grade.C,
@@ -197,7 +197,7 @@ public class RelationshipTest {
                 Category.POWER, Grade.C,
                 Category.STAMINA, Grade.S
         ));
-        Relationship relationship = DomainFixtures.createTestRelationship(parent1, parent2, null);
+        Relationship relationship = DomainFixtures.createEmptyRelationship(parent1, parent2);
 
         Sheep child = DomainFixtures.createTestSheep(Map.of(
                 Category.SWIM, Grade.C,
@@ -230,7 +230,7 @@ public class RelationshipTest {
                 Category.POWER, Grade.C,
                 Category.STAMINA, Grade.S
         ));
-        Relationship relationship = DomainFixtures.createTestRelationship(parent1, parent2, null);
+        Relationship relationship = DomainFixtures.createEmptyRelationship(parent1, parent2);
 
         Sheep child = DomainFixtures.createTestSheep(Map.of(
                 Category.SWIM, Grade.C,
@@ -269,7 +269,7 @@ public class RelationshipTest {
                 Category.POWER, Grade.C,
                 Category.STAMINA, Grade.S
         ));
-        Relationship relationship = DomainFixtures.createTestRelationship(parent1, parent2, null);
+        Relationship relationship = DomainFixtures.createEmptyRelationship(parent1, parent2);
 
         Sheep child = DomainFixtures.createTestSheep(Map.of(
                 Category.SWIM, Grade.C,
@@ -337,7 +337,7 @@ public class RelationshipTest {
         Relationship relationship = DomainFixtures.createPopulatedRelationship(parent1, parent2, expectedPhenotypeFrequencies);
 
         // Act
-        Map<Category, Map<GradePair, Map<Grade, Integer>>> phenotypeCache = relationship.getFrequenciesExperimental();
+        Map<Category, Map<GradePair, Map<Grade, Integer>>> phenotypeCache = relationship.getPhenotypeFrequencies();
 
         // Assert
         assertEquals(expectedPhenotypeFrequencies, phenotypeCache, "Cache should equal phenotype frequencies");

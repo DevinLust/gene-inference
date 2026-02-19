@@ -107,11 +107,13 @@ public class BreedingServiceTest {
 
         // Act
         for (int i = 0; i < N; i++) {
-            BreedingService.breedNewSheep(relationship);
+            Sheep child = BreedingService.breedNewSheep(relationship);
+            relationship.addChildInformationToRelationship(child);
         }
 
+
         // Assert for distribution
-        Map<Grade, Integer> counts = relationship.getPhenotypeFrequencies(Category.SWIM);
+        Map<Grade, Integer> counts = relationship.getCurrentPhenotypeFrequencies(Category.SWIM);
         for (Map.Entry<Grade, Integer> entry : counts.entrySet()) {
             Grade grade = entry.getKey();
             int count = entry.getValue();

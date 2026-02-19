@@ -101,10 +101,7 @@ public class SheepService {
 
     @Transactional
     public List<SheepResponseDTO> getChildren(Integer sheepId) {
-        List<Integer> childIds = sheepRepository.findSavedChildIdsRearedBy(sheepId);
-        if (childIds.isEmpty()) return List.of();
-
-        return sheepRepository.findWithAllByIdIn(childIds).stream().map(DomainMapper::toResponseDTO).toList();
+        return sheepRepository.findChildrenWithDetailByParentId(sheepId).stream().map(DomainMapper::toResponseDTO).toList();
     }
 
     @Transactional
@@ -137,6 +134,7 @@ public class SheepService {
         return sheepRepository.save(sheep);
     }
 
+    @Deprecated
     @Transactional
     public Sheep replaceSheep(Integer sheepId, SheepReplaceRequestDTO sheepReplaceRequestDTO) {
         Sheep existing = findById(sheepId);
@@ -168,8 +166,9 @@ public class SheepService {
             sheep.setName(updateSheepModel.getName());
         }
 
-        Map<Category, SheepGenotypeDTO> updatedGenotypes = updateSheepModel.getGenotypes();
-        sheep.updateGenotypes(updatedGenotypes);
+        // TODO - figure out constraints for genotype updates
+//        Map<Category, SheepGenotypeDTO> updatedGenotypes = updateSheepModel.getGenotypes();
+//        sheep.updateGenotypes(updatedGenotypes);
 
         Map<Category, Map<Grade, Double>> updatedPriors = updateSheepModel.getDistributions();
         if (updatedPriors != null) {

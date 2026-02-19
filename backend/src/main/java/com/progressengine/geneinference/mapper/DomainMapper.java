@@ -45,7 +45,7 @@ public class DomainMapper {
         Sheep parent2 = relationship.getParent2();
         SheepSummaryResponseDTO parent1Summary = new SheepSummaryResponseDTO(parent1.getId(), parent1.getName());
         SheepSummaryResponseDTO parent2Summary = new SheepSummaryResponseDTO(parent2.getId(), parent2.getName());
-        return new RelationshipResponseDTO(relationship.getId(), parent1Summary, parent2Summary, relationship.getFrequenciesExperimental());
+        return new RelationshipResponseDTO(relationship.getId(), parent1Summary, parent2Summary, relationship.getPhenotypeFrequencies());
     }
 
     public static BirthRecordDTO toResponseDTO(BirthRecord birthRecord) {

@@ -9,27 +9,21 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
 @Repository
 public interface SheepRepository extends JpaRepository<Sheep, Integer>, JpaSpecificationExecutor<Sheep> {
+    @EntityGraph(attributePaths = {"genotypes", "distributions", "birthRecord", "birthRecord.parentRelationship"})
     @Query("""
-    select distinct c.id
-    from BirthRecord br
-    join br.parentRelationship r
-    join br.child c
-    where (r.parent1.id = :parentId or r.parent2.id = :parentId)
-  """)
-    List<Integer> findSavedChildIdsRearedBy(@Param("parentId") Integer parentId);
-
-    @EntityGraph(attributePaths = {"genotypes", "distributions"})
-    @Query("select distinct s from Sheep s where s.id in :ids")
-    List<Sheep> findWithAllByIdIn(@Param("ids") List<Integer> ids);
-
-    //List<Sheep> findAllByParentRelationship_IdIn(Collection<Integer> parentRelationshipIds);
+        select s
+        from Sheep s
+        join s.birthRecord br
+        join br.parentRelationship r
+        where (r.parent1.id = :parentId or r.parent2.id = :parentId)
+    """)
+    List<Sheep> findChildrenWithDetailByParentId(@Param("parentId") Integer parentId);
 
     @Query(value = """
         SELECT s.*
@@ -72,7 +66,8 @@ public interface SheepRepository extends JpaRepository<Sheep, Integer>, JpaSpeci
     @EntityGraph(attributePaths = {
             "distributions",
             "genotypes",
-            "birthRecord"
+            "birthRecord",
+            "birthRecord.parentRelationship"
     })
     Optional<Sheep> findWithAllById(Integer id);
 

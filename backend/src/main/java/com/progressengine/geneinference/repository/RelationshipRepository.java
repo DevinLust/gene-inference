@@ -36,4 +36,22 @@ public interface RelationshipRepository extends JpaRepository<Relationship, Inte
     List<Relationship> findLimitedByParents(@Param("p1") Integer parent1Id,
                                             @Param("p2") Integer parent2Id,
                                             @Param("limit") int limit);
+
+    @EntityGraph(attributePaths = {
+            "parent1",
+            "parent2",
+            "birthRecords",
+            "birthRecords.phenotypesAtBirth"
+    })
+    @Query("select r from Relationship r")
+    List<Relationship> findAllWithFullGraph();
+
+    @EntityGraph(attributePaths = {
+            "parent1",
+            "parent2",
+            "birthRecords",
+            "birthRecords.phenotypesAtBirth"
+    })
+    @Query("select r from Relationship r where r.id = :id")
+    Optional<Relationship> findWithBirthsById(@Param("id") Integer id);
 }

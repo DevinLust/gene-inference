@@ -46,7 +46,7 @@ public class RelationshipService {
      * @return a List of all relationships
      */
     public List<Relationship> getAllRelationships() {
-        return relationshipRepository.findAll();
+        return relationshipRepository.findAllWithFullGraph();
     }
 
     /**
@@ -57,6 +57,20 @@ public class RelationshipService {
      */
     public Relationship getRelationshipById(Integer relationshipId) {
         Optional<Relationship> optionalRelationship = relationshipRepository.findById(relationshipId);
+        if (optionalRelationship.isEmpty()) {
+            throw new ResourceNotFoundException("Relationship not found");
+        }
+        return optionalRelationship.get();
+    }
+
+    /**
+     * Fetches the relationship with the given id with birth records joined.
+     *
+     * @param relationshipId - id of the desired relationship
+     * @return the relationship with the given id loaded with birth records
+     */
+    public Relationship getRelationshipWithBirthsById(Integer relationshipId) {
+        Optional<Relationship> optionalRelationship = relationshipRepository.findWithBirthsById(relationshipId);
         if (optionalRelationship.isEmpty()) {
             throw new ResourceNotFoundException("Relationship not found");
         }

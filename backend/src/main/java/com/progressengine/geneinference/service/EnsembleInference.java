@@ -45,7 +45,7 @@ public class EnsembleInference extends BaseInferenceEngine {
         Sheep parent2 = relationship.getParent2();
 
         for (Category category : Category.values()) {
-            Map<Grade, Integer> phenotypeFrequency = relationship.getPhenotypeFrequencies(category);
+            Map<Grade, Integer> phenotypeFrequency = relationship.getCurrentPhenotypeFrequencies(category);
             Grade phenotype1 = parent1.getPhenotype(category);
             Grade phenotype2 = parent2.getPhenotype(category);
 
@@ -62,7 +62,7 @@ public class EnsembleInference extends BaseInferenceEngine {
         Map<GradePair, Map<Grade, Double>> conditionalDistributions = findConditionalDistributions(relationship, childPhenotype, category);
 
         // get a true joint distribution by multiplying each joint probability by the respective marginals and normalizing
-        Map<GradePair, Double> jointDistribution = relationship.getJointDistributionsExperimental().get(category);
+        Map<GradePair, Double> jointDistribution = relationship.getJointDistributions().get(category);
         // sum all conditional distributions from each genotype multiplied by the joint probability of that genotype
         for (Map.Entry<GradePair, Double> entry : jointDistribution.entrySet()) {
             GradePair gradePair = entry.getKey();
