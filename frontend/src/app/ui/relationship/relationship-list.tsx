@@ -35,10 +35,10 @@ export default async function RelationshipList() {
                                                 <span>{rel.id}</span>
                                             </td>
                                             <td className="whitespace-nowrap pr-3">
-                                                <span>{rel.parent1.name}</span>
+                                                <span>{rel.parent1.name || <span className="text-gray-400">(id: {rel.parent1.id})</span>}</span>
                                             </td>
                                             <td className="whitespace-nowrap pr-3">
-                                                <span>{rel.parent2.name}</span>
+                                                <span>{rel.parent2.name || <span className="text-gray-400">(id: {rel.parent2.id})</span>}</span>
                                             </td>
                                             <td className="whitespace-nowrap py-3 pr-3">
                                                 <RelationshipDetails relId={rel.id}/>

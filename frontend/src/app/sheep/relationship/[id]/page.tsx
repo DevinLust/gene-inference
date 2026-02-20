@@ -1,8 +1,9 @@
 import { fetchRelationshipById } from "@/app/lib/data";
 import CategoryCard from "@/app/ui/category-card";
-import { Category, Relationship, Grade } from "@/app/lib/definitions";
+import { Category, Relationship, PhenotypeFrequencies } from "@/app/lib/definitions";
 import { notFound } from 'next/navigation';
 import { SheepDetails } from '@/app/ui/buttons';
+import PhenotypeFrequencyTable from "@/app/ui/relationship/phenotype-frequency-table";
 import Link from 'next/link';
 
 export default async function RelationshipDetailPage(props: { params: Promise<{ id: string }> }) {
@@ -32,15 +33,24 @@ export default async function RelationshipDetailPage(props: { params: Promise<{ 
             <p className="mt-2">Total Children: {totalChildren(relationship.phenotypeFrequencies)}</p>
 
             {/* Phenotype Frequency */}
+            <PhenotypeFrequencyTable relationship={relationship} />
             <div className="mt-6 mb-4 max-w-sm">
                 <h2 className="mb-2 text-xl">Phenotype Frequencies</h2>
                 <div className="grid grid-cols-1 gap-2">
-                    {Object.entries(relationship.phenotypeFrequencies).map(([cat, freqMap]) => (
+                    {Object.entries(relationship.phenotypeFrequencies).map(([cat, epochMap]) => (
                         <CategoryCard category={cat as Category} key={cat}>
                             <ul>
-                                {Object.entries(freqMap).map(([grade, frequency]) => (
-                                    <li key={grade}>{grade}: {frequency}</li>
-                                ))}
+                                {Object.entries(epochMap).map(([pair, freqMap]) => (
+                                    <li key={pair}>
+                                        <span>{pair}:</span>
+                                        <div className="flex flex-wrap gap-2 justify-between">
+                                            {Object.entries(freqMap).map(([grade, frequency]) => (
+                                                <p key={grade}>{grade}: {frequency}</p>
+                                            ))}
+                                        </div>
+                                    </li>
+
+                                    ))}
                             </ul>
                         </CategoryCard>
                     ))}
@@ -51,14 +61,18 @@ export default async function RelationshipDetailPage(props: { params: Promise<{ 
 }
 
 function totalChildren(phenotypeFrequencies: 
-        Record<Category, Partial<Record<Grade, number>>>
+        PhenotypeFrequencies
     ): number {
-        const categories = Object.values(phenotypeFrequencies);
+        const byPair = Object.values(phenotypeFrequencies)[0]; // Record<GradePairKey, Partial<Record<Grade, number>>>
 
-        if (categories.length === 0) return 0;
+        let total = 0;
 
-        return Object.values(categories[0]).reduce(
-            (sum, count) => sum + (count ?? 0),
-            0
-        );
+        for (const childrenMap of Object.values(byPair)) {
+            for (const count of Object.values(childrenMap)) {
+                // count is number | undefined (because Partial<Record<...>>)
+                if (typeof count === "number") total += count;
+            }
+        }
+
+        return total;
     }

@@ -38,7 +38,7 @@ public class Relationship {
     private boolean frequencyCacheDirty = true;
 
     @OneToMany(mappedBy = "parentRelationship", cascade = CascadeType.ALL, orphanRemoval = true)
-    private final List<BirthRecord> birthRecords = new ArrayList<>();
+    private final Set<BirthRecord> birthRecords = new HashSet<>();
 
 
     public Relationship() {}
@@ -74,8 +74,8 @@ public class Relationship {
     }
 
 
-    public List<BirthRecord> getBirthRecords() {
-        return Collections.unmodifiableList(birthRecords);
+    public Set<BirthRecord> getBirthRecords() {
+        return Collections.unmodifiableSet(birthRecords);
     }
 
 

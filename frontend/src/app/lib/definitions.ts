@@ -7,6 +7,8 @@ type DistributionType = "PRIOR" | "INFERRED";
 // Grades of certain categories
 export type Grade = "S" | "A" | "B" | "C" | "D" | "E";
 
+export type GradePairKey = `(${Grade}, ${Grade})`;
+
 // Map of probabilities of grades across categories and their distribution types
 type ProbabilityMap = {
     [C in Category]: {
@@ -69,9 +71,14 @@ export type BestPrediction = {
     phenotypeDistributions: PhenotypeDistributions
 };
 
+export type PhenotypeFrequencies = Record<
+    Category,
+    Record<GradePairKey,
+        Partial<Record<Grade, number>>>>
+
 export type Relationship = {
     id: number;
     parent1: SheepSummary;
     parent2: SheepSummary;
-    phenotypeFrequencies: Record<Category, Partial<Record<Grade, number>>>;
+    phenotypeFrequencies: PhenotypeFrequencies;
 };

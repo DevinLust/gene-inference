@@ -13,7 +13,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 // data fetching functions
 export async function fetchAllSheep(): Promise<Sheep[]> {
     const res = await fetch(`${API_BASE_URL}/sheep`, {
-        cache: "force-cache",
+        cache: "default",
     });
 
     await checkStatus(res);
