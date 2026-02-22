@@ -1,6 +1,5 @@
 import { fetchRelationshipById } from "@/app/lib/data";
-import CategoryCard from "@/app/ui/category-card";
-import { Category, Relationship, PhenotypeFrequencies } from "@/app/lib/definitions";
+import { Relationship, PhenotypeFrequencies } from "@/app/lib/definitions";
 import { notFound } from 'next/navigation';
 import { SheepDetails } from '@/app/ui/buttons';
 import PhenotypeFrequencyTable from "@/app/ui/relationship/phenotype-frequency-table";
@@ -34,28 +33,6 @@ export default async function RelationshipDetailPage(props: { params: Promise<{ 
 
             {/* Phenotype Frequency */}
             <PhenotypeFrequencyTable relationship={relationship} />
-            <div className="mt-6 mb-4 max-w-sm">
-                <h2 className="mb-2 text-xl">Phenotype Frequencies</h2>
-                <div className="grid grid-cols-1 gap-2">
-                    {Object.entries(relationship.phenotypeFrequencies).map(([cat, epochMap]) => (
-                        <CategoryCard category={cat as Category} key={cat}>
-                            <ul>
-                                {Object.entries(epochMap).map(([pair, freqMap]) => (
-                                    <li key={pair}>
-                                        <span>{pair}:</span>
-                                        <div className="flex flex-wrap gap-2 justify-between">
-                                            {Object.entries(freqMap).map(([grade, frequency]) => (
-                                                <p key={grade}>{grade}: {frequency}</p>
-                                            ))}
-                                        </div>
-                                    </li>
-
-                                    ))}
-                            </ul>
-                        </CategoryCard>
-                    ))}
-                </div>
-            </div>
         </div>
     );
 }

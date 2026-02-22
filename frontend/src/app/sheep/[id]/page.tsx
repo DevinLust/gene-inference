@@ -2,6 +2,7 @@ import { fetchSheepById } from "@/app/lib/data";
 import CategoryCard from "@/app/ui/category-card";
 import { Category } from "@/app/lib/definitions";
 import { notFound } from 'next/navigation';
+import EditableSheepName from '@/app/ui/sheep/EditableSheepName';
 import Link from 'next/link';
 
 export default async function SheepDetailPage(props: { params: Promise<{ id: string }> }) {
@@ -19,7 +20,7 @@ export default async function SheepDetailPage(props: { params: Promise<{ id: str
             <Link href="/sheep" className="text-blue-400 mb-8">Back to Sheep List</Link>
 
             {/* Name */}
-            <h1 className="mt-2 mb-2 text-2xl text-bold"><span>{sheep.name || <span className="text-gray-400">(unnamed)</span>}</span></h1>
+            <EditableSheepName sheepId={sheep.id} initialName={sheep.name ?? ""} />
 
             {/* ID */}
             <p className="mb-2">ID: {sheep.id}</p>

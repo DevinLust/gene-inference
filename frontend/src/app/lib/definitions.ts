@@ -52,6 +52,12 @@ export type SheepCreateDTO = {
     parentRelationshipId: number | null;
 };
 
+export type SheepUpdateDTO = {
+    name: string | null;
+    distributions: ProbabilityMapCreateDTO;
+    genotypes: GenotypeMap;
+}
+
 export type PhenotypeDistributions = {
     [C in Category]: {
         [G in Grade]: number;

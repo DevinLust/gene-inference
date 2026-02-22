@@ -1,6 +1,6 @@
 'use server'; // server actions
 
-import { Grade, Category, SheepCreateDTO } from '@/app/lib/definitions';
+import { Grade, Category, SheepCreateDTO, SheepUpdateDTO } from '@/app/lib/definitions';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
@@ -12,6 +12,12 @@ export type CreateState = {
         genotypes?: string[];
         parentRelationshipId?: string[];
     };
+};
+
+export type UpdateSheepState = {
+    success?: boolean;
+    message?: string | null;
+    errors?: { name?: string[] };
 };
 
 export type BreedState = {
@@ -31,7 +37,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 const categories: Category[] = ["SWIM", "FLY", "RUN", "POWER", "STAMINA"];
 const grades: Grade[] = ["S", "A", "B", "C", "D", "E"];
 
-export async function formDataToSheepDTO(formData: FormData): Promise<SheepCreateDTO> {
+export async function formDataToSheepCreateDTO(formData: FormData): Promise<SheepCreateDTO> {
     // Build genotypes
     const genotypes = Object.fromEntries(
         categories.map((c) => [
@@ -82,16 +88,25 @@ export async function formDataToSheepDTO(formData: FormData): Promise<SheepCreat
 
     return {
         name: formData.get("name") as string,
-        genotypes,
+        genotypes: genotypes,
         distributions: distributions,
         parentRelationshipId: parentRelationshipId,
     };
 }
 
+export async function formDataToSheepUpdateDTO(formData: FormData): Promise<SheepUpdateDTO> {
+    const createDTO: SheepCreateDTO = await formDataToSheepCreateDTO(formData);
+    return {
+        name: createDTO.name,
+        genotypes: createDTO.genotypes,
+        distributions: createDTO.distributions
+    }
+}
+
 export async function createSheep(prevState: CreateState, formData: FormData) {
     let newSheep: SheepCreateDTO;
     try {
-        newSheep = await formDataToSheepDTO(formData);
+        newSheep = await formDataToSheepCreateDTO(formData);
     } catch (err) {
         return err instanceof Error && err.message ? { message: err.message, errors: {} } : { message: "Invalid form data", errors: {} };
     }
@@ -131,6 +146,41 @@ export async function breedSheep(prevState: BreedState, formData: FormData) {
     revalidatePath('/sheep');
     redirect('/sheep');
 }
+
+
+export async function updateSheep(
+    sheepId: number,
+    prevState: UpdateSheepState,
+    formData: FormData
+) {
+    let updateDTO: SheepUpdateDTO;
+    try {
+        updateDTO = await formDataToSheepUpdateDTO(formData);
+    } catch (err) {
+        return err instanceof Error && err.message ? { message: err.message, errors: {} } : { message: "Invalid form data", errors: {} };
+    }
+
+    // only required while other fields are ignored for now
+    if (!updateDTO.name) {
+        return { message: "Name is required", errors: { name: ["Name cannot be empty"] } };
+    }
+
+    const res = await fetch(`${API_BASE_URL}/sheep/${sheepId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updateDTO),
+    });
+
+    if (!res.ok) {
+        return await parseError(res);
+    }
+
+    revalidatePath("/sheep");
+    revalidatePath(`/sheep/${sheepId}`);
+    // no redirect needed if you’re already on the detail page
+    return { success: true };
+}
+
 
 async function parseError(res: Response) {
     try {
