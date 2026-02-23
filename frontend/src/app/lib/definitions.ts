@@ -88,3 +88,16 @@ export type Relationship = {
     parent2: SheepSummary;
     phenotypeFrequencies: PhenotypeFrequencies;
 };
+
+export type PhenotypesAtBirth = {
+    parent1: Grade;
+    parent2: Grade;
+    child: Grade;
+}
+
+export type BirthRecord = {
+    id: number;
+    parentRelationshipId: number;
+    childId: number | null;
+    phenotypesAtBirth: Record<Category, PhenotypesAtBirth>;
+}

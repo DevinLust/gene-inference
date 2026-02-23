@@ -52,6 +52,22 @@ export default function BreedForm() {
                 </div>
             </label>
 
+            {/* Save child checkbox */}
+            <div className="flex flex-col gap-1">
+                <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                        type="checkbox"
+                        name="saveChild"
+                        className="h-4 w-4 rounded border-gray-400 bg-gray-800 accent-green-500"
+                    />
+                    <span className="font-medium">Save offspring</span>
+                </label>
+
+                <p className="text-sm text-gray-300">
+                    * If unchecked, the birth event will still be recorded and used for inference.
+                </p>
+            </div>
+
             {/* Submit */}
             <button
                 type="submit"

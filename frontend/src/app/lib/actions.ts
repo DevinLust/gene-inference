@@ -129,12 +129,13 @@ export async function createSheep(prevState: CreateState, formData: FormData) {
 export async function breedSheep(prevState: BreedState, formData: FormData) {
     const parent1Id = formData.get("parent1Id") as string;
     const parent2Id = formData.get("parent2Id") as string;
+    const saveChild = formData.get("saveChild") === "on";
 
     if (!parent1Id || !parent2Id || isNaN(Number(parent1Id)) || isNaN(Number(parent2Id))) {
         return { message: "Both parent Ids must be valid numbers", errors: {} };
     }
 
-    const res = await fetch(`${API_BASE_URL}/breed/${parent1Id}/${parent2Id}`, {
+    const res = await fetch(`${API_BASE_URL}/breed/${parent1Id}/${parent2Id}?saveChild=${saveChild}`, {
         method: "POST",
         headers: {"Content-Type": "application/json" },
     });
