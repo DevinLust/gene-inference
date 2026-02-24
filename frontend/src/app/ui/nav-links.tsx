@@ -18,12 +18,12 @@ const links = [
     },
     {
         name: 'Breeding',
-        href: '/sheep/breed',
+        href: '/breed',
         icon: SiAwslambda,
     },
     {
         name: 'Relationships',
-        href: '/sheep/relationship',
+        href: '/relationship',
         icon: HiOutlineUsers,
     },
 ];

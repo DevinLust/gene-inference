@@ -95,9 +95,15 @@ export type PhenotypesAtBirth = {
     child: Grade;
 }
 
+export type RelationshipSummary = {
+    id: number;
+    parent1: SheepSummary;
+    parent2: SheepSummary;
+}
+
 export type BirthRecord = {
     id: number;
-    parentRelationshipId: number;
-    childId: number | null;
+    parentRelationshipSummary: RelationshipSummary;
+    child: SheepSummary | null;
     phenotypesAtBirth: Record<Category, PhenotypesAtBirth>;
 }

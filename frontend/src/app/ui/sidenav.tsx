@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import NavLinks from '@/app/ui/sheep/nav-links';
+import NavLinks from '@/app/ui/nav-links';
 import { HiOutlineHome } from "react-icons/hi";
 
 export default function SideNav() {

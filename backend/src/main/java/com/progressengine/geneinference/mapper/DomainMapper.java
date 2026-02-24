@@ -40,6 +40,10 @@ public class DomainMapper {
         return responseDTO;
     }
 
+    public static SheepSummaryResponseDTO toSummaryResponseDTO(Sheep sheep) {
+        return new SheepSummaryResponseDTO(sheep.getId(), sheep.getName());
+    }
+
     public static RelationshipResponseDTO toResponseDTO(Relationship relationship) {
         Sheep parent1 = relationship.getParent1();
         Sheep parent2 = relationship.getParent2();
@@ -48,12 +52,20 @@ public class DomainMapper {
         return new RelationshipResponseDTO(relationship.getId(), parent1Summary, parent2Summary, relationship.getPhenotypeFrequencies());
     }
 
+    public static RelationshipSummaryResponseDTO toSummaryResponseDTO(Relationship relationship) {
+        Sheep parent1 = relationship.getParent1();
+        Sheep parent2 = relationship.getParent2();
+        SheepSummaryResponseDTO parent1Summary = new SheepSummaryResponseDTO(parent1.getId(), parent1.getName());
+        SheepSummaryResponseDTO parent2Summary = new SheepSummaryResponseDTO(parent2.getId(), parent2.getName());
+        return new RelationshipSummaryResponseDTO(relationship.getId(), parent1Summary, parent2Summary);
+    }
+
     public static BirthRecordDTO toResponseDTO(BirthRecord birthRecord) {
         BirthRecordDTO dto = new BirthRecordDTO();
         dto.setId(birthRecord.getId());
-        dto.setParentRelationshipId(birthRecord.getParentRelationship().getId());
+        dto.setParentRelationship(toSummaryResponseDTO(birthRecord.getParentRelationship()));
         if (birthRecord.getChild() != null) {
-            dto.setChildId(birthRecord.getChild().getId());
+            dto.setChild(toSummaryResponseDTO(birthRecord.getChild()));
         }
         dto.setPhenotypesAtBirth(birthRecord.getPhenotypesAtBirthOrganized());
         return dto;

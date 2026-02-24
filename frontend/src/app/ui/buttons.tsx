@@ -32,7 +32,7 @@ export function SheepDetails({ sheepId, children, className }: SheepDetailsProps
 export function RelationshipDetails({ relId }: { relId: string | number }) {
   return (
       <Link
-          href={`/sheep/relationship/${relId}`}
+          href={`/relationship/${relId}`}
           className="rounded text-blue-400 ml-2 hover:bg-gray-600 px-2 py-1"
       >
           <span>more details</span>
@@ -43,7 +43,7 @@ export function RelationshipDetails({ relId }: { relId: string | number }) {
 export function BreedSheepButton() {
     return (
         <Link
-            href={"/sheep/breed/create"}
+            href={"/breed/create"}
             className="flex h-10 items-center rounded-lg bg-blue-600 px-4 text-sm font-medium text-white transition-colors hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
         >
             <span className="hidden md:block">Breed Sheep +</span>

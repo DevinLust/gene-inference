@@ -1,6 +1,6 @@
 import { fetchSheepById } from "@/app/lib/data";
 import { notFound } from 'next/navigation';
-import EditableSheepName from '@/app/ui/sheep/EditableSheepName';
+import EditableSheepName from '@/app/ui/sheep/editable-sheep-name';
 import GenotypeTable from '@/app/ui/sheep/genotype-table';
 import DistributionTable from '@/app/ui/sheep/distribution-table';
 import Link from 'next/link';

@@ -17,7 +17,7 @@ export default async function RelationshipDetailPage(props: { params: Promise<{ 
 
     return (
         <div>
-            <Link href="/sheep/relationship" className="inline-block text-blue-400 mb-4">Back to Relationship List</Link>
+            <Link href="/relationship" className="inline-block text-blue-400 mb-4">Back to Relationship List</Link>
 
             {/* ID */}
             <p className="mb-2">ID: {relationship.id}</p>

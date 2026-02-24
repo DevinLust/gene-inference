@@ -7,8 +7,8 @@ import java.util.Map;
 
 public class BirthRecordDTO {
     private Integer id;
-    private Integer parentRelationshipId;
-    private Integer childId;
+    private RelationshipSummaryResponseDTO parentRelationship;
+    private SheepSummaryResponseDTO child;
     private Map<Category, PhenotypeAtBirth> phenotypesAtBirth;
 
     public Integer getId() {
@@ -19,20 +19,20 @@ public class BirthRecordDTO {
         this.id = id;
     }
 
-    public Integer getParentRelationshipId() {
-        return parentRelationshipId;
+    public RelationshipSummaryResponseDTO getParentRelationshipSummary() {
+        return parentRelationship;
     }
 
-    public void setParentRelationshipId(Integer parentRelationshipId) {
-        this.parentRelationshipId = parentRelationshipId;
+    public void setParentRelationship(RelationshipSummaryResponseDTO parentRelationship) {
+        this.parentRelationship = parentRelationship;
     }
 
-    public Integer getChildId() {
-        return childId;
+    public SheepSummaryResponseDTO getChild() {
+        return child;
     }
 
-    public void setChildId(Integer childId) {
-        this.childId = childId;
+    public void setChild(SheepSummaryResponseDTO child) {
+        this.child = child;
     }
 
     public Map<Category, PhenotypeAtBirth> getPhenotypesAtBirth() {

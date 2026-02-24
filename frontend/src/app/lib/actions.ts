@@ -1,6 +1,6 @@
 'use server'; // server actions
 
-import { Grade, Category, SheepCreateDTO, SheepUpdateDTO } from '@/app/lib/definitions';
+import { Grade, Category, SheepCreateDTO, SheepUpdateDTO, BirthRecord } from '@/app/lib/definitions';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
@@ -144,8 +144,10 @@ export async function breedSheep(prevState: BreedState, formData: FormData) {
         return await parseError(res);
     }
 
+    const birthRecord = await res.json() as BirthRecord;
+
     revalidatePath('/sheep');
-    redirect('/sheep');
+    redirect(`/birth-record/${birthRecord.id}`);
 }
 
 
