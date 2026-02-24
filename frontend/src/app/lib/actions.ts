@@ -129,13 +129,28 @@ export async function createSheep(prevState: CreateState, formData: FormData) {
 export async function breedSheep(prevState: BreedState, formData: FormData) {
     const parent1Id = formData.get("parent1Id") as string;
     const parent2Id = formData.get("parent2Id") as string;
-    const saveChild = formData.get("saveChild") === "on";
 
     if (!parent1Id || !parent2Id || isNaN(Number(parent1Id)) || isNaN(Number(parent2Id))) {
         return { message: "Both parent Ids must be valid numbers", errors: {} };
     }
 
-    const res = await fetch(`${API_BASE_URL}/breed/${parent1Id}/${parent2Id}?saveChild=${saveChild}`, {
+    const saveChild = formData.get("saveChild") === "on";
+    const childNameRaw = formData.get("childName") as string | null;
+
+    const childName =
+        childNameRaw && childNameRaw.trim() !== ""
+            ? childNameRaw.trim()
+            : null;
+
+    const params = new URLSearchParams({
+        saveChild: String(saveChild),
+    });
+
+    if (childName) {
+        params.set("name", childName);
+    }
+
+    const res = await fetch(`${API_BASE_URL}/breed/${parent1Id}/${parent2Id}?${params.toString()}`, {
         method: "POST",
         headers: {"Content-Type": "application/json" },
     });
@@ -182,6 +197,40 @@ export async function updateSheep(
     revalidatePath(`/sheep/${sheepId}`);
     // no redirect needed if you’re already on the detail page
     return { success: true };
+}
+
+
+export async function recalculateBeliefs() {
+    const res = await fetch(`${API_BASE_URL}/breed/recalculate-beliefs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+    })
+
+    if (!res.ok) {
+        return await parseError(res);
+    }
+
+    revalidatePath('/sheep');
+    redirect('/sheep');
+}
+
+
+export async function deleteSheep(
+    sheepId: number,
+    prevState: { success?: boolean, errors?: string[] },
+    formData: FormData
+) {
+    const res = await fetch(`${API_BASE_URL}/sheep/${sheepId}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+    });
+
+    if (!res.ok) {
+        return await parseError(res);
+    }
+
+    revalidatePath('/sheep');
+    redirect("/sheep");
 }
 
 

@@ -56,7 +56,7 @@ public class BreedingService {
      *     if the sheep ids refer to the same sheep
      */
     @Transactional
-    public BirthRecord breedAndInferSheep(Integer sheep1Id, Integer sheep2Id, boolean saveChild) {
+    public BirthRecord breedAndInferSheep(Integer sheep1Id, Integer sheep2Id, boolean saveChild, String name) {
         if (sheep1Id.equals(sheep2Id)) {
             throw new BadRequestException("Parent sheep IDs must be different");
         }
@@ -70,6 +70,9 @@ public class BreedingService {
          * possibly belongs in relationship domain for invariant control */
         // create a new child from the two sheep
         Sheep newChild = breedNewSheep(relationship);
+        if (name != null && saveChild) {
+            newChild.setName(name);
+        }
 
         // save new child if told and create a BirthRecord for the event
         BirthRecord birthRecord;

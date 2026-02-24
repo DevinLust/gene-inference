@@ -4,14 +4,14 @@ import { metadata } from "@/app/layout";
 
 export default function Home() {
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
+    <div className="bg-gray-800 font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
       <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
           <h1 className="text-4xl font-bold">Welcome to {metadata.title as string}</h1>
           <div className="w-full flex gap-4 items-center flex-col sm:flex-row sm:justify-evenly">
               <Link href="/sheep" className="px-4 py-2 bg-blue-500 text-white rounded">
                   See all Sheep
               </Link>
-              <Link href="/sheep/breed" className="px-4 py-2 bg-blue-500 text-white rounded">
+              <Link href="/breed" className="px-4 py-2 bg-blue-500 text-white rounded">
                   Breeding
               </Link>
           </div>

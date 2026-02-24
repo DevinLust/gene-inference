@@ -7,8 +7,9 @@ export default function BreedForm() {
     const [state, formAction] = useActionState(breedSheep, { message: "", errors: {} });
 
     const [sheep1Id, setSheep1Id] = useState("");
-
     const [sheep2Id, setSheep2Id] = useState("");
+
+    const [saveChild, setSaveChild] = useState(false);
 
     return (
         <form
@@ -58,15 +59,29 @@ export default function BreedForm() {
                     <input
                         type="checkbox"
                         name="saveChild"
-                        className="h-4 w-4 rounded border-gray-400 bg-gray-800 accent-green-500"
+                        onChange={(e) => setSaveChild(e.target.checked)}
                     />
                     <span className="font-medium">Save offspring</span>
                 </label>
 
                 <p className="text-sm text-gray-300">
-                    * If unchecked, the birth event will still be recorded and used for inference.
+                    *If unchecked, the birth event will still be recorded and used for inference.
                 </p>
             </div>
+
+            {/* Optional Offspring Name */}
+            {saveChild &&
+                <label className="flex flex-col">
+                    <span className="font-medium">Offspring Name (optional)</span>
+                    <input
+                        name="childName"
+                        type="text"
+                        disabled={!saveChild}
+                        placeholder="Enter name if saving"
+                        className="bg-gray-800 border border-gray-500 rounded p-2"
+                    />
+                </label>
+            }
 
             {/* Submit */}
             <button

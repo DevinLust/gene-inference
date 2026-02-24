@@ -49,7 +49,7 @@ export default function EditableSheepName({
                         {initialName || <span className="text-gray-400">(unnamed)</span>}
                     </h1>
                     <button
-                        className="text-sm px-2 py-1 rounded bg-white/10"
+                        className="text-sm px-2 py-1 rounded bg-white/10 hover:bg-white/5"
                         onClick={() => setEditing(true)}
                     >
                         Edit

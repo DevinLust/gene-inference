@@ -21,8 +21,8 @@ public class BreedController {
     }
 
     @PostMapping(value = "/{sheep1Id}/{sheep2Id}")
-    public ResponseEntity<?> breed(@Positive @PathVariable Integer sheep1Id, @Positive @PathVariable Integer sheep2Id, @RequestParam(name = "saveChild", defaultValue = "true") boolean saveChild) {
-        BirthRecord birthRecord = breedingService.breedAndInferSheep(sheep1Id, sheep2Id, saveChild);
+    public ResponseEntity<?> breed(@Positive @PathVariable Integer sheep1Id, @Positive @PathVariable Integer sheep2Id, @RequestParam(name = "saveChild", defaultValue = "true") boolean saveChild, @RequestParam(name = "name", required = false) String name) {
+        BirthRecord birthRecord = breedingService.breedAndInferSheep(sheep1Id, sheep2Id, saveChild, name);
 
         return ResponseEntity.ok(DomainMapper.toResponseDTO(birthRecord));
     }

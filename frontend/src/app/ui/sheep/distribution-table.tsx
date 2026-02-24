@@ -47,7 +47,7 @@ export default function DistributionTable({ sheep }: { sheep: Sheep }) {
                                                 <td
                                                     key={g}
                                                     className={`px-2 py-2 text-center tabular-nums ${
-                                                        prob >= 0.5 ? "font-bold text-white" : "text-white/80"
+                                                        prob >= 0.2 ? "font-bold text-white" : "text-white/80"
                                                     }`}
                                                 >
                                                     {(prob * 100).toFixed(2)}%

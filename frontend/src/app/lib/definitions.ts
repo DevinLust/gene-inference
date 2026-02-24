@@ -2,7 +2,7 @@
 export type Category = "SWIM" | "FLY" | "RUN" | "POWER" | "STAMINA";
 
 // Distribution types
-type DistributionType = "PRIOR" | "INFERRED";
+export type DistributionType = "PRIOR" | "INFERRED";
 
 // Grades of certain categories
 export type Grade = "S" | "A" | "B" | "C" | "D" | "E";
