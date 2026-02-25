@@ -23,8 +23,8 @@ export type UpdateSheepState = {
 export type BreedState = {
     message?: string | null;
     errors?: {
-        sheep1Id?: string;
-        sheep2Id?: string;
+        parent1MissingCategories?: string;
+        parent2MissingCategories?: string;
     };
 };
 

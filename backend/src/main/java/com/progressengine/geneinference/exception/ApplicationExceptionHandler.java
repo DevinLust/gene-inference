@@ -113,7 +113,7 @@ public class ApplicationExceptionHandler {
     public Map<String, Object> handleIncompleteGenotype(IncompleteGenotypeException ex) {
         return Map.of(
                 "message", ex.getMessage(),
-                "details", Map.of(
+                "errors", Map.of(
                         "parent1MissingCategories", ex.getParent1Missing(),
                         "parent2MissingCategories", ex.getParent2Missing()
                 )

@@ -69,7 +69,7 @@ public class BreedingService {
         /* ----------------------------------------------------------------------------------------
          * possibly belongs in relationship domain for invariant control */
         // create a new child from the two sheep
-        Sheep newChild = breedNewSheep(relationship);
+        Sheep newChild = breedNewSheep(sheep1, sheep2);
         if (name != null && saveChild) {
             newChild.setName(name);
         }
@@ -91,38 +91,36 @@ public class BreedingService {
 
 
     /**
-     * Breed a new child sheep from the given Relationship. The child randomly takes
+     * Breed a new child sheep from two sheep. The child randomly takes
      * one allele from each parent and then randomly chooses which one is the phenotype.
-     * The child will have default distributions and sets its parents to this relationship.
+     * The child will have default distributions.
      * The parents must have known hidden alleles in all categories to breed. Throws
-     * an IllegalArgumentException otherwise.
+     * an IncompleteGenotypeException otherwise.
      *
-     * @param relationship - the relationship of the two parents to breed
+     * @param sheep1 - the first sheep to breed
+     * @param sheep2 - the second sheep to breed
      * @return a Sheep that represents the child born from the relationship
      */
-    public static Sheep breedNewSheep(Relationship relationship) {
-        breedingValidation(relationship);
+    public static Sheep breedNewSheep(Sheep sheep1, Sheep sheep2) {
+        breedingValidation(sheep1, sheep2);
 
         Sheep child = new Sheep();
-
-        Sheep parent1 = relationship.getParent1();
-        Sheep parent2 = relationship.getParent2();
 
         // random genotype from the two parents, one allele from each parent
         Random random = new Random();
         // -----------------------------------------------------------------------------------
         for (Category category : Category.values()) {
-            if (parent1.getHiddenAllele(category) == null || parent2.getHiddenAllele(category) == null) {
+            if (sheep1.getHiddenAllele(category) == null || sheep2.getHiddenAllele(category) == null) {
                 throw new IllegalArgumentException("Missing known hidden allele in category " + category);
             }
             Grade newPhenotype;
             Grade newHiddenAllele;
             if (random.nextBoolean()) {
-                newPhenotype = random.nextBoolean() ? parent1.getPhenotype(category) : parent1.getHiddenAllele(category);
-                newHiddenAllele = random.nextBoolean() ? parent2.getPhenotype(category) : parent2.getHiddenAllele(category);
+                newPhenotype = random.nextBoolean() ? sheep1.getPhenotype(category) : sheep1.getHiddenAllele(category);
+                newHiddenAllele = random.nextBoolean() ? sheep2.getPhenotype(category) : sheep2.getHiddenAllele(category);
             } else {
-                newPhenotype = random.nextBoolean() ? parent2.getPhenotype(category) : parent2.getHiddenAllele(category);
-                newHiddenAllele = random.nextBoolean() ? parent1.getPhenotype(category) : parent1.getHiddenAllele(category);
+                newPhenotype = random.nextBoolean() ? sheep2.getPhenotype(category) : sheep2.getHiddenAllele(category);
+                newHiddenAllele = random.nextBoolean() ? sheep1.getPhenotype(category) : sheep1.getHiddenAllele(category);
             }
 
             child.setPhenotype(category, newPhenotype);
@@ -248,9 +246,9 @@ public class BreedingService {
     }
 
     // validates that these two sheep can be automatically bred within the app
-    private static void breedingValidation(Relationship relationship) {
-        Set<Category> parent1Missing = missingHiddenAllele(relationship.getParent1());
-        Set<Category> parent2Missing = missingHiddenAllele(relationship.getParent2());
+    private static void breedingValidation(Sheep parent1, Sheep parent2) {
+        Set<Category> parent1Missing = missingHiddenAllele(parent1);
+        Set<Category> parent2Missing = missingHiddenAllele(parent2);
         if (!parent1Missing.isEmpty() || !parent2Missing.isEmpty()) {
             throw new IncompleteGenotypeException(parent1Missing, parent2Missing);
         }

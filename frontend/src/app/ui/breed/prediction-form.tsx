@@ -1,14 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Prediction } from "@/app/lib/definitions";
+import { Prediction, Sheep } from "@/app/lib/definitions";
 import { BreedState } from "@/app/lib/actions";
 import { fetchPrediction } from "@/app/lib/data";
 import PhenotypeDistributions from "./phentoype-distributions";
+import SheepComboBox from "./sheep-combo-box";
 
-export default function SheepPredictionForm() {
-    const [sheep1, setSheep1] = useState("");
-    const [sheep2, setSheep2] = useState("");
+export default function SheepPredictionForm({ sheep }: { sheep: Sheep[] }) {
+    const [sheep1, setSheep1] = useState<number | null>(null);
+    const [sheep2, setSheep2] = useState<number | null>(null);
     const [prediction, setPrediction] = useState<Prediction | null>(null);
     const initialState = { message: null, errors: {} }
     const [state, setState] = useState<BreedState>(initialState);
@@ -38,33 +39,9 @@ export default function SheepPredictionForm() {
         <div className="flex-1 max-w-md space-y-4 p-4 rounded-lg bg-gray-600">
             <h2 className="text-xl font-bold">Predict Child Phenotype</h2>
 
-            <div>
-                <input
-                    type="number"
-                    min={1}
-                    placeholder="Sheep 1 ID"
-                    value={sheep1}
-                    onChange={(e) => setSheep1(e.target.value)}
-                    className="w-full rounded border border-gray-500 p-2 bg-gray-800"
-                />
-                <div id="sheep2Id-error" aria-live="polite" aria-atomic="true">
-                    {state.errors?.sheep1Id && <p className="mt-2 text-sm text-red-500">{state.errors.sheep1Id}</p>}
-                </div>
-            </div>
+            <SheepComboBox inputLabel={"Sheep 1 ID"} sheep={sheep} selectedId={sheep1} onSelect={setSheep1}  />
 
-            <div>
-                <input
-                    type="number"
-                    min={1}
-                    placeholder="Sheep 2 ID"
-                    value={sheep2}
-                    onChange={(e) => setSheep2(e.target.value)}
-                    className="w-full rounded border border-gray-500 p-2 bg-gray-800"
-                />
-                <div id="sheep2Id-error" aria-live="polite" aria-atomic="true">
-                    {state.errors?.sheep2Id && <p className="mt-2 text-sm text-red-500">{state.errors.sheep2Id}</p>}
-                </div>
-            </div>
+            <SheepComboBox inputLabel={"Sheep 2 ID"} sheep={sheep} selectedId={sheep2} onSelect={setSheep2} />
 
             <button
                 onClick={handlePredict}

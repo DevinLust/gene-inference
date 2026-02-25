@@ -1,57 +1,98 @@
 'use client';
 
-import { useActionState, useState } from "react";
+import { Sheep, Category } from '@/app/lib/definitions';
+import { useActionState, useState, useEffect } from "react";
 import { breedSheep } from "@/app/lib/actions";
+import SheepComboBox from './sheep-combo-box';
+import CategoryTag from '@/app/ui/category-tag';
 
-export default function BreedForm() {
+export default function BreedForm({ sheep }: { sheep: Sheep[] }) {
     const [state, formAction] = useActionState(breedSheep, { message: "", errors: {} });
 
-    const [sheep1Id, setSheep1Id] = useState("");
-    const [sheep2Id, setSheep2Id] = useState("");
-
     const [saveChild, setSaveChild] = useState(false);
+
+    // controlled selections
+    const [parent1Id, setParent1Id] = useState<number | null>(null);
+    const [parent2Id, setParent2Id] = useState<number | null>(null);
+
+    // hide old server errors once user changes inputs
+    const [dirtySinceSubmit, setDirtySinceSubmit] = useState(false);
+
+    useEffect(() => {
+        // whenever the server returns a new state,
+        // we are no longer "dirty since submit"
+        setDirtySinceSubmit(false);
+    }, [state]);
+
+    const showServerErrors = !dirtySinceSubmit;
 
     return (
         <form
             action={formAction}
             className="flex flex-col gap-6 p-4 max-w-md bg-gray-600 rounded-lg"
         >
+            {(showServerErrors &&
+                (state?.errors?.parent1MissingCategories || state?.errors?.parent2MissingCategories)) && (
+                <p className="text-yellow-500 font-medium">
+                    To breed these sheep, you'll have to record an external event through Record Birth
+                </p>
+            )}
+
             <h2 className="text-lg font-semibold">Breed Sheep</h2>
 
             {/* Parent 1 */}
-            <label className="flex flex-col">
-                <span className="font-medium">Parent 1 ID</span>
-                <input
-                    name="parent1Id"
-                    type="number"
-                    min={1}
-                    value={sheep1Id}
-                    onChange={(e) => setSheep1Id(e.target.value)}
-                    placeholder="Enter first parent ID"
-                    className="bg-gray-800 border border-gray-500 rounded p-2"
+            <div className="m-2">
+                <SheepComboBox
+                    sheep={sheep}
+                    inputLabel="Parent 1"
+                    fieldName="parent1Id"
+                    selectedId={parent1Id}
+                    onSelect={(id) => {
+                        setParent1Id(id);
+                        setDirtySinceSubmit(true);
+                    }}
                 />
-                <div id="sheep1Id-error" aria-live="polite" aria-atomic="true">
-                    {state.errors?.sheep1Id && <p className="mt-2 text-sm text-red-500">{state.errors.sheep1Id}</p>}
-                </div>
-            </label>
 
+                <div id="parent1-error" aria-live="polite" aria-atomic="true">
+                    {showServerErrors && state.errors?.parent1MissingCategories?.length > 0 && (
+                        <div className="flex flex-col w-full">
+                            <p className="mt-2 text-sm text-yellow-500">Missing hidden alleles in these categories</p>
+                            <div className="flex gap-2">
+                                {state.errors.parent1MissingCategories.map((error: string) => (
+                                    <CategoryTag category={error as Category} key={error} />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
 
             {/* Parent 2 */}
-            <label className="flex flex-col">
-                <span className="font-medium">Parent 2 ID</span>
-                <input
-                    name="parent2Id"
-                    type="number"
-                    min={1}
-                    value={sheep2Id}
-                    onChange={(e) => setSheep2Id(e.target.value)}
-                    placeholder="Enter second parent ID"
-                    className="bg-gray-800 border border-gray-500 rounded p-2"
+            <div>
+                <SheepComboBox
+                    sheep={sheep}
+                    inputLabel="Parent 2"
+                    fieldName="parent2Id"
+                    selectedId={parent2Id}
+                    onSelect={(id) => {
+                        setParent2Id(id);
+                        setDirtySinceSubmit(true);
+                    }}
                 />
-                <div id="sheep2Id-error" aria-live="polite" aria-atomic="true">
-                    {state.errors?.sheep2Id && <p className="mt-2 text-sm text-red-500">{state.errors.sheep2Id}</p>}
+
+                <div id="parent2-error" aria-live="polite" aria-atomic="true">
+                    {showServerErrors && state.errors?.parent2MissingCategories?.length > 0 && (
+                        <div className="flex flex-col w-full">
+                            <p className="mt-2 text-sm text-yellow-500">Missing hidden alleles in these categories</p>
+                            <div className="flex gap-2">
+                                {state.errors.parent2MissingCategories.map((error: string) => (
+                                    <CategoryTag category={error as Category} key={error} />
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
-            </label>
+            </div>
 
             {/* Save child checkbox */}
             <div className="flex flex-col gap-1">
@@ -59,7 +100,10 @@ export default function BreedForm() {
                     <input
                         type="checkbox"
                         name="saveChild"
-                        onChange={(e) => setSaveChild(e.target.checked)}
+                        onChange={(e) => {
+                            setSaveChild(e.target.checked);
+                            setDirtySinceSubmit(true);
+                        }}
                     />
                     <span className="font-medium">Save offspring</span>
                 </label>
@@ -69,21 +113,19 @@ export default function BreedForm() {
                 </p>
             </div>
 
-            {/* Optional Offspring Name */}
-            {saveChild &&
+            {saveChild && (
                 <label className="flex flex-col">
                     <span className="font-medium">Offspring Name (optional)</span>
                     <input
                         name="childName"
                         type="text"
-                        disabled={!saveChild}
                         placeholder="Enter name if saving"
                         className="bg-gray-800 border border-gray-500 rounded p-2"
+                        onChange={() => setDirtySinceSubmit(true)}
                     />
                 </label>
-            }
+            )}
 
-            {/* Submit */}
             <button
                 type="submit"
                 className="bg-blue-600 text-white rounded px-4 py-2 hover:bg-blue-700"
@@ -91,8 +133,9 @@ export default function BreedForm() {
                 Breed Sheep
             </button>
 
-            {/* Server response */}
-            {state?.message && <p className="text-red-500 font-medium">{state.message}</p>}
+            {showServerErrors && state?.message && state?.errors == null && (
+                <p className="text-yellow-500 font-medium">{state.message}</p>
+            )}
         </form>
     );
 }
