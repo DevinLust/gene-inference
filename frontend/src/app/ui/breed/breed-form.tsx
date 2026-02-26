@@ -34,7 +34,7 @@ export default function BreedForm({ sheep }: { sheep: Sheep[] }) {
             {(showServerErrors &&
                 (state?.errors?.parent1MissingCategories || state?.errors?.parent2MissingCategories)) && (
                 <p className="text-yellow-500 font-medium">
-                    To breed these sheep, you'll have to record an external event through Record Birth
+                    To breed these sheep, you'll have to record an external event through Record Child
                 </p>
             )}
 

@@ -1,11 +1,10 @@
-import { Sheep } from '@/app/lib/definitions';
-import { fetchAllSheep } from '@/app/lib/data';
-import PredictionForm from '@/app/ui/breed/prediction-form';
+import ServerPredictionForm from '@/app/ui/breed/server-prediction-form';
+import PredictionFormSkeleton from '@/app/ui/breed/prediction-form-skeleton';
 import BestPredictions from '@/app/ui/breed/best-predictions';
 import { BreedSheepButton } from '@/app/ui/buttons';
+import { Suspense } from "react";
 
-export default async function BreedingPage() {
-    const sheep: Sheep[] = await fetchAllSheep()
+export default function BreedingPage() {
     return (
         <div className="breeding-page">
             <h1 className="text-3xl mb-8">Breeding Page</h1>
@@ -13,7 +12,9 @@ export default async function BreedingPage() {
                 <BreedSheepButton />
             </div>
             <div className="flex justify-start gap-6 items-start">
-                <PredictionForm sheep={sheep} />
+                <Suspense fallback={<PredictionFormSkeleton />}>
+                    <ServerPredictionForm />
+                </Suspense>
                 <BestPredictions />
             </div>
         </div>

@@ -131,7 +131,7 @@ export async function breedSheep(prevState: BreedState, formData: FormData) {
     const parent2Id = formData.get("parent2Id") as string;
 
     if (!parent1Id || !parent2Id || isNaN(Number(parent1Id)) || isNaN(Number(parent2Id))) {
-        return { message: "Both parent Ids must be valid numbers", errors: {} };
+        return { message: "Both parents must be selected" };
     }
 
     const saveChild = formData.get("saveChild") === "on";
