@@ -1,12 +1,13 @@
 package com.progressengine.geneinference.service;
 
-import com.progressengine.geneinference.dto.RelationshipResponseDTO;
+import com.progressengine.geneinference.dto.BirthRecordRow;
+import com.progressengine.geneinference.dto.BirthRecordSearchParams;
+import com.progressengine.geneinference.dto.ParentsAtBirthFilter;
+import com.progressengine.geneinference.exception.BadRequestException;
 import com.progressengine.geneinference.exception.ResourceNotFoundException;
 import com.progressengine.geneinference.model.BirthRecord;
-import com.progressengine.geneinference.model.GradePair;
 import com.progressengine.geneinference.model.Relationship;
 import com.progressengine.geneinference.model.Sheep;
-import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.repository.BirthRecordRepository;
 import com.progressengine.geneinference.repository.RelationshipRepository;
 import jakarta.transaction.Transactional;
@@ -126,8 +127,27 @@ public class RelationshipService {
         return filterRelationshipsByParent(parent1.getId(), parent2.getId(), limitPerParent);
     }
 
-    public List<BirthRecord> findBirthRecordsByCategoryAndEpoch(Integer relationshipId, Category category, GradePair epoch) {
-        return birthRecordRepository.findBirthRecordsByParentPhenotypes(relationshipId, category, epoch.getFirst(), epoch.getSecond());
+    public List<BirthRecordRow> searchBirthRecords(BirthRecordSearchParams params) {
+        Integer relId = params.relationshipId();
+
+        // No relationship scope => don't allow parentsAtBirth filter
+        if (relId == null) {
+            if (params.hasAnyParentsAtBirth()) {
+                throw new BadRequestException("parentsAtBirth filter requires relationshipId");
+            }
+            return birthRecordRepository.listAllRows();
+        }
+
+        // Relationship scope, but filter not fully specified => return all for relationship
+        if (!params.hasCompleteParentsAtBirth()) {
+            return birthRecordRepository.listRowsByParentRelationship(relId);
+        }
+
+        // Relationship scope + full filter => run filtered query
+        ParentsAtBirthFilter f = params.parentsAtBirth();
+        return birthRecordRepository.findRowsByParentPhenotypes(
+                relId, f.category(), f.p1(), f.p2()
+        );
     }
 
     /**

@@ -1,5 +1,7 @@
 package com.progressengine.geneinference.controller;
 
+import com.progressengine.geneinference.dto.BirthRecordRow;
+import com.progressengine.geneinference.dto.BirthRecordSearchParams;
 import com.progressengine.geneinference.mapper.DomainMapper;
 import com.progressengine.geneinference.model.BirthRecord;
 import com.progressengine.geneinference.service.RelationshipService;
@@ -14,6 +16,11 @@ public class BirthRecordController {
 
     public BirthRecordController(RelationshipService relationshipService) {
         this.relationshipService = relationshipService;
+    }
+
+    @GetMapping
+    public ResponseEntity<?> listBirthRecords(@ModelAttribute BirthRecordSearchParams params) {
+        return ResponseEntity.ok(relationshipService.searchBirthRecords(params));
     }
 
     @GetMapping("/{brId}")
