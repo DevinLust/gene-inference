@@ -1,5 +1,6 @@
-import { Grade, Relationship, Category } from "@/app/lib/definitions";
+import { Grade, Relationship, Category, GradePairKey, parseGradePair } from "@/app/lib/definitions";
 import CategoryCard from "@/app/ui/category-card";
+import { EpochRecordButton } from "@/app/ui/buttons";
 
 const ALL_GRADES: Grade[] = ["S", "A", "B", "C", "D", "E"];
 
@@ -36,6 +37,9 @@ export default function PhenotypeFrequencyTable({ relationship }: { relationship
                                         </th>
                                     ))}
                                     <th className="px-2 py-2 text-center font-semibold">Total</th>
+                                    <th className="px-2 py-2 text-center font-semibold">
+                                        <span className="sr-only">Epoch Records</span>
+                                    </th>
                                 </tr>
                                 </thead>
 
@@ -45,6 +49,7 @@ export default function PhenotypeFrequencyTable({ relationship }: { relationship
                                         (sum, g) => sum + getFreq(freqMap, g),
                                         0
                                     );
+                                    const [p1, p2] = parseGradePair(pairKey as GradePairKey);
 
                                     return (
                                         <tr key={pairKey} className="border-t border-white/10 odd:bg-white/5 hover:bg-white/20 transition-colors">
@@ -60,6 +65,9 @@ export default function PhenotypeFrequencyTable({ relationship }: { relationship
 
                                             <td className="px-2 py-2 text-center font-semibold tabular-nums">
                                                 {total}
+                                            </td>
+                                            <td className="px-2 py-2 text-center font-semibold tabular-nums">
+                                                <EpochRecordButton relationshipId={relationship.id} category={cat} p1={p1} p2={p2} />
                                             </td>
                                         </tr>
                                     );

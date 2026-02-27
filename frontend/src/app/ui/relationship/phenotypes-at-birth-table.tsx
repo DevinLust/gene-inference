@@ -3,8 +3,8 @@ import CategoryTag from '@/app/ui/category-tag';
 
 export default function PhenotypesAtBirthTable({ birthRecord }: {birthRecord: BirthRecord }) {
     return (
-        <div className="inline-block min-w-1/2 bg-gray-500 rounded-lg mt-4">
-            <h1 className="border-b border-gray-400 p-1">Phenotypes at birth</h1>
+        <div className="inline-block min-w-1/2 bg-gray-600 rounded-lg mt-4">
+            <h1 className="border-b border-gray-400 pl-6 py-1">Phenotypes at birth</h1>
             <div className="p-2">
                 <table className="bg-blue-800 min-w-full border-separate border-spacing-0 text-sm">
                     <thead>

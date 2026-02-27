@@ -61,3 +61,14 @@ export function SheepEditButton({ sheepId, children, className }: SheepDetailsPr
         </Link>
     );
 }
+
+export function EpochRecordButton({ relationshipId, category, p1, p2 }: { relationshipId: string | number, category: string, p1: string, p2: string}) {
+    return (
+        <Link
+            href={`/birth-record?relationshipId=${relationshipId}&category=${category}&p1=${p1}&p2=${p2}`}
+            className={`rounded text-gray-200 ml-2 hover:bg-gray-600 px-2 py-1`}
+        >
+            view records
+        </Link>
+    );
+}

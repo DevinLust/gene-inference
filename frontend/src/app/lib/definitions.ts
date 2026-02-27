@@ -9,6 +9,15 @@ export type Grade = "S" | "A" | "B" | "C" | "D" | "E";
 
 export type GradePairKey = `(${Grade}, ${Grade})`;
 
+export function parseGradePair(key: GradePairKey): [Grade, Grade] {
+    const [g1, g2] = key
+        .slice(1, -1)   // remove "(" and ")"
+        .split(", ")
+        .map(s => s as Grade);
+
+    return [g1, g2];
+}
+
 // Map of probabilities of grades across categories and their distribution types
 type ProbabilityMap = {
     [C in Category]: {
