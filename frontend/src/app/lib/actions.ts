@@ -233,6 +233,24 @@ export async function deleteSheep(
     redirect("/sheep");
 }
 
+export async function deleteBirthRecord(
+    brId: number,
+    prevState: { success?: boolean, errors?: string[] },
+    formData: FormData
+) {
+    const res = await fetch(`${API_BASE_URL}/birth-record/${brId}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+    });
+
+    if (!res.ok) {
+        return await parseError(res);
+    }
+
+    revalidatePath('/birth-record');
+    redirect("/birth-record");
+}
+
 
 async function parseError(res: Response) {
     try {

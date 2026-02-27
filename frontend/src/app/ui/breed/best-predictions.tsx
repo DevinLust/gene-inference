@@ -72,7 +72,7 @@ export default function BestPredictions() {
             {bestPredictions.length > 0 && (
                 <div>
                     <h2 className="text-xl font-bold">Best Categories</h2>
-                    <div className="overflow-y-auto max-h-[60vh] rounded-lg">
+                    <div className="overflow-y-auto max-h-[60vh] rounded-lg border-y border-gray-400">
 
                         {bestPredictions.map((prediction, index) => (
                             <div

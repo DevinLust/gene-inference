@@ -107,3 +107,21 @@ export type BirthRecord = {
     child: SheepSummary | null;
     phenotypesAtBirth: Record<Category, PhenotypesAtBirth>;
 }
+
+export type BirthRecordRow = {
+    id: number;
+    relationshipId: number;
+    childId: number | null;
+    childName: string | null;
+    parent1Id: number;
+    parent1Name: string | null;
+    parent2Id: number;
+    parent2Name: string | null;
+}
+
+export type BirthRecordFilter = {
+    relationshipId?: string;
+    category?: string;
+    p1?: string;
+    p2?: string;
+}

@@ -1,6 +1,7 @@
 import { fetchBirthRecordById } from '@/app/lib/data';
 import PhenotypesAtBirthTable from '@/app/ui/relationship/phenotypes-at-birth-table';
 import { RelationshipDetails, SheepDetails } from '@/app/ui/buttons';
+import BirthRecordDeleteButton from '@/app/ui/relationship/birth-record-delete-button';
 import { notFound } from 'next/navigation';
 
 export default async function BirthRecordPage(props: { params: Promise<{ id: string }> }) {
@@ -18,7 +19,10 @@ export default async function BirthRecordPage(props: { params: Promise<{ id: str
             <h1 className="text-2xl">Birth Record</h1>
 
             {/* Id */}
-            <p>ID: {birthRecord.id}</p>
+            <div className="flex flex-wrap justify-between mt-4">
+                <p>ID: {birthRecord.id}</p>
+                <BirthRecordDeleteButton brId={birthRecord.id} />
+            </div>
 
             {/* Relationship Id */}
             <div className="mt-4">

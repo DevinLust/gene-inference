@@ -6,6 +6,7 @@ import clsx from 'clsx';
 import { GiSheep, GiBarn } from "react-icons/gi";
 import { SiAwslambda } from "react-icons/si";
 import { HiOutlineUsers } from "react-icons/hi";
+import { HiDocumentText } from "react-icons/hi2";
 
 // Map of links to display in the side navigation.
 // Depending on the size of the application, this would be stored in a database.
@@ -26,6 +27,11 @@ const links = [
         href: '/relationship',
         icon: HiOutlineUsers,
     },
+    {
+        name: 'Records',
+        href: '/birth-record',
+        icon: HiDocumentText,
+    }
 ];
 
 export default function NavLinks() {
