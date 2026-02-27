@@ -54,6 +54,12 @@ export type SheepSummary = {
     name: string | null;
 };
 
+export type SheepFilter = {
+    grades?: string;
+    name?: string;
+    ids?: string;
+}
+
 export type SheepCreateDTO = {
     name: string | null;
     distributions: ProbabilityMapCreateDTO;
@@ -72,6 +78,18 @@ export type PhenotypeDistributions = {
         [G in Grade]: number;
     };
 };
+
+export type Distributions = {
+    category: Category;
+    type: DistributionType;
+    distributions: Record<string, Record<Grade, number>>;
+}
+
+export type DistributionFilter = {
+    category: Category;
+    type: DistributionType;
+    ids?: string;
+}
 
 export type Prediction = {
     phenotypeDistributions: PhenotypeDistributions

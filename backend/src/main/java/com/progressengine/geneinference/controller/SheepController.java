@@ -4,6 +4,7 @@ import com.progressengine.geneinference.dto.*;
 import com.progressengine.geneinference.mapper.DomainMapper;
 import com.progressengine.geneinference.model.Sheep;
 import com.progressengine.geneinference.model.enums.Category;
+import com.progressengine.geneinference.model.enums.DistributionType;
 import com.progressengine.geneinference.model.enums.Grade;
 import com.progressengine.geneinference.service.SheepService;
 import jakarta.validation.Valid;
@@ -32,27 +33,26 @@ public class SheepController {
     }
 
     @GetMapping
-    public List<SheepResponseDTO> getAllSheep() {
-        List<Sheep> sheepList = sheepService.getAllSheep();
-        return sheepList.stream()
-                .map(DomainMapper::toResponseDTO)
-                .toList();
-    }
-
-    @GetMapping("/filter")
-    public List<SheepResponseDTO> filterSheep(
+    public List<SheepSummaryResponseDTO> filterSheep(
             @RequestParam(required = false) String name,
             @RequestParam(required = false) List<Grade> grades) {
 
         // convert list to set to remove duplicates
         Set<Grade> gradeSet = grades == null ? Collections.emptySet() : new HashSet<>(grades);
 
-        return sheepService.filterSheep(name, gradeSet).stream()
-                .map(DomainMapper::toResponseDTO)
-                .toList();
+        return sheepService.filterSheep(name, gradeSet);
     }
 
-    @GetMapping("/{sheepId}")
+    @GetMapping("/distributions")
+    public DistributionResponseDTO distributions(
+            @RequestParam Category category,
+            @RequestParam(required = false) List<Integer> ids,
+            @RequestParam(defaultValue = "INFERRED") DistributionType type
+    ) {
+        return sheepService.getDistributionProjectionsByCategoryAndType(category, type, ids);
+    }
+
+    @GetMapping("/{sheepId:\\d+}")
     public SheepResponseDTO getSheep(@Positive @PathVariable Integer sheepId) {
         Sheep sheep = sheepService.findById(sheepId);
         return DomainMapper.toResponseDTO(sheep);

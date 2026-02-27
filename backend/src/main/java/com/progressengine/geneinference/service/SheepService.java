@@ -58,6 +58,10 @@ public class SheepService {
         return sheepRepository.findAllForInference();
     }
 
+    public List<SheepSummaryResponseDTO> getAllSheepSummary() {
+        return sheepRepository.listAllSummaries();
+    }
+
     /**
      * Fetches sheep from the database based on the supplied name and grades.
      * If name is not null then any sheep that has a similar name to the string
@@ -69,13 +73,39 @@ public class SheepService {
      * @param grades - Set of whitelisted grades
      * @return a List of Sheep that matches the filter criteria
      */
-    public List<Sheep> filterSheep(String name, Set<Grade> grades) {
+    public List<SheepSummaryResponseDTO> filterSheep(String name, Set<Grade> grades) {
         if (grades == null || grades.isEmpty()) {
-            grades = Arrays.stream(Grade.values()).collect(Collectors.toSet());
+            grades = EnumSet.allOf(Grade.class);
         }
 
-        Set<String> gradeStrings = grades.stream().map(Grade::name).collect(Collectors.toSet());
-        return sheepRepository.findSheepHavingAnyGradeAndName(grades, name);
+        return sheepRepository.listSheepHavingAnyGradeAndName(grades, name);
+    }
+
+
+    public DistributionResponseDTO getDistributionProjectionsByCategoryAndType(
+            Category category,
+            DistributionType distributionType,
+            List<Integer> sheepIds
+    ) {
+        List<SheepDistributionRow> rows = sheepRepository
+                .listDistributionRowsByCategoryAndType(category, distributionType, sheepIds == null || sheepIds.isEmpty() ? null : sheepIds);
+
+        Map<Integer, Map<Grade, Double>> result = new HashMap<>();
+
+        for (SheepDistributionRow r : rows) {
+            Map<Grade, Double> m = result.computeIfAbsent(r.sheepId(), k -> new EnumMap<>(Grade.class));
+            Double prev = m.putIfAbsent(r.grade(), r.probability());
+            if (prev != null) {
+                throw new IllegalStateException(
+                        "Duplicate distribution row: sheepId=" + r.sheepId()
+                                + ", grade=" + r.grade()
+                                + ", prev=" + prev
+                                + ", next=" + r.probability()
+                );
+            }
+        }
+
+        return new DistributionResponseDTO(category, distributionType, result);
     }
 
 

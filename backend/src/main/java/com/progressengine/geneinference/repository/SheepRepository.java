@@ -1,6 +1,10 @@
 package com.progressengine.geneinference.repository;
 
+import com.progressengine.geneinference.dto.SheepDistributionRow;
+import com.progressengine.geneinference.dto.SheepSummaryResponseDTO;
 import com.progressengine.geneinference.model.Sheep;
+import com.progressengine.geneinference.model.enums.Category;
+import com.progressengine.geneinference.model.enums.DistributionType;
 import com.progressengine.geneinference.model.enums.Grade;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -43,18 +47,15 @@ public interface SheepRepository extends JpaRepository<Sheep, Integer>, JpaSpeci
             @Param("name") String name
     );
 
-    @EntityGraph(attributePaths = {"genotypes", "distributions", "birthRecord"})
     @Query("""
-        SELECT DISTINCT s
-        FROM Sheep s
-        WHERE EXISTS (
-            SELECT 1
-            FROM s.genotypes g2
-            WHERE g2.phenotype IN :grades OR g2.hiddenAllele IN :grades
-        )
-        AND (:name IS NULL OR CAST(s.name AS String) ILIKE CONCAT('%', CAST(:name AS String), '%'))
+      select distinct new com.progressengine.geneinference.dto.SheepSummaryResponseDTO(s.id, s.name)
+      from Sheep s
+      join s.genotypes g
+      where (g.phenotype in :grades or g.hiddenAllele in :grades)
+        and (:name is null or lower(CAST(s.name AS String)) like lower(concat('%', CAST(:name AS String), '%')))
+      order by s.id desc
     """)
-    List<Sheep> findSheepHavingAnyGradeAndName(
+    List<SheepSummaryResponseDTO> listSheepHavingAnyGradeAndName(
             @Param("grades") Set<Grade> grades,
             @Param("name") String name
     );
@@ -70,5 +71,32 @@ public interface SheepRepository extends JpaRepository<Sheep, Integer>, JpaSpeci
             "birthRecord.parentRelationship"
     })
     Optional<Sheep> findWithAllById(Integer id);
+
+    @Query("""
+        select new com.progressengine.geneinference.dto.SheepSummaryResponseDTO(
+            s.id,
+            s.name
+        )
+        from Sheep s
+        order by s.id desc
+    """)
+    List<SheepSummaryResponseDTO> listAllSummaries();
+
+    @Query("""
+      select new com.progressengine.geneinference.dto.SheepDistributionRow(
+        d.sheep.id,
+        d.grade,
+        d.probability
+      )
+      from SheepDistribution d
+      where d.category = :category
+        and d.distributionType = :type
+        and (:sheepIds is null or d.sheep.id in :sheepIds)
+    """)
+    List<SheepDistributionRow> listDistributionRowsByCategoryAndType(
+            @Param("category") Category category,
+            @Param("type") DistributionType distributionType,
+            @Param("sheepIds") List<Integer> sheepIds
+    );
 
 }

@@ -84,7 +84,10 @@ export default async function BirthRecordList({ filter }: { filter: BirthRecordF
                                             </span>
                                         </Link>
                                         :
-                                        <span className="text-gray-500">not saved</span>
+                                        <div className="flex items-baseline gap-2">
+                                            <span className="w-12 text-right text-gray-500">X:</span>
+                                            <span className="text-gray-500">not saved</span>
+                                        </div>
                                     }
                                 </td>
                                 <td className="whitespace-nowrap py-3 pl-6 pr-3">

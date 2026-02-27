@@ -1,15 +1,16 @@
 'use server';
 
-import { Sheep, Category, Grade } from '@/app/lib/definitions';
-import { fetchAllSheep } from '@/app/lib/data';
+import { SheepSummary, Category, Grade, Distributions, DistributionType, SheepFilter } from '@/app/lib/definitions';
+import { fetchAllSheep, fetchDistributions } from '@/app/lib/data';
 import { SheepDetails } from '@/app/ui/buttons';
 import CategoryDropdown from './category-dropdown';
 
 const ALL_GRADES: Grade[] = ["S", "A", "B", "C", "D", "E"];
 
-export default async function SheepList({ selectedCategory }: { selectedCategory: Category }) {
-    const sheep: Sheep[] = await fetchAllSheep();
+export default async function SheepList({ selectedCategory, filter }: { selectedCategory: Category, filter: SheepFilter }) {
+    const sheep: SheepSummary[] = await fetchAllSheep(filter);
     const displayCat: Category = selectedCategory ?? "SWIM";
+    const distributions: Distributions = await fetchDistributions({ category: displayCat, type: ("INFERRED" as DistributionType) });
     return (
         <div className="mt-6 flow-root">
             <CategoryDropdown />
@@ -44,7 +45,7 @@ export default async function SheepList({ selectedCategory }: { selectedCategory
                             </tr>
                         </thead>
                         <tbody  className="bg-gray-800">
-                            {sheep.map((s: Sheep) => (
+                            {sheep.map((s: SheepSummary) => (
                                 <tr
                                     key={s.id}
                                     className="w-full border-b border-gray-600 py-3 text-sm last-of-type:border-none [&:first-child>td:first-child]:rounded-tl-lg [&:first-child>td:last-child]:rounded-tr-lg [&:last-child>td:first-child]:rounded-bl-lg [&:last-child>td:last-child]:rounded-br-lg"
@@ -53,7 +54,7 @@ export default async function SheepList({ selectedCategory }: { selectedCategory
                                         <span>{s.name || <span className="text-gray-400">(unnamed)</span>}</span>
                                     </td>
                                     {ALL_GRADES.map(grade => {
-                                        const prob = s.distributions[displayCat]["INFERRED"][grade];
+                                        const prob = distributions.distributions[s.id][grade];
                                         return (
                                             <td
                                                 className={`whitespace-nowrap py-3 pr-3 text-right ${

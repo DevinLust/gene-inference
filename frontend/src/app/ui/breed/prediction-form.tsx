@@ -39,9 +39,9 @@ export default function SheepPredictionForm({ sheep }: { sheep: Sheep[] }) {
         <div className="flex-1 max-w-md space-y-4 p-4 rounded-lg bg-gray-600">
             <h2 className="text-xl font-bold">Predict Child Phenotype</h2>
 
-            <SheepComboBox inputLabel={"Sheep 1 ID"} sheep={sheep} selectedId={sheep1} onSelect={setSheep1}  />
+            <SheepComboBox inputLabel={"Parent 1"} sheep={sheep} selectedId={sheep1} onSelect={setSheep1}  />
 
-            <SheepComboBox inputLabel={"Sheep 2 ID"} sheep={sheep} selectedId={sheep2} onSelect={setSheep2} />
+            <SheepComboBox inputLabel={"Parent 2"} sheep={sheep} selectedId={sheep2} onSelect={setSheep2} />
 
             <button
                 onClick={handlePredict}

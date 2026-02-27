@@ -1,6 +1,6 @@
 'use server';
 
-import { Sheep, Prediction, BestPrediction, Relationship, BirthRecord, BirthRecordRow, Category, Grade, BirthRecordFilter } from "./definitions";
+import { Sheep, Prediction, BestPrediction, Relationship, BirthRecord, BirthRecordRow, BirthRecordFilter, DistributionFilter, SheepFilter } from "./definitions";
 import { BreedState } from "./actions";
 import { notFound } from "next/navigation";
 
@@ -11,10 +11,21 @@ if (!process.env.NEXT_PUBLIC_API_BASE_URL) {
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 // data fetching functions
-export async function fetchAllSheep(): Promise<Sheep[]> {
-    const res = await fetch(`${API_BASE_URL}/sheep`, {
+export async function fetchAllSheep(filter: SheepFilter): Promise<Sheep[]> {
+    const params = new URLSearchParams(filter);
+    const res = await fetch(`${API_BASE_URL}/sheep?${params}`, {
         cache: "default",
     });
+
+    await checkStatus(res);
+
+    return await res.json();
+}
+
+export async function fetchDistributions(filter: DistributionFilter) {
+    const params = new URLSearchParams(filter);
+
+    const res = await fetch(`${API_BASE_URL}/sheep/distributions?${params}`);
 
     await checkStatus(res);
 
