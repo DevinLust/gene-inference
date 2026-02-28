@@ -5,6 +5,8 @@ import com.progressengine.geneinference.dto.BirthRecordSearchParams;
 import com.progressengine.geneinference.mapper.DomainMapper;
 import com.progressengine.geneinference.model.BirthRecord;
 import com.progressengine.geneinference.service.RelationshipService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,8 +21,9 @@ public class BirthRecordController {
     }
 
     @GetMapping
-    public ResponseEntity<?> listBirthRecords(@ModelAttribute BirthRecordSearchParams params) {
-        return ResponseEntity.ok(relationshipService.searchBirthRecords(params));
+    public ResponseEntity<?> listBirthRecords(@ModelAttribute BirthRecordSearchParams params, Pageable pageable) {
+        Page<BirthRecordRow> page = relationshipService.searchBirthRecords(params, pageable);
+        return ResponseEntity.ok(DomainMapper.toResponseDTO(page));
     }
 
     @GetMapping("/{brId}")

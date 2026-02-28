@@ -9,10 +9,6 @@ public record BirthRecordSearchParams(
         Grade p1,
         Grade p2
 ) {
-    public ParentsAtBirthFilter parentsAtBirth() {
-        if (category == null && p1 == null && p2 == null) return null;
-        return new ParentsAtBirthFilter(category, p1, p2);
-    }
 
     public boolean hasAnyParentsAtBirth() {
         return category != null || p1 != null || p2 != null;

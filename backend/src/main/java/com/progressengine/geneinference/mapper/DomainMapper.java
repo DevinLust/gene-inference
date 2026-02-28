@@ -1,6 +1,7 @@
 package com.progressengine.geneinference.mapper;
 
 import com.progressengine.geneinference.dto.*;
+import org.springframework.data.domain.Page;
 import com.progressengine.geneinference.model.BirthRecord;
 import com.progressengine.geneinference.model.Relationship;
 import com.progressengine.geneinference.model.Sheep;
@@ -69,5 +70,16 @@ public class DomainMapper {
         }
         dto.setPhenotypesAtBirth(birthRecord.getPhenotypesAtBirthOrganized());
         return dto;
+    }
+
+    public static <T> PageResponse<T> toResponseDTO(Page<T> page) {
+        return new PageResponse<>(
+                page.getContent(),
+                page.getNumber(),
+                page.getSize(),
+                page.getTotalElements(),
+                page.getTotalPages(),
+                page.hasNext()
+        );
     }
 }

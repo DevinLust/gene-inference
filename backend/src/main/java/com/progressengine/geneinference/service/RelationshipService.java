@@ -2,7 +2,6 @@ package com.progressengine.geneinference.service;
 
 import com.progressengine.geneinference.dto.BirthRecordRow;
 import com.progressengine.geneinference.dto.BirthRecordSearchParams;
-import com.progressengine.geneinference.dto.ParentsAtBirthFilter;
 import com.progressengine.geneinference.dto.RelationshipRow;
 import com.progressengine.geneinference.exception.BadRequestException;
 import com.progressengine.geneinference.exception.ResourceNotFoundException;
@@ -12,6 +11,8 @@ import com.progressengine.geneinference.model.Sheep;
 import com.progressengine.geneinference.repository.BirthRecordRepository;
 import com.progressengine.geneinference.repository.RelationshipRepository;
 import jakarta.transaction.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -132,7 +133,7 @@ public class RelationshipService {
         return filterRelationshipsByParent(parent1.getId(), parent2.getId(), limitPerParent);
     }
 
-    public List<BirthRecordRow> searchBirthRecords(BirthRecordSearchParams params) {
+    public Page<BirthRecordRow> searchBirthRecords(BirthRecordSearchParams params, Pageable pageable) {
         Integer relId = params.relationshipId();
 
         // No relationship scope => don't allow parentsAtBirth filter
@@ -140,18 +141,17 @@ public class RelationshipService {
             if (params.hasAnyParentsAtBirth()) {
                 throw new BadRequestException("parentsAtBirth filter requires relationshipId");
             }
-            return birthRecordRepository.listAllRows();
+            return birthRecordRepository.pageAllRows(pageable);
         }
 
         // Relationship scope, but filter not fully specified => return all for relationship
         if (!params.hasCompleteParentsAtBirth()) {
-            return birthRecordRepository.listRowsByParentRelationship(relId);
+            return birthRecordRepository.pageRowsByParentRelationship(relId, pageable);
         }
 
         // Relationship scope + full filter => run filtered query
-        ParentsAtBirthFilter f = params.parentsAtBirth();
-        return birthRecordRepository.findRowsByParentPhenotypes(
-                relId, f.category(), f.p1(), f.p2()
+        return birthRecordRepository.pageRowsByParentPhenotypes(
+                relId, params.category(), params.p1(), params.p2(), pageable
         );
     }
 
