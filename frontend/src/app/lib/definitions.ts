@@ -124,6 +124,14 @@ export type Relationship = {
     phenotypeFrequencies: PhenotypeFrequencies;
 };
 
+export type RelationshipRow = {
+    id: number;
+    parent1Id: number;
+    parent2Id: number;
+    parent1Name: string | null;
+    parent2Name: string | null;
+}
+
 export type PhenotypesAtBirth = {
     parent1: Grade;
     parent2: Grade;

@@ -1,6 +1,6 @@
 'use server';
 
-import { Sheep, Prediction, BestPrediction, Relationship, BirthRecord, BirthRecordRow, BirthRecordFilter, DistributionFilter, SheepFilter } from "./definitions";
+import { Sheep, Prediction, BestPrediction, Relationship, RelationshipRow, BirthRecord, BirthRecordRow, BirthRecordFilter, DistributionFilter, SheepFilter } from "./definitions";
 import { BreedState } from "./actions";
 import { notFound } from "next/navigation";
 
@@ -62,12 +62,12 @@ export async function fetchBestPredictions(): Promise<BestPrediction[] | BreedSt
     return await res.json() as BestPrediction[];
 }
 
-export async function fetchAllRelationships(): Promise<Relationship[]> {
+export async function fetchAllRelationships(): Promise<RelationshipRow[]> {
     const res = await fetch(`${API_BASE_URL}/relationship`);
 
     await checkStatus(res);
 
-    return await res.json() as Relationship[];
+    return await res.json() as RelationshipRow[];
 }
 
 export async function fetchRelationshipById(id: string): Promise<Relationship> {

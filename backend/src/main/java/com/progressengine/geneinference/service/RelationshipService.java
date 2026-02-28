@@ -3,6 +3,7 @@ package com.progressengine.geneinference.service;
 import com.progressengine.geneinference.dto.BirthRecordRow;
 import com.progressengine.geneinference.dto.BirthRecordSearchParams;
 import com.progressengine.geneinference.dto.ParentsAtBirthFilter;
+import com.progressengine.geneinference.dto.RelationshipRow;
 import com.progressengine.geneinference.exception.BadRequestException;
 import com.progressengine.geneinference.exception.ResourceNotFoundException;
 import com.progressengine.geneinference.model.BirthRecord;
@@ -48,6 +49,10 @@ public class RelationshipService {
      */
     public List<Relationship> getAllRelationships() {
         return relationshipRepository.findAllWithFullGraph();
+    }
+
+    public List<RelationshipRow>  getAllRelationshipRows() {
+        return relationshipRepository.listAll();
     }
 
     /**

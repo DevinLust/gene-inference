@@ -52,7 +52,7 @@ export default function BreedForm({ sheep }: { sheep: SheepSummary[] }) {
             <h2 className="text-lg font-semibold">Breed Sheep</h2>
 
             {/* Parent 1 */}
-            <div className="m-2">
+            <div>
                 <SheepComboBox
                     sheep={sheep}
                     inputLabel="Parent 1"

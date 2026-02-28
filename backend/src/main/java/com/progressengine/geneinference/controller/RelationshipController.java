@@ -2,6 +2,7 @@ package com.progressengine.geneinference.controller;
 
 import com.progressengine.geneinference.dto.BirthRecordDTO;
 import com.progressengine.geneinference.dto.RelationshipResponseDTO;
+import com.progressengine.geneinference.dto.RelationshipRow;
 import com.progressengine.geneinference.mapper.DomainMapper;
 import com.progressengine.geneinference.model.Relationship;
 import com.progressengine.geneinference.service.RelationshipService;
@@ -23,11 +24,8 @@ public class RelationshipController {
     }
 
     @GetMapping
-    public List<RelationshipResponseDTO> getAllRelationships() {
-        List<Relationship> relationshipList = relationshipService.getAllRelationships();
-        return relationshipList.stream()
-                .map(DomainMapper::toResponseDTO)
-                .toList();
+    public List<RelationshipRow> getAllRelationships() {
+        return relationshipService.getAllRelationshipRows();
     }
 
     @GetMapping("/{relationshipId}")

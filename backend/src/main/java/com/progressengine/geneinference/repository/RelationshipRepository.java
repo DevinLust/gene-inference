@@ -1,5 +1,6 @@
 package com.progressengine.geneinference.repository;
 
+import com.progressengine.geneinference.dto.RelationshipRow;
 import com.progressengine.geneinference.model.Relationship;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -45,6 +46,21 @@ public interface RelationshipRepository extends JpaRepository<Relationship, Inte
     })
     @Query("select r from Relationship r")
     List<Relationship> findAllWithFullGraph();
+
+    @Query("""
+        select new com.progressengine.geneinference.dto.RelationshipRow(
+            r.id,
+            p1.id,
+            p1.name,
+            p2.id,
+            p2.name
+        )
+        from Relationship r
+        join r.parent1 p1
+        join r.parent2 p2
+        order by r.id desc
+    """)
+    List<RelationshipRow> listAll();
 
     @EntityGraph(attributePaths = {
             "parent1",
