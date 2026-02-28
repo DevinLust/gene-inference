@@ -1,6 +1,6 @@
 'use server'; // server actions
 
-import { Grade, Category, SheepCreateDTO, SheepUpdateDTO, BirthRecord } from '@/app/lib/definitions';
+import { Grade, Category, SheepCreateDTO, SheepUpdateDTO, SheepChildDTO, BirthRecord } from '@/app/lib/definitions';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
@@ -11,6 +11,17 @@ export type CreateState = {
         distributions?: string[];
         genotypes?: string[];
         parentRelationshipId?: string[];
+    };
+};
+
+export type ChildState = {
+    message?: string | null;
+    errors?: {
+        name?: string[];
+        distributions?: string[];
+        genotypes?: string[];
+        parent1Id?: string[];
+        parent2Id?: string[];
     };
 };
 
@@ -85,9 +96,14 @@ export async function formDataToSheepCreateDTO(formData: FormData): Promise<Shee
                 }
                 return n;
             })();
+    const childNameRaw = formData.get("name") as string;
+    const childName =
+        childNameRaw && childNameRaw.trim() !== ""
+            ? childNameRaw.trim()
+            : null;
 
     return {
-        name: formData.get("name") as string,
+        name: childName,
         genotypes: genotypes,
         distributions: distributions,
         parentRelationshipId: parentRelationshipId,
@@ -100,6 +116,17 @@ export async function formDataToSheepUpdateDTO(formData: FormData): Promise<Shee
         name: createDTO.name,
         genotypes: createDTO.genotypes,
         distributions: createDTO.distributions
+    }
+}
+
+export async function formDataToChildDTO(formData: FormData): Promise<SheepChildDTO> {
+    const createDTO: SheepCreateDTO = await formDataToSheepCreateDTO(formData);
+    return {
+        name: createDTO.name,
+        genotypes: createDTO.genotypes,
+        distributions: createDTO.distributions,
+        parent1Id: Number(formData.get("parent1Id")),
+        parent2Id: Number(formData.get("parent2Id"))
     }
 }
 
@@ -124,6 +151,37 @@ export async function createSheep(prevState: CreateState, formData: FormData) {
 
     revalidatePath('/sheep');
     redirect('/sheep');
+}
+
+export async function recordChild(prevState: ChildState, formData: FormData): Promise<ChildState> {
+    const parent1Id = formData.get("parent1Id") as string;
+    const parent2Id = formData.get("parent2Id") as string;
+
+    if (!parent1Id || !parent2Id || isNaN(Number(parent1Id)) || isNaN(Number(parent2Id))) {
+        return { message: "Both parents must be selected" };
+    }
+
+    let newChild: SheepChildDTO;
+    try {
+        newChild = await formDataToChildDTO(formData);
+    } catch (err) {
+        return err instanceof Error && err.message ? { message: err.message, errors: {} } : { message: "Invalid form data", errors: {} };
+    }
+
+    const res = await fetch(`${API_BASE_URL}/breed/record-birth`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newChild),
+    });
+
+    if (!res.ok) {
+        return await parseError(res);
+    }
+
+    const birthRecord = await res.json() as BirthRecord;
+
+    revalidatePath('/sheep');
+    redirect(`/birth-record/${birthRecord.id}`);
 }
 
 export async function breedSheep(prevState: BreedState, formData: FormData) {

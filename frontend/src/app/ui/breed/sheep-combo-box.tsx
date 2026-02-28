@@ -141,12 +141,6 @@ export default function SheepCombobox({
                     )}
                 </div>
             </div>
-
-            {!selected && (
-                <div className="text-xs text-gray-400">
-                    Select a sheep.
-                </div>
-            )}
         </div>
     );
 }

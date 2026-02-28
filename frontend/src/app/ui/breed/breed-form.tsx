@@ -1,19 +1,22 @@
 'use client';
 
-import { Sheep, Category } from '@/app/lib/definitions';
-import { useActionState, useState, useEffect } from "react";
+import { SheepSummary, Category } from '@/app/lib/definitions';
+import { useActionState, useState, useEffect, startTransition } from "react";
 import { breedSheep } from "@/app/lib/actions";
 import SheepComboBox from './sheep-combo-box';
 import CategoryTag from '@/app/ui/category-tag';
 
-export default function BreedForm({ sheep }: { sheep: Sheep[] }) {
-    const [state, formAction] = useActionState(breedSheep, { message: "", errors: {} });
+export default function BreedForm({ sheep }: { sheep: SheepSummary[] }) {
+    const [state, formAction, isPending] = useActionState(breedSheep, { message: "", errors: {} });
 
     const [saveChild, setSaveChild] = useState(false);
 
     // controlled selections
     const [parent1Id, setParent1Id] = useState<number | null>(null);
     const [parent2Id, setParent2Id] = useState<number | null>(null);
+
+    // child name (optional)
+    const [childName, setChildName] = useState<string>("");
 
     // hide old server errors once user changes inputs
     const [dirtySinceSubmit, setDirtySinceSubmit] = useState(false);
@@ -28,7 +31,15 @@ export default function BreedForm({ sheep }: { sheep: Sheep[] }) {
 
     return (
         <form
-            action={formAction}
+            onSubmit={(e) => {
+                e.preventDefault()
+                if (isPending) return
+
+                const formData = new FormData(e.currentTarget)
+                startTransition(() => {
+                    formAction(formData)
+                })
+            }}
             className="flex flex-col gap-6 p-4 max-w-md bg-gray-600 rounded-lg"
         >
             {(showServerErrors &&
@@ -117,11 +128,15 @@ export default function BreedForm({ sheep }: { sheep: Sheep[] }) {
                 <label className="flex flex-col">
                     <span className="font-medium">Offspring Name (optional)</span>
                     <input
-                        name="childName"
+                        name="name"
                         type="text"
                         placeholder="Enter name if saving"
                         className="bg-gray-800 border border-gray-500 rounded p-2"
-                        onChange={() => setDirtySinceSubmit(true)}
+                        value={childName}
+                        onChange={(e) => {
+                            setChildName(e.target.value);
+                            setDirtySinceSubmit(true)
+                        }}
                     />
                 </label>
             )}

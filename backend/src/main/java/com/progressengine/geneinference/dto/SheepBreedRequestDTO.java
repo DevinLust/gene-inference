@@ -21,10 +21,12 @@ public class SheepBreedRequestDTO {
     @ValidDistribution
     private Map<Category, Map<Grade, Double>> distributions;
 
-    @Positive(message = "parent1Id must be positive if present")
+    @NotNull
+    @Positive(message = "parent1Id must be positive")
     private Integer parent1Id;
 
-    @Positive(message = "parent2Id must be positive if present")
+    @NotNull
+    @Positive(message = "parent2Id must be positive")
     private Integer parent2Id;
 
 

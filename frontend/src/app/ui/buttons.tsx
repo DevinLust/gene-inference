@@ -51,6 +51,17 @@ export function BreedSheepButton() {
     );
 }
 
+export function RecordChildButton() {
+    return (
+        <Link
+            href={"/breed/record"}
+            className="flex h-10 items-center rounded-lg bg-purple-600 px-4 text-sm font-medium text-white transition-colors hover:bg-purple-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+        >
+            <span className="hidden md:block">Record Child +</span>
+        </Link>
+    );
+}
+
 export function SheepEditButton({ sheepId, children, className }: SheepDetailsProps) {
     return (
         <Link
