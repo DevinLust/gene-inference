@@ -4,9 +4,11 @@ import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.Grade;
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
+import org.hibernate.validator.constraintvalidation.HibernateConstraintValidatorContext;
 
 import java.util.EnumSet;
 import java.util.Map;
+import java.util.Objects;
 
 public class DistributionValidator
         implements ConstraintValidator<ValidDistribution, Map<Category, Map<Grade, Double>>> {
@@ -18,52 +20,71 @@ public class DistributionValidator
         }
 
         boolean valid = true;
-
-        // disable default message
         ctx.disableDefaultConstraintViolation();
+
+        HibernateConstraintValidatorContext hctx =
+                ctx.unwrap(HibernateConstraintValidatorContext.class);
 
         for (Map.Entry<Category, Map<Grade, Double>> entry : dto.entrySet()) {
             Category category = entry.getKey();
             Map<Grade, Double> dist = entry.getValue();
 
+            // Category-level path: distributions[CAT]
             if (dist == null) {
-                // Treat null map as missing all grades
                 valid = false;
-                ctx.buildConstraintViolationWithTemplate(
-                        "Category " + category + " distribution is null (all grades missing)"
-                ).addConstraintViolation();
-                continue; // move on to next category
+                hctx.buildConstraintViolationWithTemplate("Distribution is null (all grades missing)")
+                        .addBeanNode()
+                        .inIterable().atKey(category)
+                        .addConstraintViolation();
+                continue;
             }
 
-            // Check all grades present
+            // Missing grades => attach to distributions[CAT] (or per-grade if you prefer)
             EnumSet<Grade> missingGrades = EnumSet.allOf(Grade.class);
             missingGrades.removeAll(dist.keySet());
             if (!missingGrades.isEmpty()) {
                 valid = false;
-                ctx.buildConstraintViolationWithTemplate(
-                        "Category " + category + " missing grades: " + missingGrades
-                ).addConstraintViolation();
+                hctx.buildConstraintViolationWithTemplate("Missing grades: " + missingGrades)
+                        .addBeanNode()
+                        .inIterable().atKey(category)
+                        .addConstraintViolation();
             }
 
-            // Check values in range
+            // Grade-level path: distributions[CAT][GRADE]
             for (Map.Entry<Grade, Double> gentry : dist.entrySet()) {
-                double v = gentry.getValue();
+                Grade grade = gentry.getKey();
+                Double vObj = gentry.getValue();
+                if (vObj == null) {
+                    valid = false;
+                    hctx.buildConstraintViolationWithTemplate("Value is required")
+                            .addBeanNode()
+                            .inIterable().atKey(category)
+                            .addConstraintViolation();
+                    continue;
+                }
+
+                double v = vObj;
                 if (v < 0.0 || v > 1.0) {
                     valid = false;
-                    ctx.buildConstraintViolationWithTemplate(
-                            "Category " + category + ", grade " + gentry.getKey() +
-                                    " has value out of range [0,1]: " + v
-                    ).addConstraintViolation();
+                    hctx.buildConstraintViolationWithTemplate("Value for " + grade + " out of range [0,1]: " + v)
+                            .addBeanNode()
+                            .inIterable().atKey(category)
+                            .addConstraintViolation();
                 }
             }
 
-            // Check sum ≈ 1
-            double sum = dist.values().stream().mapToDouble(Double::doubleValue).sum();
+            // Sum error => attach to distributions[CAT]
+            double sum = dist.values().stream()
+                    .filter(Objects::nonNull)
+                    .mapToDouble(Double::doubleValue)
+                    .sum();
+
             if (Math.abs(sum - 1.0) > 1e-6) {
                 valid = false;
-                ctx.buildConstraintViolationWithTemplate(
-                        "Category " + category + " probabilities sum to " + sum + ", must sum to 1"
-                ).addConstraintViolation();
+                hctx.buildConstraintViolationWithTemplate("Probabilities sum to " + sum + ", must sum to 1")
+                        .addBeanNode()
+                        .inIterable().atKey(category)
+                        .addConstraintViolation();
             }
         }
 

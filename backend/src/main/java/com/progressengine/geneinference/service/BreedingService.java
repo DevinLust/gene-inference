@@ -148,7 +148,6 @@ public class BreedingService {
      */
     @Transactional
     public BirthRecord createAndInferSheep(SheepBreedRequestDTO childRequest, boolean saveChild) {
-        // TODO -- add a way to add information but not save it
         Sheep child = DomainMapper.fromRequestDTO(childRequest);
 
         Sheep parent1 = sheepService.findById(childRequest.getParent1Id());

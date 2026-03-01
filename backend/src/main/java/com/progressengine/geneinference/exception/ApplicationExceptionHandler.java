@@ -7,6 +7,7 @@ import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Path;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -58,25 +59,57 @@ public class ApplicationExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public Map<String, Object> handleMethodArgumentException(MethodArgumentNotValidException ex) {
-        Map<String, Object> response = new HashMap<>();
-        Map<String, List<String>> errors = new HashMap<>();
+    public Map<String, Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex) {
 
-        ex.getBindingResult().getFieldErrors().forEach(error ->
-                errors.computeIfAbsent(error.getField(), k -> new ArrayList<>())
-                        .add(error.getDefaultMessage())
-        );
-
-        ex.getBindingResult().getGlobalErrors().forEach(error ->
-                errors.computeIfAbsent(error.getObjectName(), k -> new ArrayList<>())
-                        .add(error.getDefaultMessage())
-        );
-
+        Map<String, Object> response = new LinkedHashMap<>();
         response.put("status", HttpStatus.BAD_REQUEST.value());
-        response.put("errors", errors);
         response.put("message", "Incomplete or invalid request");
 
+        Map<String, Object> errorsOut = new LinkedHashMap<>();
+
+        Map<String, List<String>> genotypesByCategory = new LinkedHashMap<>();
+        Map<String, List<String>> distributionsByCategory = new LinkedHashMap<>();
+        Map<String, List<String>> otherErrors = new LinkedHashMap<>();
+
+        for (FieldError fe : ex.getBindingResult().getFieldErrors()) {
+            String path = fe.getField();          // e.g. "genotypes[SWIM]" or "distributions[SWIM]"
+            String msg  = fe.getDefaultMessage();
+
+            // --- genotypes[CAT] ---
+            int gIdx = path.indexOf("genotypes[");
+            if (gIdx >= 0) {
+                String category = extractBracketKey(path, gIdx + "genotypes[".length());
+                if (category != null) {
+                    genotypesByCategory.computeIfAbsent(category, k -> new ArrayList<>()).add(msg);
+                    continue;
+                }
+            }
+
+            // --- distributions[CAT] ---
+            int dIdx = path.indexOf("distributions[");
+            if (dIdx >= 0) {
+                String category = extractBracketKey(path, dIdx + "distributions[".length());
+                if (category != null) {
+                    distributionsByCategory.computeIfAbsent(category, k -> new ArrayList<>()).add(msg);
+                    continue;
+                }
+            }
+
+            otherErrors.computeIfAbsent(path, k -> new ArrayList<>()).add(msg);
+        }
+
+        if (!otherErrors.isEmpty()) errorsOut.putAll(otherErrors);
+        if (!genotypesByCategory.isEmpty()) errorsOut.put("genotypes", genotypesByCategory);
+        if (!distributionsByCategory.isEmpty()) errorsOut.put("distributions", distributionsByCategory);
+
+        response.put("errors", errorsOut);
         return response;
+    }
+
+    private static String extractBracketKey(String s, int start) {
+        int end = s.indexOf(']', start);
+        if (end <= start) return null;
+        return s.substring(start, end);
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
