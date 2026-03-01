@@ -339,20 +339,35 @@ public class Relationship {
 
     private void checkForExcessAllelesExperimental(Map<Category, SheepGenotypeDTO> childGenotypes) {
         Map<Category, Map<GradePair, Map<Grade, Integer>>> frequencyCacheCopy = copyFrequencyCache();
+
+        List<ExcessAlleleViolation> violations = new ArrayList<>();
+
         for (Category category : Category.values()) {
             Grade newAllele = childGenotypes.get(category).phenotype();
             GradePair currentParentPhenotypes = new GradePair(parent1.getPhenotype(category), parent2.getPhenotype(category));
+
+            // If matches either parent phenotypes, always ok
             if (newAllele == currentParentPhenotypes.getFirst() || newAllele == currentParentPhenotypes.getSecond()) {
                 continue;
             }
+
             // check all epochs of the current category
             Map<GradePair, Map<Grade, Integer>> epochMap = frequencyCacheCopy.get(category);
             Set<Grade> previousHidden = hiddenAlleleDiversity(epochMap);
+
+            // violation condition
             if (previousHidden.size() == 2 && !previousHidden.contains(newAllele)) {
                 Set<Grade> validAlleles = EnumSet.of(currentParentPhenotypes.getFirst(), currentParentPhenotypes.getSecond());
                 validAlleles.addAll(previousHidden);
-                throw new ExcessAlleleDiversityException("Adding this allele would result in excessive allele diversity", validAlleles, newAllele, category);
+                violations.add(new ExcessAlleleViolation(category, newAllele, validAlleles));
             }
+        }
+
+        if (!violations.isEmpty()) {
+            throw new ExcessAlleleDiversityException(
+                    "Adding these alleles would result in excessive allele diversity",
+                    violations
+            );
         }
     }
 

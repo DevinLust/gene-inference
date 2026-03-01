@@ -6,8 +6,7 @@ public class ErrorResponse {
 
     private String error;
     private String message;
-    private Map<String, Object> details;
-    private String trace;
+    private Map<String, Object> errors;
 
     public String getError() {
         return error;
@@ -17,12 +16,8 @@ public class ErrorResponse {
         return message;
     }
 
-    public Map<String, Object> getDetails() {
-        return details;
-    }
-
-    public String getTrace() {
-        return trace;
+    public Map<String, Object> getErrors() {
+        return errors;
     }
 
     public static Builder builder() {
@@ -42,13 +37,8 @@ public class ErrorResponse {
             return this;
         }
 
-        public Builder details(Map<String, Object> details) {
-            response.details = details;
-            return this;
-        }
-
-        public Builder trace(String trace) {
-            response.trace = trace;
+        public Builder errors(Map<String, Object> errors) {
+            response.errors = errors;
             return this;
         }
 

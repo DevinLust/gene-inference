@@ -2,6 +2,7 @@ package com.progressengine.geneinference.exception;
 
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import com.progressengine.geneinference.dto.ErrorResponse;
+import com.progressengine.geneinference.model.ExcessAlleleViolation;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Path;
@@ -158,14 +159,23 @@ public class ApplicationExceptionHandler {
     public ErrorResponse handleExcessAlleleDiversity(
             ExcessAlleleDiversityException ex
     ) {
+
+        Map<String, Object> categoryErrors = new LinkedHashMap<>();
+
+        for (ExcessAlleleViolation v : ex.getViolations()) {
+            categoryErrors.put(
+                    v.category().name(),
+                    Map.of(
+                            "attemptedAllele", v.attemptedAllele(),
+                            "validAlleles", v.validAlleles()
+                    )
+            );
+        }
+
         return ErrorResponse.builder()
                 .error("GENETIC_CONSTRAINT_VIOLATION")
                 .message(ex.getMessage())
-                .details(Map.of(
-                        "previousAlleles", ex.getOldAlleleSet(),
-                        "newAllele", ex.getNewAllele(),
-                        "category",  ex.getCategory()
-                ))
+                .errors(categoryErrors)
                 .build();
     }
 
