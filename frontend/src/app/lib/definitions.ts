@@ -41,6 +41,21 @@ type GenotypeMap = {
     }
 };
 
+export type PageRequest = {
+    page?: number;              // 0-based to match Spring
+    size?: number;
+    sort?: string | string[];   // e.g. "id,desc" or ["id,desc","name,asc"]
+};
+
+export type PageResponse<T> = {
+    items: T[]
+    page: number
+    size: number
+    totalElements: number
+    totalPages: number
+    hasNext: boolean
+}
+
 export type Sheep = {
     id: number;
     name: string | null;
@@ -163,8 +178,8 @@ export type BirthRecordRow = {
 }
 
 export type BirthRecordFilter = {
-    relationshipId?: string;
-    category?: string;
-    p1?: string;
-    p2?: string;
-}
+    relationshipId?: number;
+    category?: Category;
+    p1?: Grade;
+    p2?: Grade;
+} & PageRequest;

@@ -1,10 +1,12 @@
-import { BirthRecordRow, BirthRecordFilter } from '@/app/lib/definitions';
+import { BirthRecordRow, BirthRecordFilter, PageResponse } from '@/app/lib/definitions';
 import { fetchBirthRecordRows } from '@/app/lib/data';
+import Pager from "./pager"
 import Link from 'next/link';
 
 
 export default async function BirthRecordList({ filter }: { filter: BirthRecordFilter }) {
-    const birthRecordRows: BirthRecordRow[] = await fetchBirthRecordRows(filter);
+    const page: PageResponse<BirthRecordRow> = await fetchBirthRecordRows(filter);
+    const birthRecordRows: BirthRecordRow[] = page.items;
     return (
         <div className="mt-6 flow-root">
             <div className="inline-block align-middle">
@@ -71,7 +73,7 @@ export default async function BirthRecordList({ filter }: { filter: BirthRecordF
                                 <td className="whitespace-nowrap py-3 pl-6 pr-3 text-center tabular-nums">
                                     {br.childId ?
                                         <Link
-                                            href={`/sheep/${br.parent1Id}`}
+                                            href={`/sheep/${br.childId}`}
                                             className="flex items-baseline gap-2 hover:underline"
                                         >
                                             <span className="w-12 text-right tabular-nums">
@@ -102,6 +104,7 @@ export default async function BirthRecordList({ filter }: { filter: BirthRecordF
                         ))}
                         </tbody>
                     </table>
+                    <Pager page={page} filter={filter} />
                 </div>
             </div>
         </div>

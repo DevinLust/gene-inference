@@ -1,7 +1,8 @@
 'use server';
 
-import { Sheep, Prediction, BestPrediction, Relationship, RelationshipRow, BirthRecord, BirthRecordRow, BirthRecordFilter, DistributionFilter, SheepFilter } from "./definitions";
+import { Sheep, Prediction, BestPrediction, Relationship, RelationshipRow, BirthRecord, BirthRecordRow, BirthRecordFilter, DistributionFilter, SheepFilter, PageResponse } from "./definitions";
 import { BreedState } from "./actions";
+import { buildQuery } from "./helpers";
 import { notFound } from "next/navigation";
 
 if (!process.env.NEXT_PUBLIC_API_BASE_URL) {
@@ -78,14 +79,21 @@ export async function fetchRelationshipById(id: string): Promise<Relationship> {
     return await res.json() as Relationship;
 }
 
-export async function fetchBirthRecordRows(filter: BirthRecordFilter): Promise<BirthRecordRow[]> {
-    const params = new URLSearchParams(filter);
+export async function fetchBirthRecordRows(
+    filter: BirthRecordFilter
+): Promise<PageResponse<BirthRecordRow>> {
 
-    const res = await fetch(`${API_BASE_URL}/birth-record?${params}`);
+    const query = buildQuery(filter);
+
+    const res = await fetch(`${API_BASE_URL}/birth-record?${query}`, {
+        cache: "no-store"
+    });
 
     await checkStatus(res);
 
-    return await res.json() as BirthRecordRow[];
+    const data = await res.json();
+
+    return data as PageResponse<BirthRecordRow>;
 }
 
 export async function fetchBirthRecordById(id: string): Promise<BirthRecord> {
