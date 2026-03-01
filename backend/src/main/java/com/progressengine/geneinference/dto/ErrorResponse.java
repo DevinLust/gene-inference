@@ -1,5 +1,6 @@
 package com.progressengine.geneinference.dto;
 
+import java.util.List;
 import java.util.Map;
 
 public class ErrorResponse {
@@ -7,6 +8,7 @@ public class ErrorResponse {
     private String error;
     private String message;
     private Map<String, Object> errors;
+    private List<String> suggestions;
 
     public String getError() {
         return error;
@@ -18,6 +20,10 @@ public class ErrorResponse {
 
     public Map<String, Object> getErrors() {
         return errors;
+    }
+
+    public List<String> getSuggestions() {
+        return suggestions;
     }
 
     public static Builder builder() {
@@ -39,6 +45,11 @@ public class ErrorResponse {
 
         public Builder errors(Map<String, Object> errors) {
             response.errors = errors;
+            return this;
+        }
+
+        public Builder suggestions(List<String> suggestions) {
+            response.suggestions = suggestions;
             return this;
         }
 

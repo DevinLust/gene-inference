@@ -160,6 +160,18 @@ export default function RecordChildForm({ sheep }: { sheep: SheepSummary[] }) {
                 {showServerErrors && state?.message && (
                     <p className="text-yellow-500 font-medium">{state.message}</p>
                 )}
+                <div id={`suggestions`} aria-live="polite" aria-atomic="true">
+                    {showServerErrors && state.suggestions &&
+                        <div className="flex flex-col w-full">
+                            <ul className="text-yellow-500 font-medium mt-2">Suggestions:</ul>
+                            {state.suggestions.map((str: string) => (
+                                <li key={str} className="text-yellow-500 font-medium m-2">
+                                    {str}
+                                </li>
+                            ))}
+                        </div>
+                    }
+                </div>
             </div>
 
             {/* Genotypes */}
@@ -220,17 +232,20 @@ export default function RecordChildForm({ sheep }: { sheep: SheepSummary[] }) {
                                 </select>
                             </label>
                         </div>
+                        <div id={`genotypes-${c}-error`} aria-live="polite" aria-atomic="true">
+                            {showServerErrors && state.errors?.genotypes?.[c] &&
+                                <div>
+                                    <p className="m-2 text-sm text-yellow-500">
+                                        Attempted to record: {state.errors.genotypes[c].attemptedAllele}
+                                    </p>
+                                    <p className="m-2 text-sm text-yellow-500">
+                                        Possible alleles: {state.errors.genotypes[c].validAlleles}
+                                    </p>
+                                </div>
+                            }
+                        </div>
                     </div>
                 ))}
-
-                <div id="genotypes-error" aria-live="polite" aria-atomic="true">
-                    {showServerErrors && state.errors?.genotypes &&
-                        state.errors.genotypes.map((error: string) => (
-                            <p className="mt-2 text-sm text-yellow-500" key={error}>
-                                {error}
-                            </p>
-                        ))}
-                </div>
             </fieldset>
             </div>
         </form>

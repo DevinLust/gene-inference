@@ -8,9 +8,8 @@ export type CreateState = {
     message?: string | null;
     errors?: {
         name?: string[];
-        distributions?: string[];
-        genotypes?: string[];
-        parentRelationshipId?: string[];
+        distributions?: Partial<Record<Category, string[]>>;
+        genotypes?: Partial<Record<Category, string[]>>;
     };
 };
 
@@ -18,11 +17,11 @@ export type ChildState = {
     message?: string | null;
     errors?: {
         name?: string[];
-        distributions?: string[];
-        genotypes?: string[];
+        genotypes?: Partial<Record<Category, { attemptedAllele: Grade, validAlleles: Set<Grade> }>>;
         parent1Id?: string[];
         parent2Id?: string[];
     };
+    suggestions?: string[];
 };
 
 export type UpdateSheepState = {

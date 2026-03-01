@@ -1,8 +1,6 @@
 'use client';
 
 import { useState } from "react";
-import { Category } from "@/app/lib/definitions";
-import CategoryTag from "@/app/ui/category-tag";
 
 const categories = ["SWIM", "FLY", "RUN", "POWER", "STAMINA"];
 const grades = ["S", "A", "B", "C", "D", "E"];

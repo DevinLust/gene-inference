@@ -175,7 +175,8 @@ public class ApplicationExceptionHandler {
         return ErrorResponse.builder()
                 .error("GENETIC_CONSTRAINT_VIOLATION")
                 .message(ex.getMessage())
-                .errors(categoryErrors)
+                .errors(Map.of("genotypes", categoryErrors))
+                .suggestions(List.of("Choose one of the valid alleles listed.", "If you believe an allele is correct, review earlier birth records to confirm phenotypes at birth."))
                 .build();
     }
 

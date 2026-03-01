@@ -113,37 +113,23 @@ export default function SheepForm() {
                                 </select>
                             </label>
                         </div>
+                        <div id={`genotypes-${c}-error`} aria-live="polite" aria-atomic="true">
+                            {state.errors?.genotypes?.[c] &&
+                                state.errors.genotypes[c].map((error: string) => (
+                                    <p className="m-2 text-sm text-yellow-500" key={error}>
+                                        {error}
+                                    </p>
+                                ))}
+                        </div>
                     </div>
                 ))}
 
-                <div id="genotypes-error" aria-live="polite" aria-atomic="true">
-                    {state.errors?.genotypes &&
-                        state.errors.genotypes.map((error: string) => (
-                            <p className="mt-2 text-sm text-red-500" key={error}>
-                                {error}
-                            </p>
-                        ))}
-                </div>
+
             </fieldset>
 
             {/* Distributions */}
             <FeatureInProgress>
                 <DistributionForm />
-            </FeatureInProgress>
-
-            {/* Parent Relationship */}
-            <FeatureInProgress>
-                <label className="flex flex-col">
-                    <span className="font-medium">Parent Relationship ID</span>
-                    <input
-                        name="parentRelationshipId"
-                        type="number"
-                        value={parentRelationshipId}
-                        onChange={(e) => setParentRelationshipId(e.target.value)}
-                        placeholder="Optional: Enter relationship ID of parents"
-                        className="bg-gray-800 border border-gray-500 rounded p-2"
-                    />
-                </label>
             </FeatureInProgress>
 
             {/* Submit button */}
@@ -163,7 +149,7 @@ export default function SheepForm() {
 }
 
 function ServerResponse({ state }: { state: CreateState }) {
-    return <p className="text-red-500 font-medium">{state.message}</p>;
+    return <p className="text-yellow-500 font-medium">{state.message}</p>;
 }
 
 function Spinner() {
