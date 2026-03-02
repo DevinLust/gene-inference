@@ -1,19 +1,22 @@
 package com.progressengine.geneinference.controller;
 
 import com.progressengine.geneinference.dto.*;
-import com.progressengine.geneinference.model.GradePair;
+import com.progressengine.geneinference.mapper.DomainMapper;
 import com.progressengine.geneinference.model.Sheep;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.DistributionType;
 import com.progressengine.geneinference.model.enums.Grade;
 import com.progressengine.geneinference.service.SheepService;
-import jakarta.transaction.Transactional;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
 
 @RestController
+@Validated
 @RequestMapping(value = "/sheep")
 public class SheepController {
 
@@ -23,97 +26,73 @@ public class SheepController {
         this.sheepService = sheepService;
     }
 
-    @Transactional
     @PostMapping(consumes = {"application/json", "application/json;charset=UTF-8"})
-    public ResponseEntity<?> addSheep(@RequestBody SheepNewRequestDTO sheepNewRequestDTO) {
-        Sheep sheep;
-        try {
-            sheep = sheepService.fromRequestDTO(sheepNewRequestDTO);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
-        }
-        return ResponseEntity.ok().body(sheepService.saveSheep(sheep));
+    public ResponseEntity<?> addSheep(@Valid @RequestBody SheepNewRequestDTO sheepNewRequestDTO) {
+        Sheep child = sheepService.saveNewSheep(sheepNewRequestDTO);
+        return ResponseEntity.ok().body(DomainMapper.toResponseDTO(child));
     }
 
     @GetMapping
-    public List<SheepResponseDTO> getAllSheep() {
-        List<Sheep> sheepList = sheepService.getAllSheep();
-        return sheepList.stream()
-                .map(sheepService::toResponseDTO)
-                .toList();
-    }
-
-    @GetMapping("/filter")
-    public List<SheepResponseDTO> filterSheep(
+    public List<SheepSummaryResponseDTO> filterSheep(
             @RequestParam(required = false) String name,
             @RequestParam(required = false) List<Grade> grades) {
 
         // convert list to set to remove duplicates
         Set<Grade> gradeSet = grades == null ? Collections.emptySet() : new HashSet<>(grades);
 
-        return sheepService.filterSheep(name, gradeSet).stream()
-                .map(sheepService::toResponseDTO)
-                .toList();
+        return sheepService.filterSheep(name, gradeSet);
     }
 
-    @GetMapping("/{sheepId}")
-    public SheepResponseDTO getSheep(@PathVariable Integer sheepId) {
-        Sheep sheep = sheepService.getSheepById(sheepId);
-        return sheepService.toResponseDTO(sheep);
+    @GetMapping("/distributions")
+    public DistributionResponseDTO distributions(
+            @RequestParam Category category,
+            @RequestParam(required = false) List<Integer> ids,
+            @RequestParam(defaultValue = "INFERRED") DistributionType type
+    ) {
+        return sheepService.getDistributionProjectionsByCategoryAndType(category, type, ids);
+    }
+
+    @GetMapping("/{sheepId:\\d+}")
+    public SheepResponseDTO getSheep(@Positive @PathVariable Integer sheepId) {
+        Sheep sheep = sheepService.findById(sheepId);
+        return DomainMapper.toResponseDTO(sheep);
     }
 
     @GetMapping("/{sheepId}/parents")
-    public ResponseEntity<?> getParents(@PathVariable Integer sheepId) {
+    public ResponseEntity<?> getParents(@Positive @PathVariable Integer sheepId) {
         return ResponseEntity.ok(sheepService.getParents(sheepId));
     }
 
     @GetMapping("/{sheepId}/children")
-    public ResponseEntity<?> getChildren(@PathVariable Integer sheepId) {
+    public ResponseEntity<?> getChildren(@Positive @PathVariable Integer sheepId) {
         return ResponseEntity.ok(sheepService.getChildren(sheepId));
     }
 
     @GetMapping("/{sheepId}/partners")
-    public ResponseEntity<?> getPartners(@PathVariable Integer sheepId) {
+    public ResponseEntity<?> getPartners(@Positive @PathVariable Integer sheepId) {
         return ResponseEntity.ok(sheepService.getPartners(sheepId));
     }
 
-    @Transactional
-    @PutMapping("/{sheepId}")
-    public ResponseEntity<?> replaceSheep(@PathVariable Integer sheepId, @RequestBody SheepReplaceRequestDTO replacementSheep) {
-        Sheep updatedSheep = sheepService.fromRequestDTO(replacementSheep);
-        updatedSheep.setId(sheepId);
-        return ResponseEntity.ok(sheepService.saveSheep(updatedSheep));
+    @PostMapping("/{id}/evolve/{category}")
+    public ResponseEntity<?> evolve(@PathVariable Integer id, @PathVariable Category category) {
+        return ResponseEntity.ok(sheepService.evolvePhenotype(id, category));
     }
 
-    @Transactional
+//    @Deprecated
+//    @PutMapping("/{sheepId}")
+//    public ResponseEntity<?> replaceSheep(@Positive @PathVariable Integer sheepId, @Valid @RequestBody SheepReplaceRequestDTO replacementSheep) {
+//        Sheep updatedSheep = sheepService.replaceSheep(sheepId, replacementSheep);
+//        return ResponseEntity.ok(DomainMapper.toResponseDTO(updatedSheep));
+//    }
+
     @PatchMapping("/{sheepId}")
-    public ResponseEntity<?> updateSheep(@PathVariable Integer sheepId, @RequestBody SheepUpdateRequestDTO updateSheepModel) {
-        Sheep sheep = sheepService.findById(sheepId);
-
-        if (updateSheepModel.getName() != null) {
-            sheep.setName(updateSheepModel.getName());
-        }
-
-        Map<Category, SheepGenotypeDTO> updatedGenotypes = updateSheepModel.getGenotypes();
-        if (updatedGenotypes != null) {
-            for (Map.Entry<Category, SheepGenotypeDTO> entry : updatedGenotypes.entrySet()) {
-                GradePair genotype = entry.getValue().toGradePair();
-                sheep.setGenotype(entry.getKey(), genotype);
-            }
-        }
-
-        Map<Category, Map<Grade, Double>> updatedPriors = updateSheepModel.getDistributions();
-        if (updatedPriors != null) {
-            for (Map.Entry<Category, Map<Grade, Double>> entry : updatedPriors.entrySet()) {
-                sheep.setDistribution(entry.getKey(), DistributionType.PRIOR, entry.getValue());
-            }
-        }
-
-        return ResponseEntity.ok(sheepService.saveSheep(sheep));
+    public ResponseEntity<?> updateSheep(@Positive @PathVariable Integer sheepId, @Valid @RequestBody SheepUpdateRequestDTO updateSheepModel) {
+        Sheep updatedSheep = sheepService.updateSheep(sheepId, updateSheepModel);
+        return ResponseEntity.ok(DomainMapper.toResponseDTO(updatedSheep));
     }
 
     @DeleteMapping("/{sheepId}")
-    public ResponseEntity<?> deleteSheep(@PathVariable Integer sheepId) {
+    public ResponseEntity<?> deleteSheep(@Positive @PathVariable Integer sheepId) {
         sheepService.deleteSheep(sheepId);
         return ResponseEntity.noContent().build();
     }

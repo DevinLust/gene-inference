@@ -1,45 +1,47 @@
 "use client";
 
 import { useState } from "react";
-import { Prediction } from "@/app/lib/definitions";
+import { Prediction, Sheep } from "@/app/lib/definitions";
+import { BreedState } from "@/app/lib/actions";
 import { fetchPrediction } from "@/app/lib/data";
 import PhenotypeDistributions from "./phentoype-distributions";
+import SheepComboBox from "./sheep-combo-box";
 
-export default function SheepPredictionForm() {
-    const [sheep1, setSheep1] = useState("");
-    const [sheep2, setSheep2] = useState("");
+export default function SheepPredictionForm({ sheep }: { sheep: Sheep[] }) {
+    const [sheep1, setSheep1] = useState<number | null>(null);
+    const [sheep2, setSheep2] = useState<number | null>(null);
     const [prediction, setPrediction] = useState<Prediction | null>(null);
+    const initialState = { message: null, errors: {} }
+    const [state, setState] = useState<BreedState>(initialState);
 
     async function handlePredict() {
-        if (!sheep1 || !sheep2) return;
-
-        try {
-            const data: Prediction = await fetchPrediction(encodeURIComponent(sheep1), encodeURIComponent(sheep2));
-            setPrediction(data);
-        } catch (err) {
-            console.error(err);
+        if (!sheep1 || !sheep2) {
+            setState({ message:"Both Sheep IDs are required", errors: {} });
+            return;
         }
+
+        // clear errors and prediction
+        setState(initialState);
+        setPrediction(null);
+
+        const data = await fetchPrediction(encodeURIComponent(sheep1), encodeURIComponent(sheep2));
+        if ("phenotypeDistributions" in data) {
+            setPrediction(data);
+        } else if ("message" in data) {
+            setState(data);
+        } else {
+            setState({message: "an unknown error has occurred", errors: {} });
+        }
+
     }
 
     return (
         <div className="flex-1 max-w-md space-y-4 p-4 rounded-lg bg-gray-600">
             <h2 className="text-xl font-bold">Predict Child Phenotype</h2>
 
-            <input
-                type="text"
-                placeholder="Sheep 1 ID"
-                value={sheep1}
-                onChange={(e) => setSheep1(e.target.value)}
-                className="w-full rounded border border-gray-500 p-2 bg-gray-800"
-            />
+            <SheepComboBox inputLabel={"Parent 1"} sheep={sheep} selectedId={sheep1} onSelect={setSheep1}  />
 
-            <input
-                type="text"
-                placeholder="Sheep 2 ID"
-                value={sheep2}
-                onChange={(e) => setSheep2(e.target.value)}
-                className="w-full rounded border border-gray-500 p-2 bg-gray-800"
-            />
+            <SheepComboBox inputLabel={"Parent 2"} sheep={sheep} selectedId={sheep2} onSelect={setSheep2} />
 
             <button
                 onClick={handlePredict}
@@ -47,6 +49,9 @@ export default function SheepPredictionForm() {
             >
                 Predict
             </button>
+
+            {/* Server response */}
+            {state?.message && <p className="text-red-500 font-medium">{state.message}</p>}
 
             {/* Prediction display */}
             {prediction && <PhenotypeDistributions phenotypeDistributions={prediction.phenotypeDistributions} />}

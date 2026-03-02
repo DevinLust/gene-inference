@@ -1,31 +1,25 @@
 package com.progressengine.geneinference.service;
 
-import com.progressengine.geneinference.dto.SheepNewRequestDTO;
-import com.progressengine.geneinference.dto.SheepReplaceRequestDTO;
-import com.progressengine.geneinference.dto.SheepResponseDTO;
+import com.progressengine.geneinference.dto.*;
+import com.progressengine.geneinference.exception.ResourceNotFoundException;
+import com.progressengine.geneinference.mapper.DomainMapper;
+import com.progressengine.geneinference.model.BirthRecord;
 import com.progressengine.geneinference.model.Relationship;
 import com.progressengine.geneinference.model.Sheep;
-import com.progressengine.geneinference.model.SheepGenotype;
+import com.progressengine.geneinference.model.enums.Category;
+import com.progressengine.geneinference.model.enums.DistributionType;
 import com.progressengine.geneinference.model.enums.Grade;
-import com.progressengine.geneinference.repository.RelationshipRepository;
 import com.progressengine.geneinference.repository.SheepRepository;
-import jakarta.persistence.criteria.Expression;
-import jakarta.persistence.criteria.Join;
-import jakarta.persistence.criteria.JoinType;
 import jakarta.transaction.Transactional;
-import org.springdoc.api.OpenApiResourceNotFoundException;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import jakarta.persistence.criteria.Predicate;
-import java.util.stream.Collectors;
 
 @Service
 public class SheepService {
 
     private final SheepRepository sheepRepository;
-    private final RelationshipRepository relationshipRepository;
+    private final RelationshipService relationshipService;
 
     public static Map<Grade, Double> createUniformDistribution() {
         Map<Grade, Double> uniformDistribution = new EnumMap<>(Grade.class);
@@ -39,20 +33,16 @@ public class SheepService {
         return uniformDistribution;
     }
 
-    public SheepService(RelationshipRepository relationshipRepository, SheepRepository sheepRepository) {
-        this.relationshipRepository = relationshipRepository;
+    public SheepService(SheepRepository sheepRepository, RelationshipService relationshipService) {
         this.sheepRepository = sheepRepository;
+        this.relationshipService = relationshipService;
     }
 
     public Sheep findById(Integer id) {
-        Sheep sheep = null;
-
-        Optional<Sheep> possibleSheep = sheepRepository.findById(id);
-        if (possibleSheep.isPresent()) {
-            sheep = possibleSheep.get();
-        }
-
-        return sheep;
+        return sheepRepository.findWithAllById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Sheep with id " + id + " not found"
+                ));
     }
 
     public Sheep saveSheep(Sheep sheep) {
@@ -64,7 +54,11 @@ public class SheepService {
     }
 
     public List<Sheep> getAllSheep() {
-        return sheepRepository.findAll();
+        return sheepRepository.findAllForInference();
+    }
+
+    public List<SheepSummaryResponseDTO> getAllSheepSummary() {
+        return sheepRepository.listAllSummaries();
     }
 
     /**
@@ -78,138 +72,168 @@ public class SheepService {
      * @param grades - Set of whitelisted grades
      * @return a List of Sheep that matches the filter criteria
      */
-    public List<Sheep> filterSheep(String name, Set<Grade> grades) {
+    public List<SheepSummaryResponseDTO> filterSheep(String name, Set<Grade> grades) {
         if (grades == null || grades.isEmpty()) {
-            grades = Arrays.stream(Grade.values()).collect(Collectors.toSet());
+            grades = EnumSet.allOf(Grade.class);
         }
 
-        Set<String> gradeStrings = grades.stream().map(Grade::name).collect(Collectors.toSet());
-        return sheepRepository.findSheepHavingAnyGradeAndNameNative(gradeStrings, name);
+        return sheepRepository.listSheepHavingAnyGradeAndName(grades, name);
     }
 
 
-    public Sheep getSheepById(Integer id) {
-        Optional<Sheep> possibleSheep = sheepRepository.findById(id);
-        if (possibleSheep.isEmpty()) {
-            throw new OpenApiResourceNotFoundException("Sheep not found");
+    public DistributionResponseDTO getDistributionProjectionsByCategoryAndType(
+            Category category,
+            DistributionType distributionType,
+            List<Integer> sheepIds
+    ) {
+        List<SheepDistributionRow> rows = sheepRepository
+                .listDistributionRowsByCategoryAndType(category, distributionType, sheepIds == null || sheepIds.isEmpty() ? null : sheepIds);
+
+        Map<Integer, Map<Grade, Double>> result = new HashMap<>();
+
+        for (SheepDistributionRow r : rows) {
+            Map<Grade, Double> m = result.computeIfAbsent(r.sheepId(), k -> new EnumMap<>(Grade.class));
+            Double prev = m.putIfAbsent(r.grade(), r.probability());
+            if (prev != null) {
+                throw new IllegalStateException(
+                        "Duplicate distribution row: sheepId=" + r.sheepId()
+                                + ", grade=" + r.grade()
+                                + ", prev=" + prev
+                                + ", next=" + r.probability()
+                );
+            }
         }
-        return possibleSheep.get();
+
+        return new DistributionResponseDTO(category, distributionType, result);
     }
 
-    public ResponseEntity<?> getParents(Integer sheepId) {
-        return sheepRepository.findById(sheepId)
-                .map(sheep -> {
-                    if (sheep.getParentRelationship() == null) {
-                        return ResponseEntity.noContent().build();
-                    }
 
-                    // Assuming parentRelationshipId encodes a valid Relationship
-                    Relationship rel = sheep.getParentRelationship();
+    @Transactional
+    public Map<String, SheepResponseDTO> getParents(Integer sheepId) {
+        Sheep sheep = findById(sheepId);
 
-                    List<Sheep> parents = sheepRepository.findAllById(
-                            List.of(rel.getParent1().getId(), rel.getParent2().getId())
-                    );
+        if (sheep == null) return Collections.emptyMap();
 
-                    return ResponseEntity.ok(Map.of(
-                            "parent1", toResponseDTO(parents.get(0)),
-                            "parent2", toResponseDTO(parents.get(1))
-                    ));
-                })
-                .orElse(ResponseEntity.notFound().build());
+        Relationship rel = sheep.getParentRelationship();
+        if (rel == null) return Collections.emptyMap();
+
+        List<Sheep> parents = sheepRepository.findAllById(
+                List.of(rel.getParent1().getId(), rel.getParent2().getId())
+        );
+        parents.sort((a, b) -> a.getId().compareTo(b.getId()));
+
+        return Map.of(
+                "parent1", DomainMapper.toResponseDTO(parents.get(0)),
+                "parent2", DomainMapper.toResponseDTO(parents.get(1))
+        );
     }
 
-    public ResponseEntity<?> getChildren(Integer sheepId) {
-        List<Relationship> relationships = relationshipRepository.findByParentId(sheepId);
+    @Transactional
+    public List<SheepResponseDTO> getChildren(Integer sheepId) {
+        return sheepRepository.findChildrenWithDetailByParentId(sheepId).stream().map(DomainMapper::toResponseDTO).toList();
+    }
+
+    @Transactional
+    public List<SheepResponseDTO> getPartners(Integer sheepId) {
+        List<Relationship> relationships = relationshipService.findRelationshipsByParent(sheepId);
 
         if (relationships.isEmpty()) {
-            return ResponseEntity.ok(List.of());
+            return List.of();
         }
 
-        List<Integer> relationshipIds = relationships.stream().map(Relationship::getId).toList();
-        List<SheepResponseDTO> children = sheepRepository.findAllByParentRelationship_IdIn(relationshipIds).stream().map(this::toResponseDTO).toList();
-
-        return ResponseEntity.ok(children);
-    }
-
-    public ResponseEntity<?> getPartners(Integer sheepId) {
-        List<Relationship> relationships = relationshipRepository.findByParentId(sheepId);
-
-        if (relationships.isEmpty()) {
-            return ResponseEntity.ok(List.of());
-        }
-
-        List<SheepResponseDTO> partners = relationships.stream()
+        return relationships.stream()
                 .map(rel -> {
                     if (rel.getParent1().getId().equals(sheepId)) {
-                        return toResponseDTO(rel.getParent2());
+                        return DomainMapper.toResponseDTO(rel.getParent2());
                     } else {
-                        return toResponseDTO(rel.getParent1());
+                        return DomainMapper.toResponseDTO(rel.getParent1());
                     }
                 }).toList();
+    }
 
-        return ResponseEntity.ok(partners);
+    public SheepResponseDTO evolvePhenotype(Integer sheepId, Category category) {
+        Sheep sheep = findById(sheepId);
+        sheep.evolvePhenotype(category);
+        return DomainMapper.toResponseDTO(saveSheep(sheep));
+    }
+
+    @Transactional
+    public Sheep saveNewSheep(SheepNewRequestDTO sheepNewRequestDTO) {
+        Sheep sheep = DomainMapper.fromRequestDTO(sheepNewRequestDTO);
+        return sheepRepository.save(sheep);
+    }
+
+    @Deprecated
+    @Transactional
+    public Sheep replaceSheep(Integer sheepId, SheepReplaceRequestDTO sheepReplaceRequestDTO) {
+        Sheep existing = findById(sheepId);
+
+        if (existing.getParentRelationship() != null) {
+            existing.getParentRelationship().removeChildFromRelationship(existing);
+        }
+
+        existing.setName(sheepReplaceRequestDTO.getName());
+        existing.setGenotypes(sheepReplaceRequestDTO.getGenotypes());
+
+        existing.replaceDistributionsFromDTO(sheepReplaceRequestDTO.getDistributions());
+
+        if (sheepReplaceRequestDTO.getParentRelationshipId() != null) {
+            Relationship relationship = relationshipService.findById(sheepReplaceRequestDTO.getParentRelationshipId());
+            relationship.addChildToRelationship(existing);
+        } else {
+            existing.setBirthRecord(null);
+        }
+
+        return sheepRepository.save(existing);
+    }
+
+    @Transactional
+    public Sheep updateSheep(Integer sheepId, SheepUpdateRequestDTO updateSheepModel) {
+        Sheep sheep = findById(sheepId);
+
+        if (updateSheepModel.getName() != null) {
+            sheep.setName(updateSheepModel.getName());
+        }
+
+        // TODO - figure out constraints for genotype updates
+//        Map<Category, SheepGenotypeDTO> updatedGenotypes = updateSheepModel.getGenotypes();
+//        sheep.updateGenotypes(updatedGenotypes);
+
+        Map<Category, Map<Grade, Double>> updatedPriors = updateSheepModel.getDistributions();
+        if (updatedPriors != null) {
+            for (Map.Entry<Category, Map<Grade, Double>> entry : updatedPriors.entrySet()) {
+                sheep.setDistribution(entry.getKey(), DistributionType.PRIOR, entry.getValue());
+            }
+        }
+
+        return saveSheep(sheep);
     }
 
     @Transactional
     public void deleteSheep(Integer sheepId) {
         Sheep sheep = findById(sheepId);
 
-        List<Relationship> relationships = relationshipRepository.findByParentId(sheepId);
-        Set<Integer> relationshipIds = relationships.stream().map(Relationship::getId).collect(Collectors.toSet());
+        List<Relationship> relationships = relationshipService.findRelationshipsByParent(sheepId);
 
-        List<Sheep> affectedChildren = sheepRepository.findAllByParentRelationship_IdIn(relationshipIds);
-        for (Sheep child : affectedChildren) {
-            child.setParentRelationship(null);
+        // set all children as founder sheep
+        for (Relationship relationship : relationships) {
+            for (BirthRecord br : relationship.getBirthRecords()) {
+                Sheep child = br.getChild();
+                if (child != null) {
+                    br.setChild(null);
+                    child.setBirthRecord(null);
+                }
+            }
         }
 
-        relationshipRepository.deleteAll(relationships);
+        // remove the sheep as a child if it has a parent relationship
+        Relationship parentRelationship = sheep.getParentRelationship();
+        if (parentRelationship != null) {
+            parentRelationship.removeChildFromRelationship(sheep);
+        }
+
+        relationshipService.deleteAll(relationships);
 
         sheepRepository.delete(sheep);
-    }
-
-    public Sheep fromRequestDTO(SheepNewRequestDTO dto) throws IllegalArgumentException {
-        Sheep sheep = new Sheep();
-        sheep.setName(dto.getName());
-        sheep.setGenotypes(dto.getGenotypes());
-
-        sheep.upsertDistributionsFromDTO(dto.getDistributions());
-
-        if (dto.getParentRelationshipId() != null) {
-            Relationship relationship = relationshipRepository.findById(dto.getParentRelationshipId())
-                    .orElseThrow(() -> new IllegalArgumentException("Invalid parentRelationshipId: " + dto.getParentRelationshipId()));
-            sheep.setParentRelationship(relationship);
-        }
-
-        return sheep;
-    }
-
-    public Sheep fromRequestDTO(SheepReplaceRequestDTO dto) {
-        Sheep sheep = new Sheep();
-        sheep.setName(dto.getName());
-        sheep.setGenotypes(dto.getGenotypes());
-
-        sheep.upsertDistributionsFromDTO(dto.getDistributions());
-
-        if (dto.getParentRelationshipId() != null) {
-            Relationship relationship = relationshipRepository.findById(dto.getParentRelationshipId())
-                    .orElseThrow(() -> new IllegalArgumentException("Invalid parentRelationshipId: " + dto.getParentRelationshipId()));
-            sheep.setParentRelationship(relationship);
-        }
-
-        return sheep;
-    }
-
-    public SheepResponseDTO toResponseDTO(Sheep sheep) {
-        SheepResponseDTO responseDTO = new SheepResponseDTO();
-        responseDTO.setId(sheep.getId());
-        responseDTO.setName(sheep.getName());
-        responseDTO.setGenotypes(sheep.getGenotypes());
-        responseDTO.setDistributions(sheep.getAllDistributions());
-
-        if (sheep.getParentRelationship() != null) {
-            responseDTO.setParentRelationshipId(sheep.getParentRelationship().getId());
-        }
-
-        return responseDTO;
     }
 }

@@ -1,0 +1,134 @@
+package com.progressengine.geneinference.service;
+
+import com.progressengine.geneinference.model.GradePair;
+import com.progressengine.geneinference.model.enums.Grade;
+
+import java.util.*;
+
+public final class InferenceMath {
+
+    public static <T> void validateDistribution(Map<T, Double> distribution) {
+        // Validate sum ≈ 1.0
+        double total = distribution.values().stream()
+                .mapToDouble(Double::doubleValue)
+                .sum();
+
+        if (Math.abs(total - 1.0) > 1e-6) {
+            throw new IllegalArgumentException("Distribution probabilities must sum to 1.0 (±1e-6). Actual sum: " + total);
+        }
+    }
+
+    // combine existing distribution with new distribution
+    public static <T> void productOfExperts(Map<T, Double> existingDistribution, Map<T, Double> newDistribution) {
+        for (Map.Entry<T, Double> entry : existingDistribution.entrySet()) {
+            T key = entry.getKey();
+            double newProbability = newDistribution.getOrDefault(key, 0.0);
+            entry.setValue(entry.getValue() * newProbability);
+        }
+
+        normalizeScores(existingDistribution);
+        validateDistribution(existingDistribution);
+    }
+
+    // Returns the probability the given allele came from each parent given the assumed hidden alleles
+    public static double[] probabilityAlleleFromParents(GradePair hiddenAlleles, Grade phenotype1, Grade phenotype2, Grade allele) {
+        double[] probabilities = new double[2];
+
+        double totalProbabilityOfAllele = 0.0;
+        double probabilityOfAlleleGivenParent1 = 0.0;
+        if (phenotype1.equals(allele)) {
+            probabilityOfAlleleGivenParent1 += 0.5;
+            totalProbabilityOfAllele += 0.25;
+        }
+        if (hiddenAlleles.getFirst().equals(allele)) {
+            probabilityOfAlleleGivenParent1 += 0.5;
+            totalProbabilityOfAllele += 0.25;
+        }
+
+        double probabilityOfAlleleGivenParent2 = 0.0;
+        if (phenotype2.equals(allele)) {
+            probabilityOfAlleleGivenParent2 += 0.5;
+            totalProbabilityOfAllele += 0.25;
+        }
+        if (hiddenAlleles.getSecond().equals(allele)) {
+            probabilityOfAlleleGivenParent2 += 0.5;
+            totalProbabilityOfAllele += 0.25;
+        }
+
+        if (totalProbabilityOfAllele == 0) {
+            return probabilities;
+        }
+
+        // multiply each ratio by 0.5 as the probability that each parent is chosen
+        probabilities[0] = (0.5 * probabilityOfAlleleGivenParent1) /  totalProbabilityOfAllele;
+        probabilities[1] = (0.5 * probabilityOfAlleleGivenParent2) /  totalProbabilityOfAllele;
+        return probabilities;
+    }
+
+    public static Map<GradePair, Double> multinomialJointScores(Grade phenotype1, Grade phenotype2, Map<Grade, Integer> phenotypeFrequency) {
+        Map<GradePair, Double> multinomialDistribution = new HashMap<>();
+        for (Grade grade1 : Grade.values()) {
+            for (Grade grade2 : Grade.values()) {
+                GradePair gradePair = new GradePair(grade1, grade2);
+                double multiScore = multinomialScore(gradePair, phenotype1, phenotype2, phenotypeFrequency);
+                multinomialDistribution.put(gradePair, multiScore);
+            }
+        }
+        normalizeScores(multinomialDistribution);
+        validateDistribution(multinomialDistribution);
+        return multinomialDistribution;
+    }
+
+    // normalize the given Map of scores regardless of the key type
+    public static <T> void normalizeScores(Map<T, Double> scores) {
+        double sum = scores.values().stream().mapToDouble(Double::doubleValue).sum();
+
+        if (sum == 0) { return; }
+
+        for (Map.Entry<T, Double> entry : scores.entrySet()) {
+            entry.setValue(entry.getValue() / sum);
+        }
+    }
+
+    public static void fillMissingValuesWithZero(Map<Grade, Double> scores) {
+        for (Grade grade : Grade.values()) {
+            scores.putIfAbsent(grade, 0.0);
+        }
+    }
+
+    // Returns a relative multinomial score based on the given hidden alleles, phenotypes, and phenotype frequency seen in the relationship
+    private static double multinomialScore(GradePair hiddenPair, Grade phenotype1, Grade phenotype2, Map<Grade, Integer> phenotypeFrequency) {
+        double score = 1000000.0; // A multiplicative constant to help keep scores from getting too small quickly
+
+        // each occurrence of a grade adds 1/4 to the probability of that grade
+        Map<Grade, Double> probabilityToDraw = new EnumMap<>(Grade.class);
+        probabilityToDraw.merge(phenotype1, 0.25, Double::sum);
+        probabilityToDraw.merge(phenotype2, 0.25, Double::sum);
+        probabilityToDraw.merge(hiddenPair.getFirst(), 0.25, Double::sum);
+        probabilityToDraw.merge(hiddenPair.getSecond(), 0.25, Double::sum);
+
+        for (Grade grade : Grade.values()) {
+            Double probability = probabilityToDraw.getOrDefault(grade, 0.0);
+            Integer frequency = phenotypeFrequency.getOrDefault(grade, 0);
+            if (probability == 0.0 && frequency > 0) {
+                score = 0.0;
+            } else if (frequency > 0) {
+                score *= Math.exp(frequency * Math.log(probability));
+            }
+        }
+
+        return score;
+    }
+
+    public static <T> double entropy(Map<T, Double> distribution) {
+        double entropy = 0.0;
+
+        for (double p : distribution.values()) {
+            if (p > 0.0) {  // avoid log(0)
+                entropy -= p * (Math.log(p) / Math.log(2));
+            }
+        }
+
+        return entropy;
+    }
+}

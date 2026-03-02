@@ -1,10 +1,10 @@
 package com.progressengine.geneinference.service;
 
-import com.progressengine.geneinference.dto.PredictionResponseDTO;
 import com.progressengine.geneinference.model.*;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.DistributionType;
 import com.progressengine.geneinference.model.enums.Grade;
+import com.progressengine.geneinference.testutil.DomainFixtures;
 import org.junit.jupiter.api.Test;
 
 import java.util.*;
@@ -17,7 +17,7 @@ public abstract class InferenceEngineTest {
     @Test
     void testFindJointDistribution() {
         // Arrange
-        Sheep parent1 = createTestSheep(Map.of(
+        Sheep parent1 = DomainFixtures.createTestSheep(Map.of(
                 Category.SWIM, Grade.B,
                 Category.FLY, Grade.C,
                 Category.RUN, Grade.D,
@@ -25,7 +25,7 @@ public abstract class InferenceEngineTest {
                 Category.STAMINA, Grade.E
         ));
 
-        Sheep parent2 = createTestSheep(Map.of(
+        Sheep parent2 = DomainFixtures.createTestSheep(Map.of(
                 Category.SWIM, Grade.B,
                 Category.FLY, Grade.A,
                 Category.RUN, Grade.A,
@@ -33,7 +33,7 @@ public abstract class InferenceEngineTest {
                 Category.STAMINA, Grade.S
         ));
 
-        Relationship relationship = createTestRelationship(parent1, parent2, Map.ofEntries(
+        Relationship relationship = DomainFixtures.createTestRelationship(parent1, parent2, Map.ofEntries(
                 Map.entry(Category.SWIM, Map.ofEntries(
                         Map.entry(Grade.B, 53),
                         Map.entry(Grade.C, 24),
@@ -77,7 +77,7 @@ public abstract class InferenceEngineTest {
     @Test
     void testFindJointDistributionOneOffspring() {
         // Arrange
-        Sheep parent1 = createTestSheep(Map.of(
+        Sheep parent1 = DomainFixtures.createTestSheep(Map.of(
                 Category.SWIM, Grade.B,
                 Category.FLY, Grade.C,
                 Category.RUN, Grade.D,
@@ -85,7 +85,7 @@ public abstract class InferenceEngineTest {
                 Category.STAMINA, Grade.E
         ));
 
-        Sheep parent2 = createTestSheep(Map.of(
+        Sheep parent2 = DomainFixtures.createTestSheep(Map.of(
                 Category.SWIM, Grade.B,
                 Category.FLY, Grade.A,
                 Category.RUN, Grade.A,
@@ -93,7 +93,7 @@ public abstract class InferenceEngineTest {
                 Category.STAMINA, Grade.S
         ));
 
-        Relationship relationship = createTestRelationship(parent1, parent2, Map.ofEntries(
+        Relationship relationship = DomainFixtures.createTestRelationship(parent1, parent2, Map.ofEntries(
                 Map.entry(Category.SWIM, Map.ofEntries(
                         Map.entry(Grade.C, 1)
                 )),
@@ -129,7 +129,7 @@ public abstract class InferenceEngineTest {
     @Test
     void testUpdateMarginalDistribution() {
         // Arrange
-        Sheep parent1 = createTestSheep(Map.of(
+        Sheep parent1 = DomainFixtures.createTestSheep(Map.of(
                 Category.SWIM, Grade.B,
                 Category.FLY, Grade.C,
                 Category.RUN, Grade.D,
@@ -137,7 +137,7 @@ public abstract class InferenceEngineTest {
                 Category.STAMINA, Grade.E
         ));
 
-        Sheep parent2 = createTestSheep(Map.of(
+        Sheep parent2 = DomainFixtures.createTestSheep(Map.of(
                 Category.SWIM, Grade.B,
                 Category.FLY, Grade.A,
                 Category.RUN, Grade.A,
@@ -145,7 +145,7 @@ public abstract class InferenceEngineTest {
                 Category.STAMINA, Grade.S
         ));
 
-        Relationship relationship = createTestRelationship(parent1, parent2, Map.ofEntries(
+        Relationship relationship = DomainFixtures.createTestRelationship(parent1, parent2, Map.ofEntries(
                 Map.entry(Category.SWIM, Map.ofEntries(
                         Map.entry(Grade.C, 1)
                 )),
@@ -191,7 +191,7 @@ public abstract class InferenceEngineTest {
     @Test
     void testInferChildDistributionChild1() {
         // Arrange
-        Sheep parent1 = createTestSheep(Map.of(
+        Sheep parent1 = DomainFixtures.createTestSheep(Map.of(
                 Category.SWIM, Grade.B,
                 Category.FLY, Grade.C,
                 Category.RUN, Grade.D,
@@ -199,7 +199,7 @@ public abstract class InferenceEngineTest {
                 Category.STAMINA, Grade.E
         ));
 
-        Sheep parent2 = createTestSheep(Map.of(
+        Sheep parent2 = DomainFixtures.createTestSheep(Map.of(
                 Category.SWIM, Grade.B,
                 Category.FLY, Grade.A,
                 Category.RUN, Grade.A,
@@ -207,7 +207,7 @@ public abstract class InferenceEngineTest {
                 Category.STAMINA, Grade.S
         ));
 
-        Relationship relationship = createTestRelationship(parent1, parent2, Map.ofEntries(
+        Relationship relationship = DomainFixtures.createTestRelationship(parent1, parent2, Map.ofEntries(
                 Map.entry(Category.SWIM, Map.ofEntries(
                         Map.entry(Grade.B, 53),
                         Map.entry(Grade.C, 24),
@@ -233,7 +233,7 @@ public abstract class InferenceEngineTest {
                 ))
         ));
 
-        Sheep child = createTestSheep(Map.of(
+        Sheep child = DomainFixtures.createTestSheep(Map.of(
                 Category.SWIM, Grade.D,
                 Category.FLY, Grade.A,
                 Category.RUN, Grade.D,
@@ -260,7 +260,7 @@ public abstract class InferenceEngineTest {
     @Test
     void testInferChildDistributionChild2() {
         // Arrange
-        Sheep parent1 = createTestSheep(Map.of(
+        Sheep parent1 = DomainFixtures.createTestSheep(Map.of(
                 Category.SWIM, Grade.B,
                 Category.FLY, Grade.C,
                 Category.RUN, Grade.D,
@@ -268,7 +268,7 @@ public abstract class InferenceEngineTest {
                 Category.STAMINA, Grade.E
         ));
 
-        Sheep parent2 = createTestSheep(Map.of(
+        Sheep parent2 = DomainFixtures.createTestSheep(Map.of(
                 Category.SWIM, Grade.B,
                 Category.FLY, Grade.A,
                 Category.RUN, Grade.A,
@@ -276,7 +276,7 @@ public abstract class InferenceEngineTest {
                 Category.STAMINA, Grade.S
         ));
 
-        Relationship relationship = createTestRelationship(parent1, parent2, Map.ofEntries(
+        Relationship relationship = DomainFixtures.createTestRelationship(parent1, parent2, Map.ofEntries(
                 Map.entry(Category.SWIM, Map.ofEntries(
                         Map.entry(Grade.C, 1)
                 )),
@@ -294,7 +294,7 @@ public abstract class InferenceEngineTest {
                 ))
         ));
 
-        Sheep child = createTestSheep(Map.of(
+        Sheep child = DomainFixtures.createTestSheep(Map.of(
                 Category.SWIM, Grade.C,
                 Category.FLY, Grade.C,
                 Category.RUN, Grade.D,
@@ -321,7 +321,7 @@ public abstract class InferenceEngineTest {
     @Test
     void testPredictChildrenDistributions() {
         // Arrange
-        Sheep parent1 = createTestSheep(Map.of(
+        Sheep parent1 = DomainFixtures.createTestSheep(Map.of(
                 Category.SWIM, Grade.B,
                 Category.FLY, Grade.C,
                 Category.RUN, Grade.D,
@@ -329,7 +329,7 @@ public abstract class InferenceEngineTest {
                 Category.STAMINA, Grade.E
         ), 1);
 
-        Sheep parent2 = createTestSheep(Map.of(
+        Sheep parent2 = DomainFixtures.createTestSheep(Map.of(
                 Category.SWIM, Grade.B,
                 Category.FLY, Grade.A,
                 Category.RUN, Grade.A,
@@ -351,35 +351,5 @@ public abstract class InferenceEngineTest {
             double sum = distribution.values().stream().mapToDouble(Double::doubleValue).sum();
             assertEquals(1.0, sum, 1e-9, "Probabilities should sum to 1.0");
         }
-    }
-
-    protected Sheep createTestSheep(Map<Category, Grade> phenotypes) {
-        Sheep sheep = new Sheep();
-        for (Map.Entry<Category, Grade> entry : phenotypes.entrySet()) {
-            sheep.setPhenotype(entry.getKey(), entry.getValue());
-        }
-        sheep.createDefaultDistributions();
-        return sheep;
-    }
-    protected Sheep createTestSheep(Map<Category, Grade> phenotypes, int sheepId) {
-        Sheep sheep = createTestSheep(phenotypes);
-        sheep.setId(sheepId);
-        return sheep;
-    }
-
-    protected Relationship createTestRelationship(Sheep parent1, Sheep parent2, Map<Category, Map<Grade, Integer>> offspringPhenotypeFrequency) {
-        Relationship relationship = new Relationship();
-        relationship.setParent1(parent1);
-        relationship.setParent2(parent2);
-        for (Map.Entry<Category, Map<Grade, Integer>> entry : offspringPhenotypeFrequency.entrySet()) {
-            relationship.setPhenotypeFrequencies(entry.getKey(), entry.getValue());
-        }
-        return relationship;
-    }
-
-    protected Relationship createTestRelationship(Sheep parent1, Sheep parent2, Map<Category, Map<Grade, Integer>> offspringPhenotypeFrequency, int relationshipId) {
-        Relationship relationship = createTestRelationship(parent1, parent2, offspringPhenotypeFrequency);
-        relationship.setId(relationshipId);
-        return relationship;
     }
 }

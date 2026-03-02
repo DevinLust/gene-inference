@@ -1,12 +1,9 @@
 package com.progressengine.geneinference.dto;
 
-import com.progressengine.geneinference.model.Sheep;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.Grade;
 
-import java.util.EnumSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class BestPredictionDTO implements Comparable<BestPredictionDTO> {
     private final SheepSummaryResponseDTO parent1;
@@ -16,9 +13,9 @@ public class BestPredictionDTO implements Comparable<BestPredictionDTO> {
     private final Set<Category> bestCategoriesSet;
     private final Map<Category, Map<Grade, Double>> phenotypeDistributions; // Maps each category to the distribution a child has these phenotypes
 
-    public BestPredictionDTO(Sheep parent1, Sheep parent2, Map<Category, Grade> parent1BestGrades, Map<Category, Grade> parent2BestGrades, Map<Category, Map<Grade, Double>> predictions) {
-        this.parent1 = new SheepSummaryResponseDTO(parent1);
-        this.parent2 = new SheepSummaryResponseDTO(parent2);
+    public BestPredictionDTO(SheepSummaryResponseDTO parent1, SheepSummaryResponseDTO parent2, Map<Category, Grade> parent1BestGrades, Map<Category, Grade> parent2BestGrades, Map<Category, Map<Grade, Double>> predictions) {
+        this.parent1 = parent1;
+        this.parent2 = parent2;
         this.parent1BestCategoryGradeMap = parent1BestGrades;
         this.parent2BestCategoryGradeMap = parent2BestGrades;
         this.bestCategoriesSet = EnumSet.noneOf(Category.class);
@@ -53,6 +50,23 @@ public class BestPredictionDTO implements Comparable<BestPredictionDTO> {
 
     @Override
     public int compareTo(BestPredictionDTO o) {
-        return Integer.compare(this.bestCategoriesSet.size(), o.bestCategoriesSet.size());
+        List<Category> aList = this.orderedBestCategories();
+        List<Category> bList = o.orderedBestCategories();
+
+        for (int i = 0; i < Math.min(aList.size(), bList.size()); i++) {
+            int cmp = Integer.compare(
+                    aList.get(i).getOrder(),
+                    bList.get(i).getOrder()
+            );
+            if (cmp != 0) return cmp;
+        }
+
+        return Integer.compare(aList.size(), bList.size());
+    }
+
+    private List<Category> orderedBestCategories() {
+        return bestCategoriesSet.stream()
+                .sorted(Comparator.comparingInt(Category::getOrder))
+                .toList();
     }
 }

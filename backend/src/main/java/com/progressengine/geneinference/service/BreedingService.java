@@ -1,135 +1,255 @@
 package com.progressengine.geneinference.service;
 
-import com.progressengine.geneinference.model.Relationship;
-import com.progressengine.geneinference.model.Sheep;
+import com.progressengine.geneinference.dto.*;
+import com.progressengine.geneinference.exception.BadRequestException;
+import com.progressengine.geneinference.exception.IncompleteGenotypeException;
+import com.progressengine.geneinference.exception.ResourceNotFoundException;
+import com.progressengine.geneinference.mapper.DomainMapper;
+import com.progressengine.geneinference.model.*;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.DistributionType;
 import com.progressengine.geneinference.model.enums.Grade;
 
+import com.progressengine.geneinference.repository.BirthRecordRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 
 @Service
 public class BreedingService {
+
+    private static final double CERTAINTY_THRESHOLD = 0.99;
+    private static final int MAX_SHEEP_PER_CATEGORY = 2;
+
     private final SheepService sheepService;
     private final RelationshipService relationshipService;
     private final InferenceEngine inferenceEngine;
+    private final BirthRecordRepository birthRecordRepository;
 
-    public BreedingService(SheepService sheepService, RelationshipService relationshipService, @Qualifier("loopy") InferenceEngine inferenceEngine) {
+    public BreedingService(SheepService sheepService, RelationshipService relationshipService, @Qualifier("loopy") InferenceEngine inferenceEngine, BirthRecordRepository birthRecordRepository) {
         this.sheepService = sheepService;
         this.relationshipService = relationshipService;
         this.inferenceEngine = inferenceEngine;
+        this.birthRecordRepository = birthRecordRepository;
     }
 
-    @Transactional
-    public void saveBreedingSession(Relationship relationshipToSave, List<Sheep> sheepToSave) {
-        relationshipService.saveRelationship(relationshipToSave);
-        sheepService.saveAll(sheepToSave);
-    }
-
-    @Transactional
-    public void saveBreedingSession(Relationship relationshipToSave, Sheep sheepToSave) {
-        relationshipService.saveRelationship(relationshipToSave);
-        sheepService.saveSheep(sheepToSave);
-    }
 
     /**
-     * Attempts to breed the two sheep given by their id's and returns their
-     * random, unpersisted child. Throws an IllegalArgumentException if the
-     * parents cannot be in a relationship or cannot be bred.
+     * Breeds the two sheep identified by the given IDs and returns their randomly
+     * generated child. If {@code saveChild} is {@code true}, the child is also
+     * persisted.
      *
-     * @param sheep1Id - id of one of the parents
-     * @param sheep2Id - id of the other parent
-     * @return an unpersisted child Sheep of the two parents.
+     * @param sheep1Id
+     *     the ID of the first parent sheep
+     * @param sheep2Id
+     *     the ID of the second parent sheep
+     * @param saveChild
+     *     if {@code true}, persists the newly created child sheep;
+     *     if {@code false}, returns the child without saving it
+     * @return
+     *     the child sheep produced by breeding the two parents
+     * @throws {@code ResourceNotFoundException}
+     *     if either parent sheep does not exist
+     * @throws {@code IllegalArgumentException}
+     *     if the sheep ids refer to the same sheep
      */
     @Transactional
-    public Sheep breedAndInferSheep(Integer sheep1Id, Integer sheep2Id) {
+    public BirthRecord breedAndInferSheep(Integer sheep1Id, Integer sheep2Id, boolean saveChild, String name) {
+        if (sheep1Id.equals(sheep2Id)) {
+            throw new BadRequestException("Parent sheep IDs must be different");
+        }
+
         // find/create the relationship of these two sheep
         Sheep sheep1 = sheepService.findById(sheep1Id);
         Sheep sheep2 = sheepService.findById(sheep2Id);
-        Relationship relationship = relationshipService.findOrCreateRelationship(sheep1, sheep2);;
+        Relationship relationship = relationshipService.findOrCreateRelationship(sheep1, sheep2);
 
+        /* ----------------------------------------------------------------------------------------
+         * possibly belongs in relationship domain for invariant control */
         // create a new child from the two sheep
-        Sheep newChild = breedNewSheep(relationship);
+        Sheep newChild = breedNewSheep(sheep1, sheep2);
+        if (name != null && saveChild) {
+            newChild.setName(name);
+        }
 
-        // get the new joint distribution from the additional offspring data
-        inferenceEngine.findJointDistribution(relationship); // categorized for ensemble and loopy
-
-        // update the marginal distributions of the parents' using the joint distribution
-        inferenceEngine.updateMarginalProbabilities(relationship); // categorized for loopy
-
-        // infer child hidden distribution
-        inferenceEngine.inferChildHiddenDistribution(relationship,  newChild);
+        // save new child if told and create a BirthRecord for the event
+        BirthRecord birthRecord;
+        if (saveChild) {
+            birthRecord = relationship.addChildToRelationship(sheepService.saveSheep(newChild));
+        } else {
+            birthRecord = relationship.addChildInformationToRelationship(newChild);
+        }
 
         for (Category category : Category.values()) {
             newChild.setDistribution(category, DistributionType.INFERRED, newChild.getDistribution(category, DistributionType.PRIOR));
         }
 
-        return newChild;
+        return birthRecord;
     }
 
+
     /**
-     * Breed a new child sheep from the given Relationship. The child randomly takes
+     * Breed a new child sheep from two sheep. The child randomly takes
      * one allele from each parent and then randomly chooses which one is the phenotype.
-     * The child will have default distributions and sets its parents to this relationship.
+     * The child will have default distributions.
      * The parents must have known hidden alleles in all categories to breed. Throws
-     * an IllegalArgumentException otherwise.
+     * an IncompleteGenotypeException otherwise.
      *
-     * @param relationship - the relationship of the two parents to breed
+     * @param sheep1 - the first sheep to breed
+     * @param sheep2 - the second sheep to breed
      * @return a Sheep that represents the child born from the relationship
      */
-    public static Sheep breedNewSheep(Relationship relationship) {
-        breedingValidation(relationship);
+    public static Sheep breedNewSheep(Sheep sheep1, Sheep sheep2) {
+        breedingValidation(sheep1, sheep2);
 
         Sheep child = new Sheep();
-
-        Sheep parent1 = relationship.getParent1();
-        Sheep parent2 = relationship.getParent2();
 
         // random genotype from the two parents, one allele from each parent
         Random random = new Random();
         // -----------------------------------------------------------------------------------
         for (Category category : Category.values()) {
-            if (parent1.getHiddenAllele(category) == null || parent2.getHiddenAllele(category) == null) {
+            if (sheep1.getHiddenAllele(category) == null || sheep2.getHiddenAllele(category) == null) {
                 throw new IllegalArgumentException("Missing known hidden allele in category " + category);
             }
             Grade newPhenotype;
             Grade newHiddenAllele;
             if (random.nextBoolean()) {
-                newPhenotype = random.nextBoolean() ? parent1.getPhenotype(category) : parent1.getHiddenAllele(category);
-                newHiddenAllele = random.nextBoolean() ? parent2.getPhenotype(category) : parent2.getHiddenAllele(category);
+                newPhenotype = random.nextBoolean() ? sheep1.getPhenotype(category) : sheep1.getHiddenAllele(category);
+                newHiddenAllele = random.nextBoolean() ? sheep2.getPhenotype(category) : sheep2.getHiddenAllele(category);
             } else {
-                newPhenotype = random.nextBoolean() ? parent2.getPhenotype(category) : parent2.getHiddenAllele(category);
-                newHiddenAllele = random.nextBoolean() ? parent1.getPhenotype(category) : parent1.getHiddenAllele(category);
+                newPhenotype = random.nextBoolean() ? sheep2.getPhenotype(category) : sheep2.getHiddenAllele(category);
+                newHiddenAllele = random.nextBoolean() ? sheep1.getPhenotype(category) : sheep1.getHiddenAllele(category);
             }
-
 
             child.setPhenotype(category, newPhenotype);
             child.setHiddenAllele(category, newHiddenAllele);
-            relationship.updatePhenotypeFrequency(category, newPhenotype, 1);
         }
+        //relationship.addChildToRelationship(child);
         child.createDefaultDistributions();
         // ---------------------------------------------------------------------------------
-
-        child.setParentRelationship(relationship);
 
         return child;
     }
 
+
+    /**
+     * Create a new sheep from the given request. If the child
+     * comes from explicit parents it will assign the child and
+     * infer new distributions for everyone.
+     *
+     * @param childRequest
+     *     the Sheep request to be assigned as the new child
+     * @return
+     *     the child sheep produced by breeding the two parents
+     * @throws {@code ResourceNotFoundException}
+     *     if either parent sheep does not exist
+     */
+    @Transactional
+    public BirthRecord createAndInferSheep(SheepBreedRequestDTO childRequest, boolean saveChild) {
+        Sheep child = DomainMapper.fromRequestDTO(childRequest);
+
+        Sheep parent1 = sheepService.findById(childRequest.getParent1Id());
+        Sheep parent2 = sheepService.findById(childRequest.getParent2Id());
+        Relationship relationship = relationshipService.findOrCreateRelationship(parent1, parent2);
+        /* ----------------------------------------------------------------------------------------
+        * possibly belongs in relationship domain for invariant control */
+        BirthRecord birthRecord;
+        if (saveChild) {
+            birthRecord = relationship.addChildToRelationship(sheepService.saveSheep(child));
+        } else {
+            birthRecord = relationship.addChildInformationToRelationship(child);
+        }
+
+        for (Category category : Category.values()) {
+            child.setDistribution(category, DistributionType.INFERRED, child.getDistribution(category, DistributionType.PRIOR));
+        }
+
+        return birthRecord;
+    }
+
+    public BirthRecord findBirthRecordById(Integer id) {
+        return birthRecordRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Birth record not found"));
+    }
+
+    public PredictionResponseDTO predictChild(Integer sheep1Id, Integer sheep2Id) {
+        Sheep sheep1 = sheepService.findById(sheep1Id);
+        Sheep sheep2 = sheepService.findById(sheep2Id);
+
+        return new PredictionResponseDTO(inferenceEngine.predictChildrenDistributions(sheep1, sheep2));
+    }
+
+    public List<BestPredictionDTO> bestPredictions() {
+        List<Sheep> allSheep = sheepService.getAllSheep();
+        if (allSheep.size() < 2) {
+            throw new IllegalStateException(
+                    "At least two sheep are required to compute best predictions"
+            );
+        }
+
+        // loop through all sheep and keep track of the sheep that are the best in a category
+        Map<Category, PriorityQueue<Sheep>> bestSheepMap = new EnumMap<>(Category.class);
+        for (Sheep sheep : allSheep) {
+            for (Category category : Category.values()) {
+                PriorityQueue<Sheep> bestSheepQueue = bestSheepMap.computeIfAbsent(category,
+                        k -> new PriorityQueue<>((a, b) -> compareCategory(a, b, category)));
+                bestSheepQueue.add(sheep);
+                if (bestSheepQueue.size() > MAX_SHEEP_PER_CATEGORY) {
+                    bestSheepQueue.poll();
+                }
+            }
+        }
+
+        // gather the best sheep in a Map and make a prediction for all pairs
+        Map<Sheep, Map<Category, Grade>> sheepToCategoryMap = new HashMap<>();
+        for (Map.Entry<Category, PriorityQueue<Sheep>> entry : bestSheepMap.entrySet()) {
+            while (!entry.getValue().isEmpty()) {
+                Sheep sheep = entry.getValue().poll();
+                Category category = entry.getKey();
+                Map<Category, Grade>  categoryToGradeMap = sheepToCategoryMap.computeIfAbsent(sheep, k -> new EnumMap<>(Category.class));
+                categoryToGradeMap.put(category, bestGradeInCategory(sheep, category));
+                sheepToCategoryMap.put(sheep, categoryToGradeMap);
+            }
+        }
+
+        // pairwise predict all parents
+        List<BestPredictionDTO> predictions = new ArrayList<>();
+        List<Sheep> bestSheepList = new ArrayList<>(sheepToCategoryMap.keySet());
+        for (int i = 0; i < bestSheepList.size() - 1; i++) {
+            for (int j = i + 1; j < bestSheepList.size(); j++) {
+                Sheep parent1 = bestSheepList.get(i);
+                Sheep parent2 = bestSheepList.get(j);
+                Map<Category, Map<Grade, Double>> predictionMap = inferenceEngine.predictChildrenDistributions(parent1, parent2);
+                SheepSummaryResponseDTO parent1Summary = new SheepSummaryResponseDTO(parent1.getId(), parent1.getName());
+                SheepSummaryResponseDTO parent2Summary = new SheepSummaryResponseDTO(parent2.getId(), parent2.getName());
+                predictions.add(new BestPredictionDTO(parent1Summary, parent2Summary, sheepToCategoryMap.get(parent1), sheepToCategoryMap.get(parent2), predictionMap));
+            }
+        }
+        predictions.sort(null);
+
+        return predictions;
+    }
+
+    @Transactional
+    public List<Map<Category, Map<Grade, Double>>> recalculateAll() {
+        List<Sheep> allSheep = sheepService.getAllSheep();
+        List<Relationship> allRelationship = relationshipService.getAllRelationships();
+
+        FactorGraph factorGraph = new FactorGraph(allSheep, allRelationship);
+        factorGraph.recalculateAllMessages();
+        List<Map<Category, Map<Grade, Double>>> newBeliefs = factorGraph.computeBeliefs();
+
+        return newBeliefs;
+    }
+
     // validates that these two sheep can be automatically bred within the app
-    private static void breedingValidation(Relationship relationship) {
-        Set<Category> parent1Missing = missingHiddenAllele(relationship.getParent1());
-        Set<Category> parent2Missing = missingHiddenAllele(relationship.getParent2());
+    private static void breedingValidation(Sheep parent1, Sheep parent2) {
+        Set<Category> parent1Missing = missingHiddenAllele(parent1);
+        Set<Category> parent2Missing = missingHiddenAllele(parent2);
         if (!parent1Missing.isEmpty() || !parent2Missing.isEmpty()) {
-            String parent1MissingStr = parent1Missing.isEmpty() ? "" : String.format("Parent 1 is missing hidden alleles in: %s%n", parent1Missing);
-            String parent2MissingStr = parent2Missing.isEmpty() ? "" : String.format("Parent 2 is missing hidden alleles in: %s%n", parent2Missing);
-            throw new IllegalArgumentException(String.format("Cannot breed sheep with missing hidden alleles!%n%s%s", parent1MissingStr, parent2MissingStr));
+            throw new IncompleteGenotypeException(parent1Missing, parent2Missing);
         }
     }
 
@@ -142,4 +262,29 @@ public class BreedingService {
         }
         return categories;
     }
+
+    private int compareCategory(Sheep sheep1, Sheep sheep2, Category category) {
+        Grade sheep1Best = bestGradeInCategory(sheep1, category);
+        double sheep1Entropy = InferenceMath.entropy(sheep1.getDistribution(category, DistributionType.INFERRED));
+        Grade sheep2Best = bestGradeInCategory(sheep2, category);
+        double sheep2Entropy = InferenceMath.entropy(sheep2.getDistribution(category, DistributionType.INFERRED));
+
+        if (sheep1Best.isBetterThan(sheep2Best)) {
+            return 1;
+        } else if (sheep2Best.isBetterThan(sheep1Best)) {
+            return -1;
+        }
+        return -Double.compare(sheep1Entropy, sheep2Entropy);
+    }
+
+    private Grade bestGradeInCategory(Sheep sheep, Category category) {
+        Grade bestGrade = sheep.getPhenotype(category);
+        for (Map.Entry<Grade, Double> entry : sheep.getDistribution(category, DistributionType.INFERRED).entrySet()) {
+            if (entry.getValue() >= CERTAINTY_THRESHOLD && entry.getKey().isBetterThan(bestGrade)) {
+                bestGrade = entry.getKey();
+            }
+        }
+        return bestGrade;
+    }
+
 }

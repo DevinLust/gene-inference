@@ -47,12 +47,10 @@ public class BreedingServiceTest {
                 Category.STAMINA, new SheepGenotypeDTO(randomGrade(), randomGrade())
         ));
 
-        Relationship relationship = createTestRelationship(parent1, parent2);
-
         // Act
         Sheep[] sheepChildren = new Sheep[10];
         for (int i = 0; i < sheepChildren.length; i++) {
-            Sheep newChild = BreedingService.breedNewSheep(relationship);
+            Sheep newChild = BreedingService.breedNewSheep(parent1, parent2);
             sheepChildren[i] = newChild;
         }
 
@@ -107,11 +105,13 @@ public class BreedingServiceTest {
 
         // Act
         for (int i = 0; i < N; i++) {
-            BreedingService.breedNewSheep(relationship);
+            Sheep child = BreedingService.breedNewSheep(parent1, parent2);
+            relationship.addChildInformationToRelationship(child);
         }
 
+
         // Assert for distribution
-        Map<Grade, Integer> counts = relationship.getPhenotypeFrequencies(Category.SWIM);
+        Map<Grade, Integer> counts = relationship.getCurrentPhenotypeFrequencies(Category.SWIM);
         for (Map.Entry<Grade, Integer> entry : counts.entrySet()) {
             Grade grade = entry.getKey();
             int count = entry.getValue();

@@ -1,5 +1,6 @@
 package com.progressengine.geneinference.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.progressengine.geneinference.dto.SheepGenotypeDTO;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.DistributionType;
@@ -12,6 +13,14 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Entity
+@NamedEntityGraph(
+        name = "Sheep.withDistributionsAndGenotypes",
+        attributeNodes = {
+                @NamedAttributeNode("distributions"),
+                @NamedAttributeNode("genotypes"),
+                @NamedAttributeNode("birthRecord")
+        }
+)
 public class Sheep {
 
     @Id
@@ -19,11 +28,11 @@ public class Sheep {
     private Integer id;
     private String name;
 
-    @OneToMany(mappedBy = "sheep", fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<SheepGenotype> genotypes = new ArrayList<>();
+    @OneToMany(mappedBy = "sheep", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    private Set<SheepGenotype> genotypes = new HashSet<>();
 
-    @OneToMany(mappedBy = "sheep", cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
-    private List<SheepDistribution> distributions = new ArrayList<>();
+    @OneToMany(mappedBy = "sheep", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    private Set<SheepDistribution> distributions = new HashSet<>();
 
     @Transient
     private Map<Category, Map<DistributionType, Map<Grade, SheepDistribution>>> distributionsByCategory = new EnumMap<>(Category.class);
@@ -31,9 +40,8 @@ public class Sheep {
     @Transient
     private boolean organized = false;
 
-    @ManyToOne
-    @JoinColumn(name = "parent_relationship_id")
-    private Relationship parentRelationship; // foreign key to Relationship
+    @OneToOne(mappedBy = "child", optional = true)
+    private BirthRecord birthRecord;
 
     public Sheep() {
     }
@@ -54,7 +62,17 @@ public class Sheep {
         this.name = name;
     }
 
-    // experimental List of Genotypes
+    public BirthRecord getBirthRecord() {
+        return birthRecord;
+    }
+
+    public void setBirthRecord(BirthRecord birthRecord) {
+        this.birthRecord = birthRecord;
+    }
+
+
+
+    /** Genotypes ------------------------------------------------------------------------------ */
     public Map<Category, SheepGenotypeDTO> getGenotypes() {
         Map<Category, SheepGenotypeDTO> genotypesByCategory = new EnumMap<>(Category.class);
 
@@ -108,13 +126,33 @@ public class Sheep {
         for (Map.Entry<Category, SheepGenotypeDTO> entry : genotypesDTO.entrySet()) {
             Category category = entry.getKey();
             SheepGenotypeDTO genotypeDTO = entry.getValue();
-            if (genotypeDTO.getPhenotype() == null) {
+            if (genotypeDTO.phenotype() == null) {
                 throw new IllegalArgumentException(formatErrorMessage("Phenotype of category " + category + " is null"));
             }
             SheepGenotype genotype = createIfAbsentSheepGenotype(category);
-            genotype.setGenotype(genotypeDTO.getPhenotype(),  genotypeDTO.getHiddenAllele());
+            genotype.setGenotype(genotypeDTO.phenotype(),  genotypeDTO.hiddenAllele());
         }
     }
+
+    public void updateGenotypes(Map<Category, SheepGenotypeDTO> updatedGenotypes) {
+        if (this.birthRecord != null) {
+            Relationship parentRelationship = this.birthRecord.getParentRelationship();
+            parentRelationship.updateChildPhenotypeFrequencies(this, updatedGenotypes);
+        } else if (updatedGenotypes != null && !updatedGenotypes.isEmpty()) {
+            for (Map.Entry<Category, SheepGenotypeDTO> entry : updatedGenotypes.entrySet()) {
+                Category category = entry.getKey();
+                GradePair genotype = entry.getValue().toGradePair();
+                createIfAbsentSheepGenotype(category).setGenotype(genotype);
+            }
+        }
+    }
+
+    public void evolvePhenotype(Category category) {
+        SheepGenotype genotype = findSheepGenotype(category);
+        Grade newPhenotype = genotype.getPhenotype().promoteOnce();
+        genotype.setPhenotype(newPhenotype);
+    }
+
 
     @Transactional
     public void setGenotype(Category category, GradePair genotype) {
@@ -152,8 +190,11 @@ public class Sheep {
     public void setHiddenAllele(String categoryStr, Grade hiddenAllele) {
         setHiddenAllele(Category.valueOf(categoryStr), hiddenAllele);
     }
+    // -------------------------------------------------------------------------------------------
 
-    // experimental List of SheepDistribution
+
+
+    /** SheepDistribution ------------------------------------------------------------------------- */
     private void validateDistribution(Map<Grade, Double> distribution) {
         // Validate all Grades are present
         Set<Grade> missingGrades = EnumSet.allOf(Grade.class);
@@ -173,7 +214,6 @@ public class Sheep {
         }
     }
 
-    @PostLoad
     public void organizeDistributions() {
         if (distributions == null) return;
 
@@ -187,6 +227,7 @@ public class Sheep {
         }
         organized = true;
     }
+
 
     private Map<Grade, SheepDistribution> getDistributionByCategoryAndType(Category category,  DistributionType distributionType) {
         if (!distributionsByCategory.containsKey(category)) {
@@ -207,6 +248,7 @@ public class Sheep {
         return typeMap.get(distributionType);
     }
 
+
     public Map<Category, Map<DistributionType, Map<Grade, Double>>> getAllDistributions() {
         Map<Category, Map<DistributionType, Map<Grade, Double>>> distributionsByCategoryDTO = new EnumMap<>(Category.class);
 
@@ -219,6 +261,20 @@ public class Sheep {
         return distributionsByCategoryDTO;
     }
 
+
+    public Map<Category, Map<Grade, Double>> getAllDistributionsByType(DistributionType distributionType) {
+        Map<Category, Map<Grade, Double>> distributionsByTypeDTO = new EnumMap<>(Category.class);
+
+        for (SheepDistribution dist : distributions) {
+            if (dist.getDistributionType() != distributionType) { continue; }
+            distributionsByTypeDTO
+                    .computeIfAbsent(dist.getCategory(), k -> new EnumMap<>(Grade.class))
+                    .put(dist.getGrade(), dist.getProbability());
+        }
+        return distributionsByTypeDTO;
+    }
+
+
     public Map<Grade, Double> getDistribution(Category category, DistributionType distributionType) {
         if (!organized) {
             organizeDistributions();
@@ -230,15 +286,18 @@ public class Sheep {
                 .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getProbability()));
     }
 
+
     public Map<Grade, Double> getDistribution(String categoryStr, String distributionTypeStr) {
         return getDistribution(Category.valueOf(categoryStr), DistributionType.valueOf(distributionTypeStr));
     }
+
 
     private Map<Grade, SheepDistribution> createIfAbsentDistributionByCategoryAndType(Category category, DistributionType distributionType) {
         return distributionsByCategory
                 .computeIfAbsent(category, k -> new EnumMap<>(DistributionType.class))
                 .computeIfAbsent(distributionType, k -> new EnumMap<>(Grade.class));
     }
+
 
     private void upsertDistributionsByCategory(Category category, DistributionType distributionType, Map<Grade, Double> distribution) {
         Map<Grade, SheepDistribution> distMap = createIfAbsentDistributionByCategoryAndType(category, distributionType);
@@ -259,14 +318,46 @@ public class Sheep {
         }
     }
 
+
     private boolean missingDistributionByCategory(Category category, DistributionType distributionType) {
         if (distributionsByCategory == null) organizeDistributions();
         if (distributionsByCategory.get(category) == null) return true;
         return !distributionsByCategory.get(category).containsKey(distributionType);
     }
 
+
+    // Replaces the distributions by categories into this sheep and resets the rest
+    public void replaceDistributionsFromDTO(Map<Category, Map<Grade, Double>> distributionsByCategoryDTO) {
+        if (!organized) organizeDistributions();
+
+        for (Category category : Category.values()) {
+            if (distributionsByCategoryDTO != null && distributionsByCategoryDTO.containsKey(category)) {
+                Map<Grade, Double> distribution = distributionsByCategoryDTO.get(category);
+                setDistribution(category, DistributionType.PRIOR, distribution);
+                setDistribution(category, DistributionType.INFERRED, distribution);
+            } else {
+                setDistribution(category, DistributionType.PRIOR, SheepService.createUniformDistribution());
+                setDistribution(category, DistributionType.INFERRED, SheepService.createUniformDistribution());
+            }
+        }
+    }
+
+
+    public void setDistributionByType(Map<Category, Map<Grade, Double>> distributionsByCategoryDTO, DistributionType distributionType) {
+        if (!organized) organizeDistributions();
+
+        for (Category category : Category.values()) {
+            if (distributionsByCategoryDTO != null && distributionsByCategoryDTO.containsKey(category)) {
+                Map<Grade, Double> distribution = distributionsByCategoryDTO.get(category);
+                setDistribution(category, distributionType, distribution);
+            } else {
+                setDistribution(category, distributionType, SheepService.createUniformDistribution());
+            }
+        }
+    }
+
+
     // Upserts the partial distributions by categories into this sheep
-    @Transactional
     public void upsertDistributionsFromDTO(Map<Category, Map<Grade, Double>> distributionsByCategoryDTO) {
         // the value passed in might be null in which case follow next steps as if no category is passed
         if (!organized) organizeDistributions();
@@ -289,7 +380,7 @@ public class Sheep {
         }
     }
 
-    @Transactional
+
     public void createDefaultDistributions() {
         if (!organized) organizeDistributions();
 
@@ -299,32 +390,36 @@ public class Sheep {
         }
     }
 
-    @Transactional
+
     public void setDistribution(Category category, DistributionType distributionType, Map<Grade, Double> distribution) {
         if (!organized) {
             organizeDistributions();
         }
-
         validateDistribution(distribution);
-
         upsertDistributionsByCategory(category, distributionType, distribution);
     }
 
-    @Transactional
+
     public void setDistribution(String categoryStr, String distributionTypeStr, Map<Grade, Double> distribution) {
         setDistribution(Category.valueOf(categoryStr), DistributionType.valueOf(distributionTypeStr), distribution);
     }
 
+
+    @JsonIgnore
     public Relationship getParentRelationship() {
-        return parentRelationship;
+        if (birthRecord == null) return null;
+        return birthRecord.getParentRelationship();
     }
 
-    public void setParentRelationship(Relationship parentRelationship) {
-        this.parentRelationship = parentRelationship;
-    }
+
+//    public void setParentRelationship(Relationship parentRelationship) {
+//        this.parentRelationship = parentRelationship;
+//    }
+    // -------------------------------------------------------------------------------------------
+
 
     private String formatErrorMessage(String specificMessage) {
-        return String.format("Error in sheep: %d: %s", this.id, specificMessage);
+        return String.format("Error in sheep with id %d: %s", this.id, specificMessage);
     }
 
 }

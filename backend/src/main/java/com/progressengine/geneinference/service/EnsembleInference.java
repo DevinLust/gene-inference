@@ -45,12 +45,12 @@ public class EnsembleInference extends BaseInferenceEngine {
         Sheep parent2 = relationship.getParent2();
 
         for (Category category : Category.values()) {
-            Map<Grade, Integer> phenotypeFrequency = relationship.getPhenotypeFrequencies(category);
+            Map<Grade, Integer> phenotypeFrequency = relationship.getCurrentPhenotypeFrequencies(category);
             Grade phenotype1 = parent1.getPhenotype(category);
             Grade phenotype2 = parent2.getPhenotype(category);
 
             Map<GradePair, Double> intermediateScores = multinomialJointScores(phenotype1, phenotype2, phenotypeFrequency);
-            normalizeScores(intermediateScores);
+            InferenceMath.normalizeScores(intermediateScores);
             relationship.setJointDistribution(category, intermediateScores);
         }
     }
@@ -62,7 +62,7 @@ public class EnsembleInference extends BaseInferenceEngine {
         Map<GradePair, Map<Grade, Double>> conditionalDistributions = findConditionalDistributions(relationship, childPhenotype, category);
 
         // get a true joint distribution by multiplying each joint probability by the respective marginals and normalizing
-        Map<GradePair, Double> jointDistribution = relationship.getJointDistribution(category);
+        Map<GradePair, Double> jointDistribution = relationship.getJointDistributions().get(category);
         // sum all conditional distributions from each genotype multiplied by the joint probability of that genotype
         for (Map.Entry<GradePair, Double> entry : jointDistribution.entrySet()) {
             GradePair gradePair = entry.getKey();
@@ -82,7 +82,7 @@ public class EnsembleInference extends BaseInferenceEngine {
         // fill any missing probabilities with 0.0
         fillMissingValuesWithZero(childHiddenDistribution);
         // normalize the distribution
-        normalizeScores(childHiddenDistribution);
+        InferenceMath.normalizeScores(childHiddenDistribution);
 
         return childHiddenDistribution;
     }
@@ -136,13 +136,13 @@ public class EnsembleInference extends BaseInferenceEngine {
         // combine the marginals across the relationships using product of experts
         Map<Grade, Double> ensembleProbabilities = marginalProbabilities.getFirst();
         for (int i = 1; i < marginalProbabilities.size(); i++) {
-            productOfExperts(ensembleProbabilities, marginalProbabilities.get(i));
+            InferenceMath.productOfExperts(ensembleProbabilities, marginalProbabilities.get(i));
         }
 
         // if the sheep has a prior distribution then combine it
         Map<Grade, Double> priorProbabilities = parent.getDistribution(category, DistributionType.PRIOR);
         if (priorProbabilities != null && priorProbabilities.size() == Grade.values().length) {
-            productOfExperts(ensembleProbabilities, priorProbabilities);
+            InferenceMath.productOfExperts(ensembleProbabilities, priorProbabilities);
         }
 
         return ensembleProbabilities;
@@ -166,7 +166,7 @@ public class EnsembleInference extends BaseInferenceEngine {
                 partialMarginals.merge(gradePair.getSecond(), newProbability, Double::sum);
             }
         }
-        normalizeScores(partialMarginals);
+        InferenceMath.normalizeScores(partialMarginals);
 
         return partialMarginals;
     }

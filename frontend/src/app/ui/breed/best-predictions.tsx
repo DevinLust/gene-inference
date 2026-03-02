@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { BestPrediction } from '@/app/lib/definitions';
+import { BreedState } from '@/app/lib/actions';
 import { fetchBestPredictions } from '@/app/lib/data';
 import CategoryTag from '@/app/ui/category-tag';
 import BestPredictionBody from "./best-prediction-body";
@@ -11,6 +12,8 @@ export default function BestPredictions() {
     const [bestPredictions, setBestPredictions] = useState<BestPrediction[]>([]);
     const [isFetching, setIsFetching] = useState(false);
     const [expandedIdx, setExpandedIdx] = useState(-1);
+    const initialState: BreedState = { message: null };
+    const [state, setState] = useState<BreedState>(initialState);
 
     useEffect(() => {
         if (expandedIdx !== -1) {
@@ -19,16 +22,21 @@ export default function BestPredictions() {
     }, [expandedIdx]);
 
     async function handleBestPredictions() {
+        setState(initialState);
+        setBestPredictions([]);
+        setExpandedIdx(-1);
         setIsFetching(true);
-        try {
-            const predictions: BestPrediction[] = await fetchBestPredictions();
-            setBestPredictions(predictions);
-            setExpandedIdx(-1);
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setIsFetching(false);
+
+        const data = await fetchBestPredictions();
+        if (Array.isArray(data)) {
+            setBestPredictions(data);
+        } else if ("message" in data) {
+            setState(data);
+        } else {
+            setState({ message: "an unknown error has occurred" });
         }
+
+        setIsFetching(false);
     }
 
     function handleExpandedId(id: number) {
@@ -57,11 +65,14 @@ export default function BestPredictions() {
                 </span>
             </button>
 
+            {/* Server response */}
+            {state?.message && <p className="text-red-500 font-medium">{state.message}</p>}
+
             {/* Prediction List */}
             {bestPredictions.length > 0 && (
                 <div>
                     <h2 className="text-xl font-bold">Best Categories</h2>
-                    <div className="overflow-y-auto max-h-[60vh] rounded-lg">
+                    <div className="overflow-y-auto max-h-[60vh] rounded-lg border-y border-gray-400">
 
                         {bestPredictions.map((prediction, index) => (
                             <div

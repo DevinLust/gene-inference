@@ -2,14 +2,22 @@ package com.progressengine.geneinference.dto;
 
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.Grade;
+import com.progressengine.geneinference.validation.ValidDistribution;
+import com.progressengine.geneinference.validation.ValidGenotypes;
+import jakarta.validation.constraints.NotNull;
 
 import java.util.Map;
 
 public class SheepNewRequestDTO {
     private String name;
+
+    @NotNull
+    @ValidGenotypes
     private Map<Category, SheepGenotypeDTO> genotypes;
+
+    @ValidDistribution
     private Map<Category, Map<Grade, Double>> distributions;
-    private Integer parentRelationshipId;
+
 
     public String getName() {
         return name;
@@ -35,21 +43,12 @@ public class SheepNewRequestDTO {
         this.distributions = distributions;
     }
 
-    public Integer getParentRelationshipId() {
-        return parentRelationshipId;
-    }
-
-    public void setParentRelationshipId(Integer parentRelationshipId) {
-        this.parentRelationshipId = parentRelationshipId;
-    }
-
     @Override
     public String toString() {
         return "SheepDTO{" +
                 "name='" + name + '\'' +
                 ", genotypes=" + genotypes +
                 ", distributions=" + distributions +
-                ", parentRelationshipId=" + parentRelationshipId +
                 '}';
     }
 }

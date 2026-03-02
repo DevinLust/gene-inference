@@ -21,7 +21,7 @@ public class NaiveInference extends BaseInferenceEngine {
         Sheep parent2 = relationship.getParent2();
         for (Category category : Category.values()) {
             Map<GradePair, Double> intermediateScores = new HashMap<>();
-            Map<Grade, Integer> phenotypeFrequency = relationship.getPhenotypeFrequencies(category);
+            Map<Grade, Integer> phenotypeFrequency = relationship.getCurrentPhenotypeFrequencies(category);
             Grade phenotype1 = parent1.getPhenotype(category);
             Grade phenotype2 = parent2.getPhenotype(category);
 
@@ -33,7 +33,7 @@ public class NaiveInference extends BaseInferenceEngine {
                 }
             }
 
-            normalizeScores(intermediateScores);
+            InferenceMath.normalizeScores(intermediateScores);
             relationship.setJointDistribution(category, intermediateScores);
         }
     }

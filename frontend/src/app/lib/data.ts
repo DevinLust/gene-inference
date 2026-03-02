@@ -1,11 +1,21 @@
 'use server';
 
-import { Sheep, Prediction, BestPrediction } from "./definitions";
+import { Sheep, Prediction, BestPrediction, Relationship, RelationshipRow, BirthRecord, BirthRecordRow, BirthRecordFilter, DistributionFilter, SheepFilter, PageResponse } from "./definitions";
+import { BreedState } from "./actions";
+import { buildQuery } from "./helpers";
+import { notFound } from "next/navigation";
+
+if (!process.env.NEXT_PUBLIC_API_BASE_URL) {
+  throw new Error("NEXT_PUBLIC_API_BASE_URL is not defined");
+}
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 // data fetching functions
-export async function fetchAllSheep(): Promise<Sheep[]> {
-    const res = await fetch("http://localhost:8080/sheep", {
-        cache: "force-cache",
+export async function fetchAllSheep(filter: SheepFilter): Promise<Sheep[]> {
+    const params = new URLSearchParams(filter);
+    const res = await fetch(`${API_BASE_URL}/sheep?${params}`, {
+        cache: "default",
     });
 
     await checkStatus(res);
@@ -13,31 +23,91 @@ export async function fetchAllSheep(): Promise<Sheep[]> {
     return await res.json();
 }
 
+export async function fetchDistributions(filter: DistributionFilter) {
+    const params = new URLSearchParams(filter);
+
+    const res = await fetch(`${API_BASE_URL}/sheep/distributions?${params}`);
+
+    await checkStatus(res);
+
+    return await res.json();
+}
+
 export async function fetchSheepById(id: string): Promise<Sheep> {
-    const res = await fetch(`http://localhost:8080/sheep/${id}`);
+    const res = await fetch(`${API_BASE_URL}/sheep/${id}`);
 
     await checkStatus(res);
 
     return await res.json() as Promise<Sheep>;
 }
 
-export async function fetchPrediction(sheep1Id: string, sheep2Id: string): Promise<Prediction> {
-    const res = await fetch(`http://localhost:8080/breed/${sheep1Id}/${sheep2Id}/predict`);
+// both prediction fetches need to return objects for inline error handling
+export async function fetchPrediction(sheep1Id: string, sheep2Id: string): Promise<Prediction | BreedState> {
+    const res = await fetch(`${API_BASE_URL}/breed/${sheep1Id}/${sheep2Id}/predict`);
 
-    await checkStatus(res);
+    if (!res.ok) {
+        return await res.json();
+    }
 
     return await res.json() as Prediction;
 }
 
-export async function fetchBestPredictions(): Promise<BestPrediction[]> {
-    const res = await fetch("http://localhost:8080/breed/best-predictions");
+// both prediction fetches need to return objects for inline error handling
+export async function fetchBestPredictions(): Promise<BestPrediction[] | BreedState> {
+    const res = await fetch(`${API_BASE_URL}/breed/best-predictions`);
 
-    await checkStatus(res);
+    if (!res.ok) {
+        return await res.json();
+    }
 
     return await res.json() as BestPrediction[];
 }
 
+export async function fetchAllRelationships(): Promise<RelationshipRow[]> {
+    const res = await fetch(`${API_BASE_URL}/relationship`);
+
+    await checkStatus(res);
+
+    return await res.json() as RelationshipRow[];
+}
+
+export async function fetchRelationshipById(id: string): Promise<Relationship> {
+    const res = await fetch(`${API_BASE_URL}/relationship/${id}`);
+
+    await checkStatus(res);
+
+    return await res.json() as Relationship;
+}
+
+export async function fetchBirthRecordRows(
+    filter: BirthRecordFilter
+): Promise<PageResponse<BirthRecordRow>> {
+
+    const query = buildQuery(filter);
+
+    const res = await fetch(`${API_BASE_URL}/birth-record?${query}`, {
+        cache: "no-store"
+    });
+
+    await checkStatus(res);
+
+    const data = await res.json();
+
+    return data as PageResponse<BirthRecordRow>;
+}
+
+export async function fetchBirthRecordById(id: string): Promise<BirthRecord> {
+    const res = await fetch(`${API_BASE_URL}/birth-record/${id}`);
+
+    await checkStatus(res);
+
+    return await res.json() as BirthRecord;
+}
+
 async function checkStatus(res: Response) {
+    if (res.status === 404) {
+        notFound(); // renders not-found.tsx
+    }
     if (!res.ok) {
         // Attempt to parse the error message from JSON
         let errorMessage;
@@ -48,6 +118,6 @@ async function checkStatus(res: Response) {
             // Fallback if response is not JSON
             errorMessage = await res.text();
         }
-        throw new Error(`Failed to fetch best predictions: ${res.status} - ${errorMessage}`);
+        throw new Error(`Failed to fetch data: ${res.status} - ${errorMessage}`);
     }
 }
