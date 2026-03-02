@@ -119,4 +119,16 @@ public final class InferenceMath {
 
         return score;
     }
+
+    public static <T> double entropy(Map<T, Double> distribution) {
+        double entropy = 0.0;
+
+        for (double p : distribution.values()) {
+            if (p > 0.0) {  // avoid log(0)
+                entropy -= p * (Math.log(p) / Math.log(2));
+            }
+        }
+
+        return entropy;
+    }
 }

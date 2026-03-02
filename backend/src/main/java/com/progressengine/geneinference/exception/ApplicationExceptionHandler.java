@@ -61,11 +61,6 @@ public class ApplicationExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorResponse handleMethodArgumentNotValid(MethodArgumentNotValidException ex) {
-
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("status", HttpStatus.BAD_REQUEST.value());
-        response.put("message", "Incomplete or invalid request");
-
         Map<String, Object> errorsOut = new LinkedHashMap<>();
 
         Map<String, List<String>> genotypesByCategory = new LinkedHashMap<>();

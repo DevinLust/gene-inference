@@ -265,38 +265,26 @@ public class BreedingService {
 
     private int compareCategory(Sheep sheep1, Sheep sheep2, Category category) {
         Grade sheep1Best = bestGradeInCategory(sheep1, category);
-        int sheep1Certainty = hiddenDistributionCertainty(sheep1, category);
+        double sheep1Entropy = InferenceMath.entropy(sheep1.getDistribution(category, DistributionType.INFERRED));
         Grade sheep2Best = bestGradeInCategory(sheep2, category);
-        int sheep2Certainty = hiddenDistributionCertainty(sheep2, category);
+        double sheep2Entropy = InferenceMath.entropy(sheep2.getDistribution(category, DistributionType.INFERRED));
 
         if (sheep1Best.isBetterThan(sheep2Best)) {
             return 1;
         } else if (sheep2Best.isBetterThan(sheep1Best)) {
             return -1;
         }
-        return Integer.compare(sheep1Certainty, sheep2Certainty);
+        return -Double.compare(sheep1Entropy, sheep2Entropy);
     }
 
     private Grade bestGradeInCategory(Sheep sheep, Category category) {
         Grade bestGrade = sheep.getPhenotype(category);
         for (Map.Entry<Grade, Double> entry : sheep.getDistribution(category, DistributionType.INFERRED).entrySet()) {
-            if (entry.getValue() > CERTAINTY_THRESHOLD && entry.getKey().isBetterThan(bestGrade)) {
+            if (entry.getValue() >= CERTAINTY_THRESHOLD && entry.getKey().isBetterThan(bestGrade)) {
                 bestGrade = entry.getKey();
             }
         }
         return bestGrade;
-    }
-
-    private int hiddenDistributionCertainty(Sheep sheep, Category category) {
-        int certainty = 0;
-        for (Map.Entry<Grade, Double> entry : sheep.getDistribution(category, DistributionType.INFERRED).entrySet()) {
-            if (entry.getValue() > CERTAINTY_THRESHOLD) {
-                certainty += 5;
-            } else if (entry.getValue() == 0.0) { // rewards distributions with true certainty
-                certainty++;
-            }
-        }
-        return certainty;
     }
 
 }
