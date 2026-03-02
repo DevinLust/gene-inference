@@ -1,6 +1,6 @@
 'use server'; // server actions
 
-import { Grade, Category, SheepCreateDTO, SheepUpdateDTO, SheepChildDTO, BirthRecord } from '@/app/lib/definitions';
+import { Grade, Category, SheepCreateDTO, SheepUpdateDTO, SheepChildDTO, BirthRecord, ValidationFailed, GeneticConstraintViolation } from '@/app/lib/definitions';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
@@ -13,16 +13,11 @@ export type CreateState = {
     };
 };
 
-export type ChildState = {
-    message?: string | null;
-    errors?: {
-        name?: string[];
-        genotypes?: Partial<Record<Category, { attemptedAllele: Grade, validAlleles: Set<Grade> }>>;
-        parent1Id?: string[];
-        parent2Id?: string[];
-    };
-    suggestions?: string[];
-};
+export type ChildState =
+    | { status: "idle" }                                  // initial
+    | { status: "success"; ok: true; message?: string }    // optional
+    | ({ status: "error" } & ValidationFailed)             // backend validation
+    | ({ status: "error" } & GeneticConstraintViolation);  // backend genetic constraint
 
 export type UpdateSheepState = {
     success?: boolean;
@@ -157,24 +152,56 @@ export async function recordChild(prevState: ChildState, formData: FormData): Pr
     const parent2Id = formData.get("parent2Id") as string;
 
     if (!parent1Id || !parent2Id || isNaN(Number(parent1Id)) || isNaN(Number(parent2Id))) {
-        return { message: "Both parents must be selected" };
+        return {
+            status: "error",
+            ok: false,
+            error: "VALIDATION_FAILED",
+            message: "Incomplete or invalid request",
+            errors: {
+                parent1Id: !parent1Id ? ["Parent 1 must be selected"] : undefined,
+                parent2Id: !parent2Id ? ["Parent 2 must be selected"] : undefined,
+            },
+        };
+    }
+    if (parent1Id === parent2Id) {
+        return {
+            status: "error",
+            ok: false,
+            error: "VALIDATION_FAILED",
+            message: "Parents must be different.",
+        };
     }
 
     let newChild: SheepChildDTO;
     try {
         newChild = await formDataToChildDTO(formData);
     } catch (err) {
-        return err instanceof Error && err.message ? { message: err.message, errors: {} } : { message: "Invalid form data", errors: {} };
+        return {
+            status: "error",
+            ok: false,
+            error: "VALIDATION_FAILED",
+            message: err instanceof Error && err.message ? err.message : "Invalid form data",
+        };
     }
 
-    const res = await fetch(`${API_BASE_URL}/breed/record-birth`, {
+    const saveChild = formData.get("saveChild") === "on";
+    const url = new URL(`${API_BASE_URL}/breed/record-birth`);
+    url.searchParams.set("saveChild", String(saveChild));
+
+    const res = await fetch(url.toString(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newChild),
     });
 
     if (!res.ok) {
-        return await parseError(res);
+        const apiErr: ValidationFailed | GeneticConstraintViolation = await parseError(res);
+        // Wrap it with status:"error" so narrowing works everywhere
+        return {
+            status: "error",
+            ok: false,
+            ...apiErr,
+        } as ChildState;
     }
 
     const birthRecord = await res.json() as BirthRecord;

@@ -183,3 +183,31 @@ export type BirthRecordFilter = {
     p1?: Grade;
     p2?: Grade;
 } & PageRequest;
+
+export type ValidationFailed = {
+    ok?: false
+    message?: string
+    error: "VALIDATION_FAILED";
+    errors?: {
+        name?: string[];
+        parent1Id?: string[];
+        parent2Id?: string[];
+        genotypes?: Partial<Record<Category, string[]>>
+    };
+    suggestions?: string[];
+};
+
+export type ExcessAlleleViolationDTO = {
+    attemptedAllele: Grade;
+    validAlleles: Grade[]; // use array in JSON, not Set
+};
+
+export type GeneticConstraintViolation = {
+    ok?: false;
+    message?: string;
+    error: "GENETIC_CONSTRAINT_VIOLATION";
+    errors: {
+        genotypes: Partial<Record<Category, ExcessAlleleViolationDTO>>;
+    };
+    suggestions?: string[];
+};

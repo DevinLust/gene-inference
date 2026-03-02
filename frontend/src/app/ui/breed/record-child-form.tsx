@@ -10,7 +10,7 @@ const categories: Category[] = ["SWIM", "FLY", "RUN", "POWER", "STAMINA"];
 const grades: Grade[] = ["S", "A", "B", "C", "D", "E"];
 
 export default function RecordChildForm({ sheep }: { sheep: SheepSummary[] }) {
-    const initialState: ChildState = {};
+    const initialState: ChildState = { status: "idle" };
     const [state, formAction, isPending] = useActionState(recordChild, initialState);
 
     const [saveChild, setSaveChild] = useState(false);
@@ -40,6 +40,14 @@ export default function RecordChildForm({ sheep }: { sheep: SheepSummary[] }) {
     }, [state]);
 
     const showServerErrors = !dirtySinceSubmit;
+
+    const errorState = showServerErrors && isErrorState(state) ? state : null;
+
+    const validationErrors = errorState && isValidationFailed(errorState) ? errorState.errors : null;
+    const constraintErrors = errorState && isGeneticConstraint(errorState) ? errorState.errors : null;
+
+    const suggestions = errorState?.suggestions;
+    const serverMessage = errorState?.message;
 
     return (
         <form
@@ -74,15 +82,9 @@ export default function RecordChildForm({ sheep }: { sheep: SheepSummary[] }) {
                         />
 
                         <div id="parent1-error" aria-live="polite" aria-atomic="true">
-                            {showServerErrors && state.errors?.parent1Id && state.errors?.parent1Id.length > 0 && (
-                                <div className="flex flex-col w-full">
-                                    <div className="flex gap-2">
-                                        {state.errors.parent1Id.map((error: string) => (
-                                            <p key={error} className="mt-2 text-sm text-yellow-500">{error}</p>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
+                            {validationErrors?.parent1Id?.map((error) => (
+                                <p key={error} className="mt-2 text-sm text-yellow-500">{error}</p>
+                            ))}
                         </div>
                     </div>
 
@@ -100,15 +102,9 @@ export default function RecordChildForm({ sheep }: { sheep: SheepSummary[] }) {
                         />
 
                         <div id="parent2-error" aria-live="polite" aria-atomic="true">
-                            {showServerErrors && state.errors?.parent2Id && state.errors?.parent2Id.length > 0 && (
-                                <div className="flex flex-col w-full">
-                                    <div className="flex gap-2">
-                                        {state.errors.parent2Id.map((error: string) => (
-                                            <p key={error} className="mt-2 text-sm text-yellow-500">{error}</p>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
+                            {validationErrors?.parent2Id?.map((error) => (
+                                <p key={error} className="mt-2 text-sm text-yellow-500">{error}</p>
+                            ))}
                         </div>
                     </div>
                 </div>
@@ -120,7 +116,7 @@ export default function RecordChildForm({ sheep }: { sheep: SheepSummary[] }) {
                         <input
                             type="checkbox"
                             name="saveChild"
-                            value={saveChild ? "on" : "off"}
+                            checked={saveChild}
                             onChange={(e) => {
                                 setSaveChild(e.target.checked);
                                 setDirtySinceSubmit(true);
@@ -157,15 +153,15 @@ export default function RecordChildForm({ sheep }: { sheep: SheepSummary[] }) {
                 >
                     Record Child
                 </button>
-                {showServerErrors && state?.message && (
-                    <p className="text-yellow-500 font-medium">{state.message}</p>
+                {serverMessage && (
+                    <p className="text-yellow-500 font-medium">{serverMessage}</p>
                 )}
                 <div id={`suggestions`} aria-live="polite" aria-atomic="true">
-                    {showServerErrors && state.suggestions &&
+                    {suggestions &&
                         <div className="flex flex-col w-full">
                             <ul className="text-yellow-500 font-medium mt-2">Suggestions:</ul>
-                            {state.suggestions.map((str: string) => (
-                                <li key={str} className="text-yellow-500 font-medium m-2">
+                            {suggestions.map((str: string) => (
+                                <li key={str} className="text-yellow-500 font-medium ml-2">
                                     {str}
                                 </li>
                             ))}
@@ -177,7 +173,10 @@ export default function RecordChildForm({ sheep }: { sheep: SheepSummary[] }) {
             {/* Genotypes */}
             <fieldset className="border border-gray-500 bg-gray-800 p-3 rounded-lg">
                 <legend className="font-semibold">Genotypes</legend>
-                {categories.map((c) => (
+                {categories.map((c) => {
+                    const validationGenotypeErrors = validationErrors?.genotypes?.[c]; // string[] | undefined
+                    const constraintGenotypeViolation = constraintErrors?.genotypes?.[c]; // ExcessAlleleViolationDTO | undefined
+                    return (
                     <div key={c} className="mb-2 bg-blue-900 border border-gray-500 rounded-lg">
                         <div className="w-full bg-blue-500 pl-4 py-1 rounded-t-lg">
                             <CategoryTag category={c} />
@@ -233,21 +232,41 @@ export default function RecordChildForm({ sheep }: { sheep: SheepSummary[] }) {
                             </label>
                         </div>
                         <div id={`genotypes-${c}-error`} aria-live="polite" aria-atomic="true">
-                            {showServerErrors && state.errors?.genotypes?.[c] &&
-                                <div>
-                                    <p className="m-2 text-sm text-yellow-500">
-                                        Attempted to record: {state.errors.genotypes[c].attemptedAllele}
+                            {validationGenotypeErrors?.map((err) => (
+                                <p key={err} className="ml-2 text-sm text-yellow-500">{err}</p>
+                            ))}
+
+                            {constraintGenotypeViolation && (
+                                <div className="ml-2">
+                                    <p className="text-sm text-yellow-500">
+                                        Attempted to record: {constraintGenotypeViolation.attemptedAllele}
                                     </p>
-                                    <p className="m-2 text-sm text-yellow-500">
-                                        Possible alleles: {state.errors.genotypes[c].validAlleles}
+                                    <p className="text-sm text-yellow-500">
+                                        Possible alleles: {constraintGenotypeViolation.validAlleles.join(", ")}
                                     </p>
                                 </div>
-                            }
+                            )}
                         </div>
                     </div>
-                ))}
+                )})}
             </fieldset>
             </div>
         </form>
     );
+}
+
+function isErrorState(state: ChildState): state is Extract<ChildState, { status: "error" }> {
+    return state.status === "error";
+}
+
+function isValidationFailed(
+    state: Extract<ChildState, { status: "error" }>
+): state is Extract<ChildState, { status: "error"; error: "VALIDATION_FAILED" }> {
+    return state.error === "VALIDATION_FAILED";
+}
+
+function isGeneticConstraint(
+    state: Extract<ChildState, { status: "error" }>
+): state is Extract<ChildState, { status: "error"; error: "GENETIC_CONSTRAINT_VIOLATION" }> {
+    return state.error === "GENETIC_CONSTRAINT_VIOLATION";
 }

@@ -60,7 +60,7 @@ public class ApplicationExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public Map<String, Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex) {
+    public ErrorResponse handleMethodArgumentNotValid(MethodArgumentNotValidException ex) {
 
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("status", HttpStatus.BAD_REQUEST.value());
@@ -103,8 +103,11 @@ public class ApplicationExceptionHandler {
         if (!genotypesByCategory.isEmpty()) errorsOut.put("genotypes", genotypesByCategory);
         if (!distributionsByCategory.isEmpty()) errorsOut.put("distributions", distributionsByCategory);
 
-        response.put("errors", errorsOut);
-        return response;
+        return ErrorResponse.builder()
+                .error("VALIDATION_FAILED")
+                .message("Incomplete or invalid request")
+                .errors(errorsOut)
+                .build();
     }
 
     private static String extractBracketKey(String s, int start) {
@@ -176,7 +179,7 @@ public class ApplicationExceptionHandler {
                 .error("GENETIC_CONSTRAINT_VIOLATION")
                 .message(ex.getMessage())
                 .errors(Map.of("genotypes", categoryErrors))
-                .suggestions(List.of("Choose one of the valid alleles listed.", "If you believe an allele is correct, review earlier birth records to confirm phenotypes at birth."))
+                .suggestions(List.of("Choose one of the valid alleles listed.", "If you believe the new allele is correct, review earlier birth records to confirm phenotypes at birth."))
                 .build();
     }
 
