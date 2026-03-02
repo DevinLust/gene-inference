@@ -40,11 +40,6 @@ public class Sheep {
     @Transient
     private boolean organized = false;
 
-//    @ManyToOne
-//    @JoinColumn(name = "parent_relationship_id")
-//    @Deprecated
-//    private Relationship parentRelationship; // foreign key to Relationship
-
     @OneToOne(mappedBy = "child", optional = true)
     private BirthRecord birthRecord;
 
