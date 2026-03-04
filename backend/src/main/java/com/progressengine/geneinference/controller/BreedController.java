@@ -7,8 +7,12 @@ import com.progressengine.geneinference.service.BreedingService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.UUID;
 
 @RestController
 @Validated
@@ -28,8 +32,13 @@ public class BreedController {
     }
 
     @PostMapping(value = "/record-birth")
-    public ResponseEntity<?> createChild(@Valid @RequestBody SheepBreedRequestDTO sheepBreedRequestDTO, @RequestParam(name = "saveChild", defaultValue = "true") boolean saveChild) {
-        BirthRecord birthRecord = breedingService.createAndInferSheep(sheepBreedRequestDTO, saveChild);
+    public ResponseEntity<?> createChild(@Valid @RequestBody SheepBreedRequestDTO sheepBreedRequestDTO,
+                                         @RequestParam(name = "saveChild", defaultValue = "true") boolean saveChild,
+                                         @AuthenticationPrincipal Jwt jwt
+    ) {
+        String userId = jwt.getSubject();
+
+        BirthRecord birthRecord = breedingService.createAndInferSheep(sheepBreedRequestDTO, saveChild, UUID.fromString(userId));
 
         return ResponseEntity.ok(DomainMapper.toResponseDTO(birthRecord));
     }

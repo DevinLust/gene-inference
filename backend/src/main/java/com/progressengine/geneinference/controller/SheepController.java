@@ -10,6 +10,8 @@ import com.progressengine.geneinference.service.SheepService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -27,55 +29,82 @@ public class SheepController {
     }
 
     @PostMapping(consumes = {"application/json", "application/json;charset=UTF-8"})
-    public ResponseEntity<?> addSheep(@Valid @RequestBody SheepNewRequestDTO sheepNewRequestDTO) {
-        Sheep child = sheepService.saveNewSheep(sheepNewRequestDTO);
+    public ResponseEntity<?> addSheep(
+            @Valid @RequestBody SheepNewRequestDTO sheepNewRequestDTO,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        UUID userId = UUID.fromString(jwt.getSubject());
+
+        Sheep child = sheepService.saveNewSheep(sheepNewRequestDTO, userId);
+
         return ResponseEntity.ok().body(DomainMapper.toResponseDTO(child));
     }
 
     @GetMapping
     public List<SheepSummaryResponseDTO> filterSheep(
             @RequestParam(required = false) String name,
-            @RequestParam(required = false) List<Grade> grades) {
+            @RequestParam(required = false) List<Grade> grades,
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        UUID userId = UUID.fromString(jwt.getSubject());
 
         // convert list to set to remove duplicates
         Set<Grade> gradeSet = grades == null ? Collections.emptySet() : new HashSet<>(grades);
 
-        return sheepService.filterSheep(name, gradeSet);
+        return sheepService.filterSheep(userId, name, gradeSet);
     }
 
     @GetMapping("/distributions")
     public DistributionResponseDTO distributions(
             @RequestParam Category category,
             @RequestParam(required = false) List<Integer> ids,
-            @RequestParam(defaultValue = "INFERRED") DistributionType type
+            @RequestParam(defaultValue = "INFERRED") DistributionType type,
+            @AuthenticationPrincipal Jwt jwt
     ) {
-        return sheepService.getDistributionProjectionsByCategoryAndType(category, type, ids);
+        UUID userId = UUID.fromString(jwt.getSubject());
+        return sheepService.getDistributionProjectionsByCategoryAndType(userId, category, type, ids);
     }
 
     @GetMapping("/{sheepId:\\d+}")
-    public SheepResponseDTO getSheep(@Positive @PathVariable Integer sheepId) {
-        Sheep sheep = sheepService.findById(sheepId);
+    public SheepResponseDTO getSheep(@Positive @PathVariable Integer sheepId,
+                                     @AuthenticationPrincipal Jwt jwt
+    ) {
+        UUID userId = UUID.fromString(jwt.getSubject()); // TODO - change findById to be user scoped
+        Sheep sheep = sheepService.findByIdAndUserId(sheepId, userId);
         return DomainMapper.toResponseDTO(sheep);
     }
 
     @GetMapping("/{sheepId}/parents")
-    public ResponseEntity<?> getParents(@Positive @PathVariable Integer sheepId) {
-        return ResponseEntity.ok(sheepService.getParents(sheepId));
+    public ResponseEntity<?> getParents(@Positive @PathVariable Integer sheepId,
+                                        @AuthenticationPrincipal Jwt jwt
+    ) {
+        UUID userId = UUID.fromString(jwt.getSubject());
+        return ResponseEntity.ok(sheepService.getParents(userId, sheepId));
     }
 
     @GetMapping("/{sheepId}/children")
-    public ResponseEntity<?> getChildren(@Positive @PathVariable Integer sheepId) {
-        return ResponseEntity.ok(sheepService.getChildren(sheepId));
+    public ResponseEntity<?> getChildren(@Positive @PathVariable Integer sheepId,
+                                         @AuthenticationPrincipal Jwt jwt
+    ) {
+        UUID userId = UUID.fromString(jwt.getSubject());
+        return ResponseEntity.ok(sheepService.getChildren(userId, sheepId));
     }
 
     @GetMapping("/{sheepId}/partners")
-    public ResponseEntity<?> getPartners(@Positive @PathVariable Integer sheepId) {
-        return ResponseEntity.ok(sheepService.getPartners(sheepId));
+    public ResponseEntity<?> getPartners(@Positive @PathVariable Integer sheepId,
+                                         @AuthenticationPrincipal Jwt jwt
+    ) {
+        UUID userId = UUID.fromString(jwt.getSubject());
+        return ResponseEntity.ok(sheepService.getPartners(userId, sheepId));
     }
 
     @PostMapping("/{id}/evolve/{category}")
-    public ResponseEntity<?> evolve(@PathVariable Integer id, @PathVariable Category category) {
-        return ResponseEntity.ok(sheepService.evolvePhenotype(id, category));
+    public ResponseEntity<?> evolve(@PathVariable Integer id,
+                                    @PathVariable Category category,
+                                    @AuthenticationPrincipal Jwt jwt
+    ) {
+        UUID userId = UUID.fromString(jwt.getSubject());
+        return ResponseEntity.ok(sheepService.evolvePhenotype(userId, id, category));
     }
 
 //    @Deprecated
@@ -86,14 +115,21 @@ public class SheepController {
 //    }
 
     @PatchMapping("/{sheepId}")
-    public ResponseEntity<?> updateSheep(@Positive @PathVariable Integer sheepId, @Valid @RequestBody SheepUpdateRequestDTO updateSheepModel) {
-        Sheep updatedSheep = sheepService.updateSheep(sheepId, updateSheepModel);
+    public ResponseEntity<?> updateSheep(@Positive @PathVariable Integer sheepId,
+                                         @Valid @RequestBody SheepUpdateRequestDTO updateSheepModel,
+                                         @AuthenticationPrincipal Jwt jwt
+    ) {
+        UUID userId = UUID.fromString(jwt.getSubject());
+        Sheep updatedSheep = sheepService.updateSheep(userId, sheepId, updateSheepModel);
         return ResponseEntity.ok(DomainMapper.toResponseDTO(updatedSheep));
     }
 
     @DeleteMapping("/{sheepId}")
-    public ResponseEntity<?> deleteSheep(@Positive @PathVariable Integer sheepId) {
-        sheepService.deleteSheep(sheepId);
+    public ResponseEntity<?> deleteSheep(@Positive @PathVariable Integer sheepId,
+                                         @AuthenticationPrincipal Jwt jwt
+    ) {
+        UUID userId = UUID.fromString(jwt.getSubject());
+        sheepService.deleteSheep(userId, sheepId);
         return ResponseEntity.noContent().build();
     }
 

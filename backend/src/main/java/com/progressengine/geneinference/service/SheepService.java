@@ -45,6 +45,14 @@ public class SheepService {
                 ));
     }
 
+    public Sheep findByIdAndUserId(Integer id, UUID userId) {
+        return sheepRepository
+                .findByIdAndUserId(id, userId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Sheep with id " + id + " not found"
+                ));
+    }
+
     public Sheep saveSheep(Sheep sheep) {
         return sheepRepository.save(sheep);
     }
@@ -68,26 +76,28 @@ public class SheepService {
      * it will only return sheep with at least one supplied grade as a phenotype
      * or hidden allele.
      *
-     * @param name - name to search likeness
+     * @param userId - id of the user in the jwt subject
+     * @param name   - name to search likeness
      * @param grades - Set of whitelisted grades
      * @return a List of Sheep that matches the filter criteria
      */
-    public List<SheepSummaryResponseDTO> filterSheep(String name, Set<Grade> grades) {
+    public List<SheepSummaryResponseDTO> filterSheep(UUID userId, String name, Set<Grade> grades) {
         if (grades == null || grades.isEmpty()) {
             grades = EnumSet.allOf(Grade.class);
         }
 
-        return sheepRepository.listSheepHavingAnyGradeAndName(grades, name);
+        return sheepRepository.listSheepHavingAnyGradeAndName(userId, grades, name);
     }
 
 
     public DistributionResponseDTO getDistributionProjectionsByCategoryAndType(
+            UUID userId,
             Category category,
             DistributionType distributionType,
             List<Integer> sheepIds
     ) {
         List<SheepDistributionRow> rows = sheepRepository
-                .listDistributionRowsByCategoryAndType(category, distributionType, sheepIds == null || sheepIds.isEmpty() ? null : sheepIds);
+                .listDistributionRowsByCategoryAndType(userId, category, distributionType, sheepIds == null || sheepIds.isEmpty() ? null : sheepIds);
 
         Map<Integer, Map<Grade, Double>> result = new HashMap<>();
 
@@ -109,18 +119,19 @@ public class SheepService {
 
 
     @Transactional
-    public Map<String, SheepResponseDTO> getParents(Integer sheepId) {
-        Sheep sheep = findById(sheepId);
+    public Map<String, SheepResponseDTO> getParents(UUID userId, Integer sheepId) {
+        Sheep sheep = findByIdAndUserId(sheepId, userId);
 
         if (sheep == null) return Collections.emptyMap();
 
         Relationship rel = sheep.getParentRelationship();
         if (rel == null) return Collections.emptyMap();
 
-        List<Sheep> parents = sheepRepository.findAllById(
-                List.of(rel.getParent1().getId(), rel.getParent2().getId())
+        List<Sheep> parents = sheepRepository.findAllByIdInAndUserId(
+                List.of(rel.getParent1().getId(), rel.getParent2().getId()),
+                userId
         );
-        parents.sort((a, b) -> a.getId().compareTo(b.getId()));
+        parents.sort(Comparator.comparing(Sheep::getId));
 
         return Map.of(
                 "parent1", DomainMapper.toResponseDTO(parents.get(0)),
@@ -129,13 +140,13 @@ public class SheepService {
     }
 
     @Transactional
-    public List<SheepResponseDTO> getChildren(Integer sheepId) {
-        return sheepRepository.findChildrenWithDetailByParentId(sheepId).stream().map(DomainMapper::toResponseDTO).toList();
+    public List<SheepResponseDTO> getChildren(UUID userId, Integer sheepId) {
+        return sheepRepository.findChildrenWithDetailByParentId(userId, sheepId).stream().map(DomainMapper::toResponseDTO).toList();
     }
 
     @Transactional
-    public List<SheepResponseDTO> getPartners(Integer sheepId) {
-        List<Relationship> relationships = relationshipService.findRelationshipsByParent(sheepId);
+    public List<SheepResponseDTO> getPartners(UUID userId, Integer sheepId) {
+        List<Relationship> relationships = relationshipService.findRelationshipsByParentWithUserId(userId, sheepId);
 
         if (relationships.isEmpty()) {
             return List.of();
@@ -151,15 +162,16 @@ public class SheepService {
                 }).toList();
     }
 
-    public SheepResponseDTO evolvePhenotype(Integer sheepId, Category category) {
-        Sheep sheep = findById(sheepId);
+    public SheepResponseDTO evolvePhenotype(UUID userId, Integer sheepId, Category category) {
+        Sheep sheep = findByIdAndUserId(sheepId, userId);
         sheep.evolvePhenotype(category);
         return DomainMapper.toResponseDTO(saveSheep(sheep));
     }
 
     @Transactional
-    public Sheep saveNewSheep(SheepNewRequestDTO sheepNewRequestDTO) {
+    public Sheep saveNewSheep(SheepNewRequestDTO sheepNewRequestDTO, UUID userId) {
         Sheep sheep = DomainMapper.fromRequestDTO(sheepNewRequestDTO);
+        sheep.setUserId(userId);
         return sheepRepository.save(sheep);
     }
 
@@ -188,8 +200,8 @@ public class SheepService {
     }
 
     @Transactional
-    public Sheep updateSheep(Integer sheepId, SheepUpdateRequestDTO updateSheepModel) {
-        Sheep sheep = findById(sheepId);
+    public Sheep updateSheep(UUID userId, Integer sheepId, SheepUpdateRequestDTO updateSheepModel) {
+        Sheep sheep = findByIdAndUserId(sheepId, userId);
 
         if (updateSheepModel.getName() != null) {
             sheep.setName(updateSheepModel.getName());
@@ -210,8 +222,8 @@ public class SheepService {
     }
 
     @Transactional
-    public void deleteSheep(Integer sheepId) {
-        Sheep sheep = findById(sheepId);
+    public void deleteSheep(UUID userId, Integer sheepId) {
+        Sheep sheep = findByIdAndUserId(sheepId, userId);
 
         List<Relationship> relationships = relationshipService.findRelationshipsByParent(sheepId);
 
@@ -234,6 +246,6 @@ public class SheepService {
 
         relationshipService.deleteAll(relationships);
 
-        sheepRepository.delete(sheep);
+        sheepRepository.deleteByIdAndUserId(sheep.getId(), userId);
     }
 }

@@ -29,7 +29,7 @@ public class SheepSeeder implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) {
-        if (sheepRepository.count() > 0) {
+        if (true || sheepRepository.count() > 0) {
             System.out.println("Sheep already exist. Skipping seeding.");
             return;
         }

@@ -147,8 +147,9 @@ public class BreedingService {
      *     if either parent sheep does not exist
      */
     @Transactional
-    public BirthRecord createAndInferSheep(SheepBreedRequestDTO childRequest, boolean saveChild) {
+    public BirthRecord createAndInferSheep(SheepBreedRequestDTO childRequest, boolean saveChild, UUID userId) {
         Sheep child = DomainMapper.fromRequestDTO(childRequest);
+        child.setUserId(userId);
 
         Sheep parent1 = sheepService.findById(childRequest.getParent1Id());
         Sheep parent2 = sheepService.findById(childRequest.getParent2Id());

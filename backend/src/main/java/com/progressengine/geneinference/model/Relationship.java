@@ -294,7 +294,7 @@ public class Relationship {
         BirthRecord birthRecord = child.getBirthRecord();
 
         if (birthRecord == null || !this.equals(birthRecord.getParentRelationship())) {
-            throw new IllegalStateException("Sheep is not a child of this relationship");
+            throw new IllegalStateException("Sheep is not a child of this relationship, id: " + this.id);
         }
 
         birthRecords.remove(birthRecord);

@@ -16,18 +16,26 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 
 @Repository
 public interface SheepRepository extends JpaRepository<Sheep, Integer>, JpaSpecificationExecutor<Sheep> {
     @EntityGraph(attributePaths = {"genotypes", "distributions", "birthRecord", "birthRecord.parentRelationship"})
     @Query("""
-        select s
-        from Sheep s
-        join s.birthRecord br
-        join br.parentRelationship r
-        where (r.parent1.id = :parentId or r.parent2.id = :parentId)
-    """)
-    List<Sheep> findChildrenWithDetailByParentId(@Param("parentId") Integer parentId);
+    select distinct s
+    from Sheep s
+    join s.birthRecord br
+    join br.parentRelationship r
+    where s.userId = :userId
+      and (
+            (r.parent1.id = :parentId and r.parent1.userId = :userId)
+         or (r.parent2.id = :parentId and r.parent2.userId = :userId)
+      )
+""")
+    List<Sheep> findChildrenWithDetailByParentId(
+            @Param("userId") UUID userId,
+            @Param("parentId") Integer parentId
+    );
 
     @Query(value = """
         SELECT s.*
@@ -51,11 +59,13 @@ public interface SheepRepository extends JpaRepository<Sheep, Integer>, JpaSpeci
       select distinct new com.progressengine.geneinference.dto.SheepSummaryResponseDTO(s.id, s.name)
       from Sheep s
       join s.genotypes g
-      where (g.phenotype in :grades or g.hiddenAllele in :grades)
-        and (:name is null or lower(CAST(s.name AS String)) like lower(concat('%', CAST(:name AS String), '%')))
+      where s.userId = :userId
+        and (g.phenotype in :grades or g.hiddenAllele in :grades)
+        and (:name is null or lower(cast(s.name as string)) like lower(concat('%', cast(:name as string), '%')))
       order by s.id desc
     """)
     List<SheepSummaryResponseDTO> listSheepHavingAnyGradeAndName(
+            @Param("userId") UUID userId,
             @Param("grades") Set<Grade> grades,
             @Param("name") String name
     );
@@ -71,6 +81,14 @@ public interface SheepRepository extends JpaRepository<Sheep, Integer>, JpaSpeci
             "birthRecord.parentRelationship"
     })
     Optional<Sheep> findWithAllById(Integer id);
+
+    @EntityGraph(attributePaths = {
+            "distributions",
+            "genotypes",
+            "birthRecord",
+            "birthRecord.parentRelationship"
+    })
+    Optional<Sheep> findByIdAndUserId(Integer id, UUID userId);
 
     @Query("""
         select new com.progressengine.geneinference.dto.SheepSummaryResponseDTO(
@@ -89,14 +107,19 @@ public interface SheepRepository extends JpaRepository<Sheep, Integer>, JpaSpeci
         d.probability
       )
       from SheepDistribution d
-      where d.category = :category
+      where d.sheep.userId = :userId
+        and d.category = :category
         and d.distributionType = :type
         and (:sheepIds is null or d.sheep.id in :sheepIds)
     """)
     List<SheepDistributionRow> listDistributionRowsByCategoryAndType(
+            @Param("userId") UUID userId,
             @Param("category") Category category,
-            @Param("type") DistributionType distributionType,
+            @Param("type") DistributionType type,
             @Param("sheepIds") List<Integer> sheepIds
     );
 
+    List<Sheep> findAllByIdInAndUserId(List<Integer> ids, UUID userId);
+
+    long deleteByIdAndUserId(Integer id, UUID userId);
 }

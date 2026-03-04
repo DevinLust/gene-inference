@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 public interface RelationshipRepository extends JpaRepository<Relationship, Integer> {
@@ -20,6 +21,18 @@ public interface RelationshipRepository extends JpaRepository<Relationship, Inte
     @EntityGraph(attributePaths = {"birthRecords", "birthRecords.phenotypesAtBirth", "birthRecords.child"})
     @Query("SELECT r FROM Relationship r WHERE r.parent1.id = :parentId OR r.parent2.id = :parentId")
     List<Relationship> findByParentId(@Param("parentId") Integer parentId);
+
+    @EntityGraph(attributePaths = {"birthRecords", "birthRecords.phenotypesAtBirth", "birthRecords.child"})
+    @Query("""
+    select r
+    from Relationship r
+    where (r.parent1.id = :parentId and r.parent1.userId = :userId)
+       or (r.parent2.id = :parentId and r.parent2.userId = :userId)
+""")
+    List<Relationship> findByParentIdAndUserId(
+            @Param("userId") UUID userId,
+            @Param("parentId") Integer parentId
+    );
 
     @Query(value = """
        (

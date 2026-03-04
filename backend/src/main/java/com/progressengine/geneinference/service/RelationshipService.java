@@ -129,6 +129,10 @@ public class RelationshipService {
         return relationshipRepository.findByParentId(parentId);
     }
 
+    public List<Relationship> findRelationshipsByParentWithUserId(UUID userId, Integer parentId) {
+        return relationshipRepository.findByParentIdAndUserId(userId, parentId);
+    }
+
     public List<List<Relationship>> filterRelationshipsByParent(Sheep parent1, Sheep parent2, int limitPerParent) {
         return filterRelationshipsByParent(parent1.getId(), parent2.getId(), limitPerParent);
     }

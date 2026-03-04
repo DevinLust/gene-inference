@@ -28,6 +28,9 @@ public class Sheep {
     private Integer id;
     private String name;
 
+    @Column(name = "user_id", nullable = false)
+    private UUID userId;
+
     @OneToMany(mappedBy = "sheep", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     private Set<SheepGenotype> genotypes = new HashSet<>();
 
@@ -52,6 +55,14 @@ public class Sheep {
 
     public void setId(Integer id) {
         this.id = id;
+    }
+
+    public UUID getUserId() {
+        return userId;
+    }
+
+    public void setUserId(UUID userId) {
+        this.userId = userId;
     }
 
     public String getName() {
