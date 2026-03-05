@@ -71,9 +71,10 @@ public interface RelationshipRepository extends JpaRepository<Relationship, Inte
         from Relationship r
         join r.parent1 p1
         join r.parent2 p2
+        where p1.userId = :userId and p2.userId = :userId
         order by r.id desc
     """)
-    List<RelationshipRow> listAll();
+    List<RelationshipRow> listAll(@Param("userId") UUID userId);
 
     @EntityGraph(attributePaths = {
             "parent1",
@@ -81,6 +82,11 @@ public interface RelationshipRepository extends JpaRepository<Relationship, Inte
             "birthRecords",
             "birthRecords.phenotypesAtBirth"
     })
-    @Query("select r from Relationship r where r.id = :id")
-    Optional<Relationship> findWithBirthsById(@Param("id") Integer id);
+    @Query("""
+    select r from Relationship r
+    where r.id = :id
+        and r.parent1.userId = :userId
+        and r.parent2.userId = :userId
+    """)
+    Optional<Relationship> findWithBirthsById(@Param("userId") UUID userId, @Param("id") Integer id);
 }
