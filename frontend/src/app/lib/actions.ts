@@ -3,6 +3,7 @@
 import { Grade, Category, SheepCreateDTO, SheepUpdateDTO, SheepChildDTO, BirthRecord, ValidationFailed, GeneticConstraintViolation } from '@/app/lib/definitions';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { createClient } from "@/app/lib/supabase/server";
 
 export type CreateState = {
     message?: string | null;
@@ -41,6 +42,12 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 const categories: Category[] = ["SWIM", "FLY", "RUN", "POWER", "STAMINA"];
 const grades: Grade[] = ["S", "A", "B", "C", "D", "E"];
+
+export async function logout(formData: FormData, nextPath: string = "/login") {
+    const supabase = await createClient();
+    await supabase.auth.signOut();
+    redirect(nextPath);
+}
 
 export async function formDataToSheepCreateDTO(formData: FormData): Promise<SheepCreateDTO> {
     // Build genotypes
