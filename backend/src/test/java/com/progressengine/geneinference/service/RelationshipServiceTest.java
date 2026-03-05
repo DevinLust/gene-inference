@@ -5,6 +5,7 @@ import com.progressengine.geneinference.model.*;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.Grade;
 import com.progressengine.geneinference.repository.RelationshipRepository;
+import com.progressengine.geneinference.testutil.DomainFixtures;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -33,19 +34,20 @@ public class RelationshipServiceTest {
     @Test
     void testFindOrCreateRelationship() {
         // Arrange
-        Sheep parent1 = createTestSheep(Map.of(
-                Category.SWIM, new SheepGenotypeDTO(Grade.S, Grade.S),
-                Category.FLY, new SheepGenotypeDTO(randomGrade(), randomGrade()),
-                Category.RUN, new SheepGenotypeDTO(randomGrade(), randomGrade()),
-                Category.POWER, new SheepGenotypeDTO(randomGrade(), randomGrade()),
-                Category.STAMINA, new SheepGenotypeDTO(randomGrade(), randomGrade())
+        UUID userId = DomainFixtures.TEST_USER_ID;
+        Sheep parent1 = DomainFixtures.createTestSheep(userId, Map.of(
+                Category.SWIM, randomGrade(),
+                Category.FLY, randomGrade(),
+                Category.RUN, randomGrade(),
+                Category.POWER, randomGrade(),
+                Category.STAMINA, randomGrade()
         ));
-        Sheep parent2 = createTestSheep(Map.of(
-                Category.SWIM, new SheepGenotypeDTO(Grade.E, Grade.E),
-                Category.FLY, new SheepGenotypeDTO(randomGrade(), randomGrade()),
-                Category.RUN, new SheepGenotypeDTO(randomGrade(), randomGrade()),
-                Category.POWER, new SheepGenotypeDTO(randomGrade(), randomGrade()),
-                Category.STAMINA, new SheepGenotypeDTO(randomGrade(), randomGrade())
+        Sheep parent2 = DomainFixtures.createTestSheep(userId, Map.of(
+                Category.SWIM, randomGrade(),
+                Category.FLY, randomGrade(),
+                Category.RUN, randomGrade(),
+                Category.POWER, randomGrade(),
+                Category.STAMINA, randomGrade()
         ));
 
         int parent1Id = 1;
@@ -60,25 +62,11 @@ public class RelationshipServiceTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
-        Relationship savedRelationship = relationshipService.findOrCreateRelationship(parent2, parent1);
+        Relationship savedRelationship = relationshipService.findOrCreateRelationship(userId, parent2, parent1);
 
         // Assert
         assertEquals(parent1Id, savedRelationship.getParent1().getId());
         assertEquals(parent2Id, savedRelationship.getParent2().getId());
-    }
-
-    private Sheep createTestSheep(Map<Category, SheepGenotypeDTO> genotypes) {
-        Sheep sheep = new Sheep();
-        sheep.setGenotypes(genotypes);
-        sheep.createDefaultDistributions();
-        return sheep;
-    }
-
-    private Relationship createTestRelationship(Sheep parent1, Sheep parent2) {
-        Relationship relationship = new Relationship();
-        relationship.setParent1(parent1);
-        relationship.setParent2(parent2);
-        return relationship;
     }
 
     private Grade randomGrade() {
