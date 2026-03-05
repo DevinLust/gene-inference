@@ -34,8 +34,9 @@ jobs:
         DB_URL: ${{ secrets.DB_URL }}
         DB_USERNAME: ${{ secrets.DB_USERNAME }}
         DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        SUPABASE_JWT_ISSUER: ${{ secrets.SUPABASE_JWT_ISSUER }}
 
-    # Optional: Uploads the full dependency graph to GitHub to improve the quality of Dependabot alerts this repository can receive
+      # Optional: Uploads the full dependency graph to GitHub to improve the quality of Dependabot alerts this repository can receive
     - name: Update dependency graph
       working-directory: ./backend
       run: mvn com.github.ferstl:depgraph-maven-plugin:4.0.1:graph
