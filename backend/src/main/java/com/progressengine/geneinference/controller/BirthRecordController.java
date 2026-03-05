@@ -8,7 +8,11 @@ import com.progressengine.geneinference.service.RelationshipService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.UUID;
 
 @RestController
 @RequestMapping(value = "/birth-record")
@@ -21,20 +25,30 @@ public class BirthRecordController {
     }
 
     @GetMapping
-    public ResponseEntity<?> listBirthRecords(@ModelAttribute BirthRecordSearchParams params, Pageable pageable) {
-        Page<BirthRecordRow> page = relationshipService.searchBirthRecords(params, pageable);
+    public ResponseEntity<?> listBirthRecords(@ModelAttribute BirthRecordSearchParams params,
+                                              Pageable pageable,
+                                              @AuthenticationPrincipal Jwt jwt
+    ) {
+        UUID userId = UUID.fromString(jwt.getSubject());
+        Page<BirthRecordRow> page = relationshipService.searchBirthRecords(userId, params, pageable);
         return ResponseEntity.ok(DomainMapper.toResponseDTO(page));
     }
 
     @GetMapping("/{brId}")
-    public ResponseEntity<?> getBirthRecordById(@PathVariable Integer brId) {
-        BirthRecord br = relationshipService.findBirthRecordById(brId);
+    public ResponseEntity<?> getBirthRecordById(@PathVariable Integer brId,
+                                                @AuthenticationPrincipal Jwt jwt
+    ) {
+        UUID userId = UUID.fromString(jwt.getSubject());
+        BirthRecord br = relationshipService.findBirthRecordByIdAndUserId(userId, brId);
         return ResponseEntity.ok(DomainMapper.toResponseDTO(br));
     }
 
     @DeleteMapping("/{brId}")
-    public ResponseEntity<?> deleteById(@PathVariable Integer brId) {
-        relationshipService.deleteBirthRecord(brId);
+    public ResponseEntity<?> deleteById(@PathVariable Integer brId,
+                                        @AuthenticationPrincipal Jwt jwt
+    ) {
+        UUID userId = UUID.fromString(jwt.getSubject());
+        relationshipService.deleteBirthRecord(userId, brId);
         return ResponseEntity.noContent().build();
     }
 }

@@ -137,7 +137,11 @@ public class RelationshipService {
         return filterRelationshipsByParent(parent1.getId(), parent2.getId(), limitPerParent);
     }
 
-    public Page<BirthRecordRow> searchBirthRecords(BirthRecordSearchParams params, Pageable pageable) {
+    public Page<BirthRecordRow> searchBirthRecords(
+            UUID userId,
+            BirthRecordSearchParams params,
+            Pageable pageable
+    ) {
         Integer relId = params.relationshipId();
 
         // No relationship scope => don't allow parentsAtBirth filter
@@ -145,17 +149,17 @@ public class RelationshipService {
             if (params.hasAnyParentsAtBirth()) {
                 throw new BadRequestException("parentsAtBirth filter requires relationshipId");
             }
-            return birthRecordRepository.pageAllRows(pageable);
+            return birthRecordRepository.pageAllRows(userId, pageable);
         }
 
         // Relationship scope, but filter not fully specified => return all for relationship
         if (!params.hasCompleteParentsAtBirth()) {
-            return birthRecordRepository.pageRowsByParentRelationship(relId, pageable);
+            return birthRecordRepository.pageRowsByParentRelationship(userId, relId, pageable);
         }
 
         // Relationship scope + full filter => run filtered query
         return birthRecordRepository.pageRowsByParentPhenotypes(
-                relId, params.category(), params.p1(), params.p2(), pageable
+                userId, relId, params.category(), params.p1(), params.p2(), pageable
         );
     }
 
@@ -191,14 +195,14 @@ public class RelationshipService {
         relationshipRepository.deleteAll(relationships);
     }
 
-    public BirthRecord findBirthRecordById(Integer id) {
-        return birthRecordRepository.findById(id)
+    public BirthRecord findBirthRecordByIdAndUserId(UUID userId, Integer id) {
+        return birthRecordRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Birth record not found"));
     }
 
     @Transactional
-    public void deleteBirthRecord(Integer birthRecordId) {
-        BirthRecord br = findBirthRecordById(birthRecordId);
+    public void deleteBirthRecord(UUID userId, Integer birthRecordId) {
+        BirthRecord br = findBirthRecordByIdAndUserId(userId, birthRecordId);
         Relationship rel = br.getParentRelationship(); // managed
 
         // If this birth record is linked to a saved child sheep, detach both sides
@@ -209,7 +213,6 @@ public class RelationshipService {
         }
 
         rel.removeBirthRecord(br);
-        birthRecordRepository.deleteById(birthRecordId); // might not be needed
     }
 
 
