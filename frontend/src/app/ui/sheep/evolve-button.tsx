@@ -22,9 +22,9 @@ export default function EvolveButton({ sheepId, category }: Props) {
         <button
             onClick={handleClick}
             disabled={isPending}
-            className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+            className="text-sm px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
         >
-            {isPending ? "Evolving..." : `Evolve ${category}`}
+            {isPending ? "Evolving..." : "Evolve"}
         </button>
     );
 }

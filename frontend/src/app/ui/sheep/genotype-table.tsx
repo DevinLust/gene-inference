@@ -4,7 +4,7 @@ import EvolveButton from '@/app/ui/sheep/evolve-button';
 
 export default function GenotypeTable({ sheep }: { sheep: Sheep }) {
     return (
-        <div className="mt-6 mb-4 w-full max-w-sm p-2 rounded-xl bg-gray-600">
+        <div className="mt-6 mb-4 w-full max-w-[50%] p-2 rounded-xl bg-gray-600">
             <h2 className="mb-2 text-xl">Genotypes</h2>
             <div className="p-2 bg-gray-800 rounded-lg border border-gray-500">
                 <div className="bg-blue-900 rounded-md overflow-hidden">
@@ -14,14 +14,14 @@ export default function GenotypeTable({ sheep }: { sheep: Sheep }) {
                             <th className="sticky left-0 bg-transparent px-2 py-2 font-semibold text-left">
                                 Category
                             </th>
-                            <th className="sticky left-0 bg-transparent px-2 py-2 font-semibold">
+                            <th className="bg-transparent px-2 py-2 font-semibold">
                                 Phenotype
                             </th>
-                            <th className="sticky left-0 bg-transparent px-2 py-2 font-semibold">
+                            <th className="bg-transparent px-2 py-2 font-semibold whitespace-nowrap">
                                 Hidden Allele
                             </th>
                             <th scope="col" className="px-4 font-medium sm:pl-6">
-                                <span>Evolve</span>
+                                <span className="sr-only">Evolve</span>
                             </th>
                         </tr>
                         </thead>
