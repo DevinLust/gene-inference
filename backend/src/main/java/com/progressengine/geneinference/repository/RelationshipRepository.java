@@ -57,8 +57,12 @@ public interface RelationshipRepository extends JpaRepository<Relationship, Inte
             "birthRecords",
             "birthRecords.phenotypesAtBirth"
     })
-    @Query("select r from Relationship r")
-    List<Relationship> findAllWithFullGraph();
+    @Query("""
+        select r from Relationship r
+        where r.parent1.userId = :userId
+            and r.parent2.userId = :userId
+    """)
+    List<Relationship> findAllWithFullGraph(@Param("userId") UUID userId);
 
     @Query("""
         select new com.progressengine.geneinference.dto.RelationshipRow(

@@ -48,8 +48,8 @@ public class RelationshipService {
      *
      * @return a List of all relationships
      */
-    public List<Relationship> getAllRelationships() {
-        return relationshipRepository.findAllWithFullGraph();
+    public List<Relationship> getAllRelationships(UUID userId) {
+        return relationshipRepository.findAllWithFullGraph(userId);
     }
 
     public List<RelationshipRow>  getAllRelationshipRows(UUID userId) {
@@ -95,8 +95,8 @@ public class RelationshipService {
      * @return the relationship of these two sheep
      * @throws {@code IllegalArgumentException} if the two sheep are the same
      */
-    public Relationship findOrCreateRelationship(Sheep sheep1, Sheep sheep2) {
-        relationshipValidation(sheep1, sheep2); // validates these two sheep can be in relationship
+    public Relationship findOrCreateRelationship(UUID userId, Sheep sheep1, Sheep sheep2) {
+        relationshipValidation(userId, sheep1, sheep2); // validates these two sheep can be in relationship
 
         // Determine the lower and higher sheep IDs
         Integer sheepId1 = sheep1.getId();
@@ -222,9 +222,12 @@ public class RelationshipService {
      * @param sheep2 - the second parent sheep
      * @throws {@code IllegalArgumentException} if the two sheep are the same
      */
-    private static void relationshipValidation(Sheep sheep1, Sheep sheep2) {
-        if (sheep1 == sheep2 || sheep1.getId().equals(sheep2.getId())) {
+    private static void relationshipValidation(UUID userId, Sheep sheep1, Sheep sheep2) {
+        if (sheep1.equals(sheep2)) {
             throw new IllegalArgumentException("Cannot breed a sheep with itself!");
+        }
+        if (!sheep1.getUserId().equals(userId) || !sheep2.getUserId().equals(userId)) {
+            throw new IllegalArgumentException("Cannot breed unpersisted sheep or unowned sheep!");
         }
     }
 

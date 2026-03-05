@@ -61,8 +61,8 @@ public class SheepService {
         sheepRepository.saveAll(sheep);
     }
 
-    public List<Sheep> getAllSheep() {
-        return sheepRepository.findAllForInference();
+    public List<Sheep> getAllSheep(UUID userId) {
+        return sheepRepository.findAllForInference(userId);
     }
 
     public List<SheepSummaryResponseDTO> getAllSheepSummary() {

@@ -71,8 +71,11 @@ public interface SheepRepository extends JpaRepository<Sheep, Integer>, JpaSpeci
     );
 
     @EntityGraph(value = "Sheep.withDistributionsAndGenotypes")
-    @Query("SELECT s FROM Sheep s")
-    List<Sheep> findAllForInference();
+    @Query("""
+        SELECT s FROM Sheep s
+        where s.userId = :userId
+    """)
+    List<Sheep> findAllForInference(@Param("userId") UUID userId);
 
     @EntityGraph(attributePaths = {
             "distributions",
