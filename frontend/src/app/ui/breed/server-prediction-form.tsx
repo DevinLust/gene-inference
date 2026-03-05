@@ -5,6 +5,6 @@ import { fetchAllSheep } from "@/app/lib/data";
 import { Sheep } from "@/app/lib/definitions";
 
 export default async function SheepPredictionFormServer() {
-    const sheep: Sheep[] = await fetchAllSheep();
+    const sheep: Sheep[] = await fetchAllSheep({});
     return <SheepPredictionForm sheep={sheep} />;
 }

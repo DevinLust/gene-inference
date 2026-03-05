@@ -1,9 +1,20 @@
 import { fetchAllRelationships } from '@/app/lib/data';
 import { RelationshipRow } from '@/app/lib/definitions';
 import { RelationshipDetails } from '@/app/ui/buttons';
+import EmptyState from '@/app/ui/empty-state';
 
 export default async function RelationshipList() {
     const relationships: RelationshipRow[] = await fetchAllRelationships();
+
+    if (relationships.length === 0) {
+        return (
+            <EmptyState
+                title="No relationships yet"
+                description="This is where you'll see parent sheep that have produced offspring together."
+            />
+        );
+    }
+
     return (
         <div className="mt-6 flow-root">
             <div className="inline-block align-middle">

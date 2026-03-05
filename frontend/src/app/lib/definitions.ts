@@ -70,9 +70,9 @@ export type SheepSummary = {
 };
 
 export type SheepFilter = {
-    grades?: string;
+    grades?: Grade[];
     name?: string;
-    ids?: string;
+    ids?: number[];
 }
 
 export type SheepCreateDTO = {
@@ -111,7 +111,7 @@ export type Distributions = {
 export type DistributionFilter = {
     category: Category;
     type: DistributionType;
-    ids?: string;
+    ids?: number[];
 }
 
 export type Prediction = {

@@ -2,11 +2,38 @@ import { BirthRecordRow, BirthRecordFilter, PageResponse } from '@/app/lib/defin
 import { fetchBirthRecordRows } from '@/app/lib/data';
 import Pager from "./pager"
 import Link from 'next/link';
+import EmptyState from '@/app/ui/empty-state';
 
+function isEmptyRecordFilter(filter: BirthRecordFilter) {
+    return Object.values(filter).every((v) => {
+        if (v == null) return true;                 // undefined or null
+        if (typeof v === "string") return v.trim() === "";
+        if (Array.isArray(v)) return v.length === 0;
+        return false; // numbers/booleans treated as "filter is active"
+    });
+}
 
 export default async function BirthRecordList({ filter }: { filter: BirthRecordFilter }) {
     const page: PageResponse<BirthRecordRow> = await fetchBirthRecordRows(filter);
     const birthRecordRows: BirthRecordRow[] = page.items;
+
+    if (birthRecordRows.length === 0) {
+        const noFilters = isEmptyRecordFilter(filter);
+        return noFilters ? (
+            <EmptyState
+                title="No Birth Records yet"
+                description="This is where you'll see the history of offspring born."
+            />
+        ) : (
+            <EmptyState
+                title="No matches"
+                description="No Birth Records match these filters. Try clearing filters or changing your search."
+                actionLabel="Clear filters"
+                actionHref="/birth-record"   // or whatever resets your filters
+            />
+        );
+    }
+
     return (
         <div className="mt-6 flow-root">
             <div className="inline-block align-middle">

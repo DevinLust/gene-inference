@@ -14,10 +14,10 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 // data fetching functions
 export async function fetchAllSheep(filter: SheepFilter): Promise<Sheep[]> {
-    const params = new URLSearchParams(filter);
+    const query = buildQuery(filter);
     const headers = await authHeaders();
 
-    const res = await fetch(`${API_BASE_URL}/sheep?${params}`, {
+    const res = await fetch(`${API_BASE_URL}/sheep?${query}`, {
         headers: headers,
         cache: "default",
     });
@@ -28,10 +28,10 @@ export async function fetchAllSheep(filter: SheepFilter): Promise<Sheep[]> {
 }
 
 export async function fetchDistributions(filter: DistributionFilter) {
-    const params = new URLSearchParams(filter);
+    const query = buildQuery(filter);
     const headers = await authHeaders();
 
-    const res = await fetch(`${API_BASE_URL}/sheep/distributions?${params}`, {
+    const res = await fetch(`${API_BASE_URL}/sheep/distributions?${query}`, {
         headers: headers,
     });
 
