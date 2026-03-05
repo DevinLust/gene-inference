@@ -291,6 +291,21 @@ export async function updateSheep(
 }
 
 
+export async function evolveSheep(sheepId: number, category: Category) {
+    const res = await fetch(`${API_BASE_URL}/sheep/${sheepId}/evolve/${category}`, {
+        method: "POST",
+        headers: await authHeaders(),
+    });
+
+    if (!res.ok) {
+        return await parseError(res);
+    }
+
+    revalidatePath(`/sheep/${sheepId}`);
+    return { success: true };
+}
+
+
 export async function recalculateBeliefs() {
     const res = await fetch(`${API_BASE_URL}/breed/recalculate-beliefs`, {
         method: "POST",
