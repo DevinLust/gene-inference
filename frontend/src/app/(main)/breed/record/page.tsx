@@ -1,6 +1,6 @@
 'use server';
 
-import RecordForm from "@/app/ui/breed/server-record-form";
+import RecordForm from "@/app/ui/breed/record-child-form";
 import RecordFormSkeleton from "@/app/ui/breed/breed-form-skeleton";
 import { Suspense } from "react";
 import Link from "next/link";

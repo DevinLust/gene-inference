@@ -1,4 +1,4 @@
-import ServerPredictionForm from '@/app/ui/breed/server-prediction-form';
+import PredictionForm from '@/app/ui/breed/prediction-form';
 import PredictionFormSkeleton from '@/app/ui/breed/prediction-form-skeleton';
 import BestPredictions from '@/app/ui/breed/best-predictions';
 import { BreedSheepButton, RecordChildButton } from '@/app/ui/buttons';
@@ -14,7 +14,7 @@ export default function BreedingPage() {
             </div>
             <div className="flex justify-start gap-6 items-start">
                 <Suspense fallback={<PredictionFormSkeleton />}>
-                    <ServerPredictionForm />
+                    <PredictionForm />
                 </Suspense>
                 <BestPredictions />
             </div>

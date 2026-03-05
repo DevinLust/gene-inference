@@ -5,11 +5,13 @@ import { recordChild, ChildState } from '@/app/lib/actions';
 import { SheepSummary, Category, Grade } from '@/app/lib/definitions';
 import CategoryTag from '@/app/ui/category-tag';
 import SheepComboBox from "./sheep-combo-box";
+import { useBreedSheep } from "@/app/(main)/breed/breed-sheep-provider";
 
 const categories: Category[] = ["SWIM", "FLY", "RUN", "POWER", "STAMINA"];
 const grades: Grade[] = ["S", "A", "B", "C", "D", "E"];
 
-export default function RecordChildForm({ sheep }: { sheep: SheepSummary[] }) {
+export default function RecordChildForm() {
+    const sheep: SheepSummary[] = useBreedSheep();
     const initialState: ChildState = { status: "idle" };
     const [state, formAction, isPending] = useActionState(recordChild, initialState);
 

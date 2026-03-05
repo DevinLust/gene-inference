@@ -5,8 +5,10 @@ import { useActionState, useState, useEffect, startTransition } from "react";
 import { breedSheep } from "@/app/lib/actions";
 import SheepComboBox from './sheep-combo-box';
 import CategoryTag from '@/app/ui/category-tag';
+import { useBreedSheep } from "@/app/(main)/breed/breed-sheep-provider";
 
-export default function BreedForm({ sheep }: { sheep: SheepSummary[] }) {
+export default function BreedForm() {
+    const sheep: SheepSummary[] = useBreedSheep();
     const [state, formAction, isPending] = useActionState(breedSheep, { message: "", errors: {} });
 
     const [saveChild, setSaveChild] = useState(false);

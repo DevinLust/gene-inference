@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Prediction, Sheep } from "@/app/lib/definitions";
+import { Prediction, SheepSummary } from "@/app/lib/definitions";
 import { BreedState } from "@/app/lib/actions";
 import { fetchPrediction } from "@/app/lib/data";
 import PhenotypeDistributions from "./phentoype-distributions";
@@ -9,7 +9,7 @@ import SheepComboBox from "./sheep-combo-box";
 import { useBreedSheep } from "@/app/(main)/breed/breed-sheep-provider";
 
 export default function SheepPredictionForm() {
-    const sheep = useBreedSheep();
+    const sheep: SheepSummary[] = useBreedSheep();
     const [sheep1, setSheep1] = useState<number | null>(null);
     const [sheep2, setSheep2] = useState<number | null>(null);
     const [prediction, setPrediction] = useState<Prediction | null>(null);

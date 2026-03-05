@@ -1,11 +1,11 @@
 "use client";
 
 import React, { createContext, useContext } from "react";
-import type { Sheep } from "@/app/lib/definitions";
+import type { SheepSummary } from "@/app/lib/definitions";
 
-const BreedSheepContext = createContext<Sheep[] | null>(null);
+const BreedSheepContext = createContext<SheepSummary[] | null>(null);
 
-export function BreedSheepProvider({ sheep, children }: { sheep: Sheep[]; children: React.ReactNode }) {
+export function BreedSheepProvider({ sheep, children }: { sheep: SheepSummary[]; children: React.ReactNode }) {
     return <BreedSheepContext.Provider value={sheep}>{children}</BreedSheepContext.Provider>;
 }
 

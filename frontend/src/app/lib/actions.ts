@@ -141,7 +141,7 @@ export async function createSheep(prevState: CreateState, formData: FormData) {
 
     const res = await fetch(`${API_BASE_URL}/sheep`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await authHeaders(),
         body: JSON.stringify(newSheep),
     });
 
@@ -197,7 +197,7 @@ export async function recordChild(prevState: ChildState, formData: FormData): Pr
 
     const res = await fetch(url.toString(), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await authHeaders(),
         body: JSON.stringify(newChild),
     });
 
@@ -226,7 +226,7 @@ export async function breedSheep(prevState: BreedState, formData: FormData) {
     }
 
     const saveChild = formData.get("saveChild") === "on";
-    const childNameRaw = formData.get("childName") as string | null;
+    const childNameRaw = formData.get("name") as string | null;
 
     const childName =
         childNameRaw && childNameRaw.trim() !== ""
@@ -243,7 +243,7 @@ export async function breedSheep(prevState: BreedState, formData: FormData) {
 
     const res = await fetch(`${API_BASE_URL}/breed/${parent1Id}/${parent2Id}?${params.toString()}`, {
         method: "POST",
-        headers: {"Content-Type": "application/json" },
+        headers: await authHeaders(),
     });
 
     if (!res.ok) {
@@ -276,7 +276,7 @@ export async function updateSheep(
 
     const res = await fetch(`${API_BASE_URL}/sheep/${sheepId}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: await authHeaders(),
         body: JSON.stringify(updateDTO),
     });
 
@@ -294,7 +294,7 @@ export async function updateSheep(
 export async function recalculateBeliefs() {
     const res = await fetch(`${API_BASE_URL}/breed/recalculate-beliefs`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await authHeaders(),
     })
 
     if (!res.ok) {
@@ -313,7 +313,7 @@ export async function deleteSheep(
 ) {
     const res = await fetch(`${API_BASE_URL}/sheep/${sheepId}`, {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
+        headers: await authHeaders(),
     });
 
     if (!res.ok) {
@@ -331,7 +331,7 @@ export async function deleteBirthRecord(
 ) {
     const res = await fetch(`${API_BASE_URL}/birth-record/${brId}`, {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
+        headers: await authHeaders(),
     });
 
     if (!res.ok) {
@@ -355,6 +355,23 @@ async function parseError(res: Response) {
     } catch {
         return { message: "An unexpected error occurred" };
     }
+}
+
+async function authHeaders(): Promise<Record<string, string>> {
+    const supabase = await createClient();
+
+    const {
+        data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session) {
+        throw new Error("User not authenticated");
+    }
+
+    return {
+        Authorization: `Bearer ${session.access_token}`,
+        "Content-Type": "application/json",
+    };
 }
 
 
