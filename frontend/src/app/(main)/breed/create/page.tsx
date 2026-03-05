@@ -1,6 +1,6 @@
 'use server';
 
-import BreedForm from "@/app/ui/breed/server-breed-form";
+import BreedForm from "@/app/ui/breed/breed-form";
 import BreedFormSkeleton from "@/app/ui/breed/breed-form-skeleton";
 import { Suspense } from "react";
 import Link from "next/link";

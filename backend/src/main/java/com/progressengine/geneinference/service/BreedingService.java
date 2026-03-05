@@ -56,15 +56,15 @@ public class BreedingService {
      *     if the sheep ids refer to the same sheep
      */
     @Transactional
-    public BirthRecord breedAndInferSheep(Integer sheep1Id, Integer sheep2Id, boolean saveChild, String name) {
+    public BirthRecord breedAndInferSheep(UUID userId, Integer sheep1Id, Integer sheep2Id, boolean saveChild, String name) {
         if (sheep1Id.equals(sheep2Id)) {
             throw new BadRequestException("Parent sheep IDs must be different");
         }
 
         // find/create the relationship of these two sheep
-        Sheep sheep1 = sheepService.findById(sheep1Id);
-        Sheep sheep2 = sheepService.findById(sheep2Id);
-        Relationship relationship = relationshipService.findOrCreateRelationship(sheep1, sheep2);
+        Sheep sheep1 = sheepService.findByIdAndUserId(sheep1Id, userId);
+        Sheep sheep2 = sheepService.findByIdAndUserId(sheep2Id, userId);
+        Relationship relationship = relationshipService.findOrCreateRelationship(userId, sheep1, sheep2);
 
         /* ----------------------------------------------------------------------------------------
          * possibly belongs in relationship domain for invariant control */
@@ -77,6 +77,7 @@ public class BreedingService {
         // save new child if told and create a BirthRecord for the event
         BirthRecord birthRecord;
         if (saveChild) {
+            newChild.setUserId(userId);
             birthRecord = relationship.addChildToRelationship(sheepService.saveSheep(newChild));
         } else {
             birthRecord = relationship.addChildInformationToRelationship(newChild);
@@ -147,12 +148,13 @@ public class BreedingService {
      *     if either parent sheep does not exist
      */
     @Transactional
-    public BirthRecord createAndInferSheep(SheepBreedRequestDTO childRequest, boolean saveChild) {
+    public BirthRecord createAndInferSheep(UUID userId, SheepBreedRequestDTO childRequest, boolean saveChild) {
         Sheep child = DomainMapper.fromRequestDTO(childRequest);
+        child.setUserId(userId);
 
-        Sheep parent1 = sheepService.findById(childRequest.getParent1Id());
-        Sheep parent2 = sheepService.findById(childRequest.getParent2Id());
-        Relationship relationship = relationshipService.findOrCreateRelationship(parent1, parent2);
+        Sheep parent1 = sheepService.findByIdAndUserId(childRequest.getParent1Id(), userId);
+        Sheep parent2 = sheepService.findByIdAndUserId(childRequest.getParent2Id(), userId);
+        Relationship relationship = relationshipService.findOrCreateRelationship(userId, parent1, parent2);
         /* ----------------------------------------------------------------------------------------
         * possibly belongs in relationship domain for invariant control */
         BirthRecord birthRecord;
@@ -174,15 +176,15 @@ public class BreedingService {
                 .orElseThrow(() -> new ResourceNotFoundException("Birth record not found"));
     }
 
-    public PredictionResponseDTO predictChild(Integer sheep1Id, Integer sheep2Id) {
-        Sheep sheep1 = sheepService.findById(sheep1Id);
-        Sheep sheep2 = sheepService.findById(sheep2Id);
+    public PredictionResponseDTO predictChild(UUID userId, Integer sheep1Id, Integer sheep2Id) {
+        Sheep sheep1 = sheepService.findByIdAndUserId(sheep1Id, userId);
+        Sheep sheep2 = sheepService.findByIdAndUserId(sheep2Id, userId);
 
         return new PredictionResponseDTO(inferenceEngine.predictChildrenDistributions(sheep1, sheep2));
     }
 
-    public List<BestPredictionDTO> bestPredictions() {
-        List<Sheep> allSheep = sheepService.getAllSheep();
+    public List<BestPredictionDTO> bestPredictions(UUID userId) {
+        List<Sheep> allSheep = sheepService.getAllSheep(userId);
         if (allSheep.size() < 2) {
             throw new IllegalStateException(
                     "At least two sheep are required to compute best predictions"
@@ -233,9 +235,9 @@ public class BreedingService {
     }
 
     @Transactional
-    public List<Map<Category, Map<Grade, Double>>> recalculateAll() {
-        List<Sheep> allSheep = sheepService.getAllSheep();
-        List<Relationship> allRelationship = relationshipService.getAllRelationships();
+    public List<Map<Category, Map<Grade, Double>>> recalculateAll(UUID userId) {
+        List<Sheep> allSheep = sheepService.getAllSheep(userId);
+        List<Relationship> allRelationship = relationshipService.getAllRelationships(userId);
 
         FactorGraph factorGraph = new FactorGraph(allSheep, allRelationship);
         factorGraph.recalculateAllMessages();

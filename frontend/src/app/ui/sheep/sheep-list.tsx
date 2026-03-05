@@ -4,11 +4,40 @@ import { SheepSummary, Category, Grade, Distributions, DistributionType, SheepFi
 import { fetchAllSheep, fetchDistributions } from '@/app/lib/data';
 import { SheepDetails } from '@/app/ui/buttons';
 import CategoryDropdown from './category-dropdown';
+import EmptyState from '@/app/ui/empty-state';
 
 const ALL_GRADES: Grade[] = ["S", "A", "B", "C", "D", "E"];
 
+function isEmptySheepFilter(filter: SheepFilter) {
+    return Object.values(filter).every((v) => {
+        if (v == null) return true;                 // undefined or null
+        if (typeof v === "string") return v.trim() === "";
+        if (Array.isArray(v)) return v.length === 0;
+        return false; // numbers/booleans treated as "filter is active"
+    });
+}
+
 export default async function SheepList({ selectedCategory, filter }: { selectedCategory: Category, filter: SheepFilter }) {
     const sheep: SheepSummary[] = await fetchAllSheep(filter);
+    if (sheep.length === 0) {
+        const noFilters = isEmptySheepFilter(filter);
+
+        return noFilters ? (
+            <EmptyState
+                title="No sheep yet"
+                description="This is where you can view all the sheep you have. Create a sheep to get started."
+                actionLabel="Create your first sheep"
+                actionHref="/sheep/create"
+            />
+        ) : (
+            <EmptyState
+                title="No matches"
+                description="No sheep match these filters. Try clearing filters or changing your search."
+                actionLabel="Clear filters"
+                actionHref="/sheep"   // or whatever resets your filters
+            />
+        );
+    }
     const displayCat: Category = selectedCategory ?? "SWIM";
     const distributions: Distributions = await fetchDistributions({ category: displayCat, type: ("INFERRED" as DistributionType) });
     return (

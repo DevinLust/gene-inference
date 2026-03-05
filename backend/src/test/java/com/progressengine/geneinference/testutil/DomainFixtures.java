@@ -4,12 +4,12 @@ import com.progressengine.geneinference.model.*;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.Grade;
 
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
 
 public class DomainFixtures {
+    public static final UUID TEST_USER_ID =
+            UUID.fromString("11111111-1111-1111-1111-111111111111");
+
     public static Sheep createTestSheep(Map<Category, Grade> phenotypes) {
         Sheep sheep = new Sheep();
         for (Map.Entry<Category, Grade> entry : phenotypes.entrySet()) {
@@ -21,6 +21,12 @@ public class DomainFixtures {
     public static Sheep createTestSheep(Map<Category, Grade> phenotypes, int sheepId) {
         Sheep sheep = createTestSheep(phenotypes);
         sheep.setId(sheepId);
+        return sheep;
+    }
+
+    public static Sheep createTestSheep(UUID userId, Map<Category, Grade> phenotypes) {
+        Sheep sheep = createTestSheep(phenotypes);
+        sheep.setUserId(userId);
         return sheep;
     }
 

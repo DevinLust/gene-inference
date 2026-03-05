@@ -48,12 +48,12 @@ public class RelationshipService {
      *
      * @return a List of all relationships
      */
-    public List<Relationship> getAllRelationships() {
-        return relationshipRepository.findAllWithFullGraph();
+    public List<Relationship> getAllRelationships(UUID userId) {
+        return relationshipRepository.findAllWithFullGraph(userId);
     }
 
-    public List<RelationshipRow>  getAllRelationshipRows() {
-        return relationshipRepository.listAll();
+    public List<RelationshipRow>  getAllRelationshipRows(UUID userId) {
+        return relationshipRepository.listAll(userId);
     }
 
     /**
@@ -76,8 +76,8 @@ public class RelationshipService {
      * @param relationshipId - id of the desired relationship
      * @return the relationship with the given id loaded with birth records
      */
-    public Relationship getRelationshipWithBirthsById(Integer relationshipId) {
-        Optional<Relationship> optionalRelationship = relationshipRepository.findWithBirthsById(relationshipId);
+    public Relationship getRelationshipWithBirthsById(UUID userId, Integer relationshipId) {
+        Optional<Relationship> optionalRelationship = relationshipRepository.findWithBirthsById(userId, relationshipId);
         if (optionalRelationship.isEmpty()) {
             throw new ResourceNotFoundException("Relationship not found");
         }
@@ -95,8 +95,8 @@ public class RelationshipService {
      * @return the relationship of these two sheep
      * @throws {@code IllegalArgumentException} if the two sheep are the same
      */
-    public Relationship findOrCreateRelationship(Sheep sheep1, Sheep sheep2) {
-        relationshipValidation(sheep1, sheep2); // validates these two sheep can be in relationship
+    public Relationship findOrCreateRelationship(UUID userId, Sheep sheep1, Sheep sheep2) {
+        relationshipValidation(userId, sheep1, sheep2); // validates these two sheep can be in relationship
 
         // Determine the lower and higher sheep IDs
         Integer sheepId1 = sheep1.getId();
@@ -129,11 +129,19 @@ public class RelationshipService {
         return relationshipRepository.findByParentId(parentId);
     }
 
+    public List<Relationship> findRelationshipsByParentWithUserId(UUID userId, Integer parentId) {
+        return relationshipRepository.findByParentIdAndUserId(userId, parentId);
+    }
+
     public List<List<Relationship>> filterRelationshipsByParent(Sheep parent1, Sheep parent2, int limitPerParent) {
         return filterRelationshipsByParent(parent1.getId(), parent2.getId(), limitPerParent);
     }
 
-    public Page<BirthRecordRow> searchBirthRecords(BirthRecordSearchParams params, Pageable pageable) {
+    public Page<BirthRecordRow> searchBirthRecords(
+            UUID userId,
+            BirthRecordSearchParams params,
+            Pageable pageable
+    ) {
         Integer relId = params.relationshipId();
 
         // No relationship scope => don't allow parentsAtBirth filter
@@ -141,17 +149,17 @@ public class RelationshipService {
             if (params.hasAnyParentsAtBirth()) {
                 throw new BadRequestException("parentsAtBirth filter requires relationshipId");
             }
-            return birthRecordRepository.pageAllRows(pageable);
+            return birthRecordRepository.pageAllRows(userId, pageable);
         }
 
         // Relationship scope, but filter not fully specified => return all for relationship
         if (!params.hasCompleteParentsAtBirth()) {
-            return birthRecordRepository.pageRowsByParentRelationship(relId, pageable);
+            return birthRecordRepository.pageRowsByParentRelationship(userId, relId, pageable);
         }
 
         // Relationship scope + full filter => run filtered query
         return birthRecordRepository.pageRowsByParentPhenotypes(
-                relId, params.category(), params.p1(), params.p2(), pageable
+                userId, relId, params.category(), params.p1(), params.p2(), pageable
         );
     }
 
@@ -187,14 +195,14 @@ public class RelationshipService {
         relationshipRepository.deleteAll(relationships);
     }
 
-    public BirthRecord findBirthRecordById(Integer id) {
-        return birthRecordRepository.findById(id)
+    public BirthRecord findBirthRecordByIdAndUserId(UUID userId, Integer id) {
+        return birthRecordRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Birth record not found"));
     }
 
     @Transactional
-    public void deleteBirthRecord(Integer birthRecordId) {
-        BirthRecord br = findBirthRecordById(birthRecordId);
+    public void deleteBirthRecord(UUID userId, Integer birthRecordId) {
+        BirthRecord br = findBirthRecordByIdAndUserId(userId, birthRecordId);
         Relationship rel = br.getParentRelationship(); // managed
 
         // If this birth record is linked to a saved child sheep, detach both sides
@@ -205,7 +213,6 @@ public class RelationshipService {
         }
 
         rel.removeBirthRecord(br);
-        birthRecordRepository.deleteById(birthRecordId); // might not be needed
     }
 
 
@@ -215,9 +222,12 @@ public class RelationshipService {
      * @param sheep2 - the second parent sheep
      * @throws {@code IllegalArgumentException} if the two sheep are the same
      */
-    private static void relationshipValidation(Sheep sheep1, Sheep sheep2) {
-        if (sheep1 == sheep2 || sheep1.getId().equals(sheep2.getId())) {
+    private static void relationshipValidation(UUID userId, Sheep sheep1, Sheep sheep2) {
+        if (sheep1.equals(sheep2)) {
             throw new IllegalArgumentException("Cannot breed a sheep with itself!");
+        }
+        if (!sheep1.getUserId().equals(userId) || !sheep2.getUserId().equals(userId)) {
+            throw new IllegalArgumentException("Cannot breed unpersisted sheep or unowned sheep!");
         }
     }
 

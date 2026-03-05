@@ -1,9 +1,10 @@
 'use server';
 
+import { createClient } from "@/app/lib/supabase/server";
 import { Sheep, Prediction, BestPrediction, Relationship, RelationshipRow, BirthRecord, BirthRecordRow, BirthRecordFilter, DistributionFilter, SheepFilter, PageResponse } from "./definitions";
 import { BreedState } from "./actions";
 import { buildQuery } from "./helpers";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 if (!process.env.NEXT_PUBLIC_API_BASE_URL) {
   throw new Error("NEXT_PUBLIC_API_BASE_URL is not defined");
@@ -13,8 +14,11 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 // data fetching functions
 export async function fetchAllSheep(filter: SheepFilter): Promise<Sheep[]> {
-    const params = new URLSearchParams(filter);
-    const res = await fetch(`${API_BASE_URL}/sheep?${params}`, {
+    const query = buildQuery(filter);
+    const headers = await authHeaders();
+
+    const res = await fetch(`${API_BASE_URL}/sheep?${query}`, {
+        headers: headers,
         cache: "default",
     });
 
@@ -24,9 +28,12 @@ export async function fetchAllSheep(filter: SheepFilter): Promise<Sheep[]> {
 }
 
 export async function fetchDistributions(filter: DistributionFilter) {
-    const params = new URLSearchParams(filter);
+    const query = buildQuery(filter);
+    const headers = await authHeaders();
 
-    const res = await fetch(`${API_BASE_URL}/sheep/distributions?${params}`);
+    const res = await fetch(`${API_BASE_URL}/sheep/distributions?${query}`, {
+        headers: headers,
+    });
 
     await checkStatus(res);
 
@@ -34,37 +41,51 @@ export async function fetchDistributions(filter: DistributionFilter) {
 }
 
 export async function fetchSheepById(id: string): Promise<Sheep> {
-    const res = await fetch(`${API_BASE_URL}/sheep/${id}`);
+    const headers = await authHeaders();
+
+    const res = await fetch(`${API_BASE_URL}/sheep/${id}`, {
+        headers: headers,
+    });
 
     await checkStatus(res);
 
     return await res.json() as Promise<Sheep>;
 }
 
-// both prediction fetches need to return objects for inline error handling
-export async function fetchPrediction(sheep1Id: string, sheep2Id: string): Promise<Prediction | BreedState> {
-    const res = await fetch(`${API_BASE_URL}/breed/${sheep1Id}/${sheep2Id}/predict`);
+export async function fetchPrediction(
+    sheep1Id: string,
+    sheep2Id: string
+): Promise<Prediction | BreedState> {
+    const headers = await authHeaders();
 
-    if (!res.ok) {
-        return await res.json();
-    }
+    const res = await fetch(`${API_BASE_URL}/breed/${sheep1Id}/${sheep2Id}/predict`, {
+        headers: headers,
+    });
+    const data = await res.json();
 
-    return await res.json() as Prediction;
+    if (!res.ok) return data as BreedState;
+    return data as Prediction;
 }
 
 // both prediction fetches need to return objects for inline error handling
 export async function fetchBestPredictions(): Promise<BestPrediction[] | BreedState> {
-    const res = await fetch(`${API_BASE_URL}/breed/best-predictions`);
+    const headers = await authHeaders();
 
-    if (!res.ok) {
-        return await res.json();
-    }
+    const res = await fetch(`${API_BASE_URL}/breed/best-predictions`, {
+        headers: headers,
+    });
+    const data = await res.json();
 
-    return await res.json() as BestPrediction[];
+    if (!res.ok) return data as BreedState;
+    return data as BestPrediction[];
 }
 
 export async function fetchAllRelationships(): Promise<RelationshipRow[]> {
-    const res = await fetch(`${API_BASE_URL}/relationship`);
+    const headers = await authHeaders();
+
+    const res = await fetch(`${API_BASE_URL}/relationship`, {
+        headers: headers,
+    });
 
     await checkStatus(res);
 
@@ -72,7 +93,11 @@ export async function fetchAllRelationships(): Promise<RelationshipRow[]> {
 }
 
 export async function fetchRelationshipById(id: string): Promise<Relationship> {
-    const res = await fetch(`${API_BASE_URL}/relationship/${id}`);
+    const headers = await authHeaders();
+
+    const res = await fetch(`${API_BASE_URL}/relationship/${id}`, {
+        headers: headers,
+    });
 
     await checkStatus(res);
 
@@ -84,8 +109,10 @@ export async function fetchBirthRecordRows(
 ): Promise<PageResponse<BirthRecordRow>> {
 
     const query = buildQuery(filter);
+    const headers = await authHeaders();
 
     const res = await fetch(`${API_BASE_URL}/birth-record?${query}`, {
+        headers: headers,
         cache: "no-store"
     });
 
@@ -97,7 +124,11 @@ export async function fetchBirthRecordRows(
 }
 
 export async function fetchBirthRecordById(id: string): Promise<BirthRecord> {
-    const res = await fetch(`${API_BASE_URL}/birth-record/${id}`);
+    const headers = await authHeaders();
+
+    const res = await fetch(`${API_BASE_URL}/birth-record/${id}`, {
+        headers: headers,
+    });
 
     await checkStatus(res);
 
@@ -106,18 +137,43 @@ export async function fetchBirthRecordById(id: string): Promise<BirthRecord> {
 
 async function checkStatus(res: Response) {
     if (res.status === 404) {
-        notFound(); // renders not-found.tsx
+        notFound();
     }
     if (!res.ok) {
-        // Attempt to parse the error message from JSON
-        let errorMessage;
+        let errorMessage = res.statusText;
+
         try {
-            const data = await res.json(); // or res.text() if backend sends plain text
-            errorMessage = data.message || JSON.stringify(data);
+            const data = await res.clone().json();
+            // support a few common shapes
+            errorMessage =
+                (data?.message as string) ??
+                (data?.msg as string) ??
+                (data?.error as string) ??
+                JSON.stringify(data);
         } catch {
-            // Fallback if response is not JSON
-            errorMessage = await res.text();
+            try {
+                errorMessage = await res.clone().text();
+            } catch {
+                // ignore
+            }
         }
+
         throw new Error(`Failed to fetch data: ${res.status} - ${errorMessage}`);
     }
+}
+
+async function authHeaders() {
+    const supabase = await createClient();
+
+    const {
+        data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session) {
+        redirect("/login");
+    }
+
+    return {
+        Authorization: `Bearer ${session.access_token}`,
+    };
 }
