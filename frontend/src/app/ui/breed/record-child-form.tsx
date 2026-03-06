@@ -62,11 +62,11 @@ export default function RecordChildForm() {
                     formAction(formData)
                 })
             }}
-            className="flex flex-col gap-6 p-4 bg-gray-600 rounded-lg"
+            className="flex flex-col gap-6 p-4 bg-gray-600 rounded-lg w-fit"
         >
             <h2 className="text-lg font-semibold">Record External Event</h2>
 
-            <div className="flex justify-around gap-2">
+            <div className="flex justify-start gap-2">
             <div className="max-w-md">
                 {/* Parents */}
                 <div className={"grid grid-cols-1 gap-4"}>
