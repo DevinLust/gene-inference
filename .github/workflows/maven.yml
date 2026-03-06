@@ -1,42 +1,50 @@
-# This workflow will build a Java project with Maven, and cache/restore any dependencies to improve the workflow execution time
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-java-with-maven
-
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
-
 name: Gene Inference CI with Maven
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
-    steps:
-    - uses: actions/checkout@v4
-    - name: Set up JDK 21
-      uses: actions/setup-java@v4
-      with:
-        java-version: '21'
-        distribution: 'temurin'
-        cache: maven
-    - name: Build with Maven
-      working-directory: ./backend
-      run: mvn -B clean install --file pom.xml
-      env:
-        DB_URL: ${{ secrets.DB_URL }}
-        DB_USERNAME: ${{ secrets.DB_USERNAME }}
-        DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-        SUPABASE_JWT_ISSUER: ${{ secrets.SUPABASE_JWT_ISSUER }}
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: gene_inference_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d gene_inference_ci"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
 
-      # Optional: Uploads the full dependency graph to GitHub to improve the quality of Dependabot alerts this repository can receive
-    - name: Update dependency graph
-      working-directory: ./backend
-      run: mvn com.github.ferstl:depgraph-maven-plugin:4.0.1:graph
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build with Maven
+        working-directory: ./backend
+        run: mvn -B clean install --file pom.xml
+        env:
+          SPRING_PROFILES_ACTIVE: ci
+          DB_URL: jdbc:postgresql://localhost:5432/gene_inference_ci
+          DB_USERNAME: postgres
+          DB_PASSWORD: postgres
+          SUPABASE_JWT_ISSUER: http://localhost/dummy-auth
+
+      - name: Update dependency graph
+        working-directory: ./backend
+        run: mvn com.github.ferstl:depgraph-maven-plugin:4.0.1:graph
