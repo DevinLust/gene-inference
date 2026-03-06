@@ -39,8 +39,8 @@ export default function LoginPage() {
             // If enabled, they’ll need to confirm, so we keep them on this page.
             router.replace(nextPath);
             router.refresh();
-        } catch (err: any) {
-            setErrorMsg(err?.message ?? "Something went wrong");
+        } catch (err: unknown) {
+            setErrorMsg(err instanceof Error ? err.message : "Something went wrong");
         } finally {
             setLoading(false);
         }

@@ -1,8 +1,8 @@
-import { BirthRecordFilter, PageResponse } from '@/app/lib/definitions';
+import { BirthRecordRow, BirthRecordFilter, PageResponse } from '@/app/lib/definitions';
 import { buildQuery } from '@/app/lib/helpers';
 import Link from "next/link";
 
-export default function Pager({ page, filter }: { page: PageResponse<any>; filter: BirthRecordFilter }) {
+export default function Pager({ page, filter }: { page: PageResponse<BirthRecordRow>; filter: BirthRecordFilter }) {
     const curr = page.page ?? 0;
     const totalPages = page.totalPages ?? 1;
 
