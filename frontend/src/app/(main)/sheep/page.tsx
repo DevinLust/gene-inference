@@ -1,4 +1,4 @@
-import { Category, SheepFilter } from "@/app/lib/definitions";
+import { Category, SheepFilter, Grade } from "@/app/lib/definitions";
 import { CreateSheep } from "@/app/ui/buttons";
 import SheepList from "@/app/ui/sheep/sheep-list";
 import RecalculateBeliefsButton from "@/app/ui/sheep/recalculate-beliefs-button";
@@ -17,7 +17,12 @@ export default async function SheepPage(props: {
             ? (searchParams.category as Category)
             : "SWIM";
 
-    const sheepFilter: SheepFilter = searchParams;
+    const sheepFilter: SheepFilter = {
+        name: searchParams.name,
+        grades: searchParams.grades
+            ? searchParams.grades.split(",") as Grade[]
+            : undefined,
+    };
     return (
         <div>
             <h1 className="text-2xl font-bold">Sheep List</h1>
