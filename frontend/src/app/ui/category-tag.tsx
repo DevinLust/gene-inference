@@ -38,7 +38,7 @@ export default function CategoryTag({ category }: { category: Category}) {
  */
 function adjustColor(hex: string, amount: number): string {
     // Remove "#" if present
-    let color = hex.startsWith("#") ? hex.slice(1) : hex;
+    const color = hex.startsWith("#") ? hex.slice(1) : hex;
 
     // Parse each RGB component
     const num = parseInt(color, 16);
