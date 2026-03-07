@@ -106,31 +106,27 @@ public class BreedingService {
         breedingValidation(sheep1, sheep2);
 
         Sheep child = new Sheep();
-
-        // random genotype from the two parents, one allele from each parent
         Random random = new Random();
-        // -----------------------------------------------------------------------------------
+
         for (Category category : Category.values()) {
             if (sheep1.getHiddenAllele(category) == null || sheep2.getHiddenAllele(category) == null) {
                 throw new IllegalArgumentException("Missing known hidden allele in category " + category);
             }
-            Grade newPhenotype;
-            Grade newHiddenAllele;
-            if (random.nextBoolean()) {
-                newPhenotype = random.nextBoolean() ? sheep1.getPhenotype(category) : sheep1.getHiddenAllele(category);
-                newHiddenAllele = random.nextBoolean() ? sheep2.getPhenotype(category) : sheep2.getHiddenAllele(category);
-            } else {
-                newPhenotype = random.nextBoolean() ? sheep2.getPhenotype(category) : sheep2.getHiddenAllele(category);
-                newHiddenAllele = random.nextBoolean() ? sheep1.getPhenotype(category) : sheep1.getHiddenAllele(category);
-            }
 
-            child.setPhenotype(category, newPhenotype);
-            child.setHiddenAllele(category, newHiddenAllele);
+            Grade parent1Allele = random.nextBoolean()
+                    ? sheep1.getPhenotype(category)
+                    : sheep1.getHiddenAllele(category);
+
+            Grade parent2Allele = random.nextBoolean()
+                    ? sheep2.getPhenotype(category)
+                    : sheep2.getHiddenAllele(category);
+
+            GradePair expressedOrder = GradeExpressionRules.sampleExpressionOrder(parent1Allele, parent2Allele, random);
+
+            child.setGenotype(category, expressedOrder);
         }
-        //relationship.addChildToRelationship(child);
-        child.createDefaultDistributions();
-        // ---------------------------------------------------------------------------------
 
+        child.createDefaultDistributions();
         return child;
     }
 

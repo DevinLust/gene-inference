@@ -1,5 +1,6 @@
 package com.progressengine.geneinference.service;
 
+import com.progressengine.geneinference.model.GradeExpressionRules;
 import com.progressengine.geneinference.model.GradePair;
 import com.progressengine.geneinference.model.Relationship;
 import com.progressengine.geneinference.model.Sheep;
@@ -25,23 +26,62 @@ public abstract class BaseInferenceEngine implements InferenceEngine {
      */
     public Map<Category, Map<Grade, Double>> predictChildrenDistributions(Sheep parent1, Sheep parent2) {
         Map<Category, Map<Grade, Double>> predictedDistributions = new EnumMap<>(Category.class);
-        for (Category category : Category.values()) {
-            Map<Grade, Double> distribution = new EnumMap<>(Grade.class);
-            Map<Grade, Double> parent1Distribution = parent1.getDistribution(category, DistributionType.INFERRED);
-            Map<Grade, Double> parent2Distribution = parent2.getDistribution(category, DistributionType.INFERRED);
 
-            distribution.merge(parent1.getPhenotype(category), 0.25, Double::sum);
-            distribution.merge(parent2.getPhenotype(category), 0.25, Double::sum);
-            for (Map.Entry<Grade, Double> entry : parent1Distribution.entrySet()) {
-                distribution.merge(entry.getKey(), 0.25 * entry.getValue(), Double::sum);
+        for (Category category : Category.values()) {
+            Map<Grade, Double> parent1AlleleDistribution = inheritedAlleleDistribution(parent1, category);
+            Map<Grade, Double> parent2AlleleDistribution = inheritedAlleleDistribution(parent2, category);
+
+            Map<Grade, Double> childPhenotypeDistribution = new EnumMap<>(Grade.class);
+
+            for (Grade expressed : Grade.values()) {
+                childPhenotypeDistribution.put(expressed, 0.0);
             }
-            for (Map.Entry<Grade, Double> entry : parent2Distribution.entrySet()) {
-                distribution.merge(entry.getKey(), 0.25 * entry.getValue(), Double::sum);
+
+            for (Map.Entry<Grade, Double> p1Entry : parent1AlleleDistribution.entrySet()) {
+                Grade allele1 = p1Entry.getKey();
+                double pAllele1 = p1Entry.getValue();
+
+                for (Map.Entry<Grade, Double> p2Entry : parent2AlleleDistribution.entrySet()) {
+                    Grade allele2 = p2Entry.getKey();
+                    double pAllele2 = p2Entry.getValue();
+
+                    double genotypeProbability = pAllele1 * pAllele2;
+                    double[] expressionProbability = GradeExpressionRules.probabilityExpressed(allele1, allele2);
+
+                    childPhenotypeDistribution.merge(
+                            allele1,
+                            genotypeProbability * expressionProbability[0],
+                            Double::sum
+                    );
+                    childPhenotypeDistribution.merge(
+                            allele2,
+                            genotypeProbability * expressionProbability[1],
+                            Double::sum
+                    );
+                }
             }
-            predictedDistributions.put(category, distribution);
+
+            predictedDistributions.put(category, childPhenotypeDistribution);
         }
 
         return predictedDistributions;
+    }
+
+    private Map<Grade, Double> inheritedAlleleDistribution(Sheep parent, Category category) {
+        Map<Grade, Double> result = new EnumMap<>(Grade.class);
+
+        Map<Grade, Double> hiddenDistribution =
+                parent.getDistribution(category, DistributionType.INFERRED);
+
+        // 50% chance to pass the visible allele
+        result.merge(parent.getPhenotype(category), 0.5, Double::sum);
+
+        // 50% chance to pass the hidden allele, distributed by the inferred hidden distribution
+        for (Map.Entry<Grade, Double> entry : hiddenDistribution.entrySet()) {
+            result.merge(entry.getKey(), 0.5 * entry.getValue(), Double::sum);
+        }
+
+        return result;
     }
 
     // check the hidden distributions of a sheep and if an allele is certain, set the hidden allele to it

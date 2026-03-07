@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class InferenceMathTest {
     @Test
-    public void testProductOfExpertsCertainE() {
+    public void testProductOfExpertsCertain() {
         // Arrange
         Map<Grade, Double> existingDistribution = new EnumMap<>(Map.of(
                 Grade.S, 0.0,
@@ -123,8 +123,24 @@ public class InferenceMathTest {
         double[] probFromParents = InferenceMath.probabilityAlleleFromParents(hiddenPair, phenotypeParent1, phenotypeParent2, childPhenotype);
 
         // Assert
-        assertEquals(1.0 / 3.0, probFromParents[0], 1e-9, "Probability phenotype comes from parent 1 should be " + 1.0 / 3.0);
-        assertEquals(2.0 / 3.0, probFromParents[1],  1e-9, "Probability phenotype comes from parent 2 should be " + 2.0 / 3.0);
+        assertEquals(5.0 / 13.0, probFromParents[0], 1e-9, "Probability phenotype comes from parent 1");
+        assertEquals(8.0 / 13.0, probFromParents[1],  1e-9, "Probability phenotype comes from parent 2");
+    }
+
+    @Test
+    public void testProbabilityAlleleFromParentsTwoMiddleRanked() {
+        // Arrange
+        Grade phenotypeParent1 = Grade.B;
+        Grade phenotypeParent2 = Grade.B;
+        GradePair hiddenPair = new GradePair(Grade.D, Grade.A);
+        Grade childPhenotype = Grade.B;
+
+        // Act
+        double[] probFromParents = InferenceMath.probabilityAlleleFromParents(hiddenPair, phenotypeParent1, phenotypeParent2, childPhenotype);
+
+        // Assert
+        assertEquals(0.4, probFromParents[0], 1e-9, "Probability phenotype comes from parent 1");
+        assertEquals(0.6, probFromParents[1],  1e-9, "Probability phenotype comes from parent 2");
     }
 
     @Test

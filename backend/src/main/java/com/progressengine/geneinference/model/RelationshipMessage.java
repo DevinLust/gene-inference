@@ -56,7 +56,7 @@ public class RelationshipMessage extends Message {
 
         // need to incorporate child messages into the joint before marginalization
         for (int i = 1; i < messages.size(); i++) {
-            incorporateChildMessage(jointDistributions, messages.get(i), relationship.getParent1(), relationship.getParent2());
+            incorporateChildMessage(jointDistributions, messages.get(i));
         }
 
         Map<Category, Map<Grade, Double>> result = new EnumMap<>(Category.class);
@@ -66,28 +66,36 @@ public class RelationshipMessage extends Message {
         return result;
     }
 
-    protected void incorporateChildMessage(Map<Category, Map<GradePair, Double>> jointDistributions, Message message, Sheep parent1, Sheep parent2) {
+    protected void incorporateChildMessage(Map<Category, Map<GradePair, Double>> jointDistributions, Message message) {
         Sheep child = (Sheep) message.getSource().getValue();
         Map<Category, PhenotypeAtBirth> phenotypesAtBirth = child.getBirthRecord().getPhenotypesAtBirthOrganized();
+
         for (Category category : Category.values()) {
             Map<GradePair, Double> jointDistribution = jointDistributions.get(category);
-
             Map<Grade, Double> childDistribution = message.getDistribution().get(category);
 
             Grade childPhenotype = phenotypesAtBirth.get(category).child();
             Grade phenotype1 = phenotypesAtBirth.get(category).parent1();
             Grade phenotype2 = phenotypesAtBirth.get(category).parent2();
 
-            // each hidden pair is scaled by how likely the phenotype is to come from one and how
-            // likely the other contributed the hidden allele
             for (Map.Entry<GradePair, Double> entry : jointDistribution.entrySet()) {
                 GradePair pair = entry.getKey();
-                Double jointProb = entry.getValue();
-                double[] probFromParents = InferenceMath.probabilityAlleleFromParents(pair, phenotype1, phenotype2, childPhenotype);
-                // probability phenotype came from a parent multiplied the probability the child can have each of the other alleles from the other parent
-                double scalingFactor = probFromParents[0] * (childDistribution.get(phenotype2) + childDistribution.get(pair.getSecond())) +
-                        probFromParents[1] * (childDistribution.get(phenotype1) + childDistribution.get(pair.getFirst()));
-                entry.setValue(scalingFactor * jointProb);
+                double jointProb = entry.getValue();
+
+                double[] probFromParents = InferenceMath.probabilityAlleleFromParents(
+                        pair,
+                        phenotype1,
+                        phenotype2,
+                        childPhenotype
+                );
+
+                double scalingFactor =
+                        probFromParents[0] * (childDistribution.getOrDefault(phenotype2, 0.0)
+                                + childDistribution.getOrDefault(pair.getSecond(), 0.0))
+                                + probFromParents[1] * (childDistribution.getOrDefault(phenotype1, 0.0)
+                                + childDistribution.getOrDefault(pair.getFirst(), 0.0));
+
+                entry.setValue(jointProb * scalingFactor);
             }
 
             InferenceMath.normalizeScores(jointDistribution);

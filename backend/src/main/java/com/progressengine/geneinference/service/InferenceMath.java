@@ -1,5 +1,6 @@
 package com.progressengine.geneinference.service;
 
+import com.progressengine.geneinference.model.GradeExpressionRules;
 import com.progressengine.geneinference.model.GradePair;
 import com.progressengine.geneinference.model.enums.Grade;
 
@@ -18,6 +19,7 @@ public final class InferenceMath {
         }
     }
 
+
     // combine existing distribution with new distribution
     public static <T> void productOfExperts(Map<T, Double> existingDistribution, Map<T, Double> newDistribution) {
         for (Map.Entry<T, Double> entry : existingDistribution.entrySet()) {
@@ -30,40 +32,48 @@ public final class InferenceMath {
         validateDistribution(existingDistribution);
     }
 
+
     // Returns the probability the given allele came from each parent given the assumed hidden alleles
-    public static double[] probabilityAlleleFromParents(GradePair hiddenAlleles, Grade phenotype1, Grade phenotype2, Grade allele) {
+    public static double[] probabilityAlleleFromParents(
+            GradePair hiddenAlleles,
+            Grade phenotype1,
+            Grade phenotype2,
+            Grade observedPhenotype
+    ) {
         double[] probabilities = new double[2];
 
-        double totalProbabilityOfAllele = 0.0;
-        double probabilityOfAlleleGivenParent1 = 0.0;
-        if (phenotype1.equals(allele)) {
-            probabilityOfAlleleGivenParent1 += 0.5;
-            totalProbabilityOfAllele += 0.25;
-        }
-        if (hiddenAlleles.getFirst().equals(allele)) {
-            probabilityOfAlleleGivenParent1 += 0.5;
-            totalProbabilityOfAllele += 0.25;
-        }
+        Grade hidden1 = hiddenAlleles.getFirst();
+        Grade hidden2 = hiddenAlleles.getSecond();
 
-        double probabilityOfAlleleGivenParent2 = 0.0;
-        if (phenotype2.equals(allele)) {
-            probabilityOfAlleleGivenParent2 += 0.5;
-            totalProbabilityOfAllele += 0.25;
-        }
-        if (hiddenAlleles.getSecond().equals(allele)) {
-            probabilityOfAlleleGivenParent2 += 0.5;
-            totalProbabilityOfAllele += 0.25;
-        }
+        Grade[] parent1Alleles = {phenotype1, hidden1};
+        Grade[] parent2Alleles = {phenotype2, hidden2};
 
-        if (totalProbabilityOfAllele == 0) {
+        for (Grade allele1 : parent1Alleles) {
+            for (Grade allele2 : parent2Alleles) {
+                double inheritanceProb = 0.25;
+                double[] expressionProbabilities = GradeExpressionRules.probabilityExpressed(allele1, allele2);
+
+                if (allele1 == observedPhenotype) {
+                    double expressedFromParent1 = inheritanceProb * expressionProbabilities[0];
+                    probabilities[0] += expressedFromParent1;
+                }
+
+                if (allele2 == observedPhenotype) {
+                    double expressedFromParent2 = inheritanceProb * expressionProbabilities[1];
+                    probabilities[1] += expressedFromParent2;
+                }
+            }
+        }
+        double totalProbability = probabilities[0] + probabilities[1];
+        if (totalProbability == 0.0) {
             return probabilities;
         }
 
-        // multiply each ratio by 0.5 as the probability that each parent is chosen
-        probabilities[0] = (0.5 * probabilityOfAlleleGivenParent1) /  totalProbabilityOfAllele;
-        probabilities[1] = (0.5 * probabilityOfAlleleGivenParent2) /  totalProbabilityOfAllele;
+        probabilities[0] /= totalProbability;
+        probabilities[1] /= totalProbability;
         return probabilities;
     }
+
 
     public static Map<GradePair, Double> multinomialJointScores(Grade phenotype1, Grade phenotype2, Map<Grade, Integer> phenotypeFrequency) {
         Map<GradePair, Double> multinomialDistribution = new HashMap<>();
@@ -79,6 +89,7 @@ public final class InferenceMath {
         return multinomialDistribution;
     }
 
+
     // normalize the given Map of scores regardless of the key type
     public static <T> void normalizeScores(Map<T, Double> scores) {
         double sum = scores.values().stream().mapToDouble(Double::doubleValue).sum();
@@ -90,11 +101,13 @@ public final class InferenceMath {
         }
     }
 
+
     public static void fillMissingValuesWithZero(Map<Grade, Double> scores) {
         for (Grade grade : Grade.values()) {
             scores.putIfAbsent(grade, 0.0);
         }
     }
+
 
     // Returns a relative multinomial score based on the given hidden alleles, phenotypes, and phenotype frequency seen in the relationship
     private static double multinomialScore(GradePair hiddenPair, Grade phenotype1, Grade phenotype2, Map<Grade, Integer> phenotypeFrequency) {
@@ -119,6 +132,7 @@ public final class InferenceMath {
 
         return score;
     }
+
 
     public static <T> double entropy(Map<T, Double> distribution) {
         double entropy = 0.0;

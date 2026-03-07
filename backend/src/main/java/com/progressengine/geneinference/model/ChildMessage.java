@@ -50,11 +50,11 @@ public class ChildMessage extends RelationshipMessage {
 
         // incorporate the sibling messages into the joint distribution
         for (Message siblingMessage : messages.subList(2, messages.size())) {
-            incorporateChildMessage(jointDistributions, siblingMessage, relationship.getParent1(), relationship.getParent2());
+            incorporateChildMessage(jointDistributions, siblingMessage);
         }
 
         // add the conditional distributions of seeing the child phenotype
-        return accumulateConditionals(jointDistributions, relationship, child);
+        return accumulateConditionals(jointDistributions, child);
     }
 
     private void incorporateParents(Map<Category, Map<GradePair, Double>> jointDistributions, Message parent1Message, Message parent2Message) {
@@ -73,7 +73,7 @@ public class ChildMessage extends RelationshipMessage {
 
     // TODO - nearly identical algorithm in EnsembleInference
     // Iterates through possible hidden pairs and weighting and accumulating their distributions
-    private Map<Category, Map<Grade, Double>> accumulateConditionals(Map<Category, Map<GradePair, Double>> jointDistributions, Relationship relationship, Sheep child) {
+    private Map<Category, Map<Grade, Double>> accumulateConditionals(Map<Category, Map<GradePair, Double>> jointDistributions, Sheep child) {
         Map<Category, Map<Grade, Double>> result = new EnumMap<>(Category.class);
         Map<Category, PhenotypeAtBirth> phenotypesAtBirth = child.getBirthRecord().getPhenotypesAtBirthOrganized();
 
@@ -105,6 +105,7 @@ public class ChildMessage extends RelationshipMessage {
         for (Grade grade : Grade.values()) {
             result.put(grade, 0.0);
         }
+        // prob child's phen came from other parent * chance this parent's allele was picked
         result.merge(phenotype1, probFromParents[1] * 0.5, Double::sum);
         result.merge(pair.getFirst(), probFromParents[1] * 0.5, Double::sum);
         result.merge(phenotype2, probFromParents[0] * 0.5, Double::sum);
