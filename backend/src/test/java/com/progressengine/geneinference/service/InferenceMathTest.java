@@ -162,4 +162,25 @@ public class InferenceMathTest {
         ProbabilityAssertions.assertValidDistribution(distribution);
         assertEquals(distribution.get(Grade.C), 10 * distribution.get(Grade.S), "Probability of Grade C should be 10x higher than Grade S");
     }
+
+    @Test
+    public void testMultinomialScoresGradeDistribution() {
+        // Arrange
+        Map<Grade, Integer> phenotypeFrequencies = new EnumMap<>(Map.of(
+                Grade.S, 4,
+                Grade.B, 4,
+                Grade.C, 2,
+                Grade.E, 1
+                ));
+        Grade parent1Phenotype = Grade.S;
+        Grade parent2Phenotype = Grade.C;
+
+        // Act
+        Map<GradePair, Double> jointDist = InferenceMath.multinomialJointScores(parent1Phenotype, parent2Phenotype, phenotypeFrequencies);
+
+        // Assert
+        ProbabilityAssertions.assertValidDistribution(jointDist);
+        assertEquals(0.5803566632647579, jointDist.get(new GradePair(Grade.B, Grade.E)), 1e-6);
+        assertEquals(0.4196433367352421, jointDist.get(new GradePair(Grade.E, Grade.B)), 1e-6);
+    }
 }

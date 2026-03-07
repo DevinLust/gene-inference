@@ -120,6 +120,7 @@ public abstract class BaseInferenceEngine implements InferenceEngine {
         return conditionalDistributions;
     }
 
+    @Deprecated
     // Returns a relative multinomial score based on the given hidden alleles, phenotypes, and phenotype frequency seen in the relationship
     protected double multinomialScore(GradePair hiddenPair, Grade phenotype1, Grade phenotype2, Map<Grade, Integer> phenotypeFrequency) {
         double score = 1000000.0; // A multiplicative constant to help keep scores from getting too small quickly

@@ -110,22 +110,26 @@ public final class InferenceMath {
 
 
     // Returns a relative multinomial score based on the given hidden alleles, phenotypes, and phenotype frequency seen in the relationship
-    private static double multinomialScore(GradePair hiddenPair, Grade phenotype1, Grade phenotype2, Map<Grade, Integer> phenotypeFrequency) {
-        double score = 1000000.0; // A multiplicative constant to help keep scores from getting too small quickly
+    private static double multinomialScore(
+            GradePair hiddenPair,
+            Grade phenotype1,
+            Grade phenotype2,
+            Map<Grade, Integer> phenotypeFrequency
+    ) {
+        double score = 1_000_000.0;
 
-        // each occurrence of a grade adds 1/4 to the probability of that grade
-        Map<Grade, Double> probabilityToDraw = new EnumMap<>(Grade.class);
-        probabilityToDraw.merge(phenotype1, 0.25, Double::sum);
-        probabilityToDraw.merge(phenotype2, 0.25, Double::sum);
-        probabilityToDraw.merge(hiddenPair.getFirst(), 0.25, Double::sum);
-        probabilityToDraw.merge(hiddenPair.getSecond(), 0.25, Double::sum);
+        Map<Grade, Double> phenotypeProbabilities =
+                childPhenotypeDistribution(hiddenPair, phenotype1, phenotype2);
 
         for (Grade grade : Grade.values()) {
-            Double probability = probabilityToDraw.getOrDefault(grade, 0.0);
-            Integer frequency = phenotypeFrequency.getOrDefault(grade, 0);
+            double probability = phenotypeProbabilities.getOrDefault(grade, 0.0);
+            int frequency = phenotypeFrequency.getOrDefault(grade, 0);
+
             if (probability == 0.0 && frequency > 0) {
-                score = 0.0;
-            } else if (frequency > 0) {
+                return 0.0;
+            }
+
+            if (frequency > 0) {
                 score *= Math.exp(frequency * Math.log(probability));
             }
         }
@@ -144,5 +148,39 @@ public final class InferenceMath {
         }
 
         return entropy;
+    }
+
+    private static Map<Grade, Double> childPhenotypeDistribution(
+            GradePair hiddenPair,
+            Grade phenotype1,
+            Grade phenotype2
+    ) {
+        Map<Grade, Double> distribution = new EnumMap<>(Grade.class);
+
+        Grade[] parent1Alleles = {phenotype1, hiddenPair.getFirst()};
+        Grade[] parent2Alleles = {phenotype2, hiddenPair.getSecond()};
+
+        for (Grade allele1 : parent1Alleles) {
+            for (Grade allele2 : parent2Alleles) {
+                double inheritanceProb = 0.25;
+                double[] expressionProbabilities = GradeExpressionRules.probabilityExpressed(allele1, allele2);
+
+                distribution.merge(
+                        allele1,
+                        inheritanceProb * expressionProbabilities[0],
+                        Double::sum
+                );
+
+                if (allele2 != allele1) {
+                    distribution.merge(
+                            allele2,
+                            inheritanceProb * expressionProbabilities[1],
+                            Double::sum
+                    );
+                }
+            }
+        }
+
+        return distribution;
     }
 }
