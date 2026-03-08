@@ -53,5 +53,11 @@ public abstract class Message {
         this.distribution =  distribution;
     }
 
+    public void setDistributionForCategory(Category category, Map<Grade, Double> distribution) {
+        this.distribution.put(category, distribution);
+    }
+
     abstract Map<Category, Map<Grade, Double>> computeMessage(List<Message> operands);
+
+    abstract Map<Grade, Double> computeMessageForCategory(Category category, List<Message> operands);
 }

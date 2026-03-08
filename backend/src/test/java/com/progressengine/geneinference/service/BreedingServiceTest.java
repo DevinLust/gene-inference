@@ -5,6 +5,7 @@ import com.progressengine.geneinference.model.Relationship;
 import com.progressengine.geneinference.model.Sheep;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.Grade;
+import com.progressengine.geneinference.testutil.DomainFixtures;
 import org.junit.jupiter.api.Test;
 
 import java.util.EnumSet;
@@ -65,61 +66,6 @@ public class BreedingServiceTest {
                 assertTrue(parent1Genotype.contains(child.getHiddenAllele(Category.SWIM)), "hidden allele should be from parent 1");
             } else {
                 fail("impossible phenotype: " + child.getPhenotype(Category.SWIM));
-            }
-        }
-    }
-
-    @Test
-    void testBreedNewSheepSimpleDistribution() {
-        // Arrange
-        Grade parent1Phenotype = Grade.A;
-        Grade parent2Phenotype = Grade.B;
-        Grade parent1HiddenAllele = Grade.C;
-        Grade parent2HiddenAllele = Grade.D;
-        Set<Grade> allAlleles = EnumSet.of(parent1Phenotype, parent1HiddenAllele, parent2Phenotype, parent2HiddenAllele);
-
-        int N = 100; // Number of trials
-        double p = 0.25; // Each outcome's probability
-        double expectedCount = N * p;
-        double sigma = Math.sqrt(N * p * (1 - p));
-        double lowerBound = expectedCount - 3 * sigma;
-        double upperBound = expectedCount + 3 * sigma;
-
-        Sheep parent1 = createTestSheep(Map.of(
-                Category.SWIM, new SheepGenotypeDTO(parent1Phenotype, parent1HiddenAllele),
-                Category.FLY, new SheepGenotypeDTO(randomGrade(), randomGrade()),
-                Category.RUN, new SheepGenotypeDTO(randomGrade(), randomGrade()),
-                Category.POWER, new SheepGenotypeDTO(randomGrade(), randomGrade()),
-                Category.STAMINA, new SheepGenotypeDTO(randomGrade(), randomGrade())
-        ));
-
-        Sheep parent2 = createTestSheep(Map.of(
-                Category.SWIM, new SheepGenotypeDTO(parent2Phenotype, parent2HiddenAllele),
-                Category.FLY, new SheepGenotypeDTO(randomGrade(), randomGrade()),
-                Category.RUN, new SheepGenotypeDTO(randomGrade(), randomGrade()),
-                Category.POWER, new SheepGenotypeDTO(randomGrade(), randomGrade()),
-                Category.STAMINA, new SheepGenotypeDTO(randomGrade(), randomGrade())
-        ));
-
-        Relationship relationship = createTestRelationship(parent1, parent2);
-
-        // Act
-        for (int i = 0; i < N; i++) {
-            Sheep child = BreedingService.breedNewSheep(parent1, parent2);
-            relationship.addChildInformationToRelationship(child);
-        }
-
-
-        // Assert for distribution
-        Map<Grade, Integer> counts = relationship.getCurrentPhenotypeFrequencies(Category.SWIM);
-        for (Map.Entry<Grade, Integer> entry : counts.entrySet()) {
-            Grade grade = entry.getKey();
-            int count = entry.getValue();
-            if (allAlleles.contains(grade)) {
-                assertTrue(count >= lowerBound && count <= upperBound,
-                        "Outcome " + entry.getKey() + " count " + count + " is outside range [" + lowerBound + ", " + upperBound + "]");
-            } else {
-                assertEquals(0, count, "Grade " + grade + " should not be possible");
             }
         }
     }

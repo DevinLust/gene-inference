@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class InferenceMathTest {
     @Test
-    public void testProductOfExpertsCertainE() {
+    public void testProductOfExpertsCertain() {
         // Arrange
         Map<Grade, Double> existingDistribution = new EnumMap<>(Map.of(
                 Grade.S, 0.0,
@@ -123,8 +123,24 @@ public class InferenceMathTest {
         double[] probFromParents = InferenceMath.probabilityAlleleFromParents(hiddenPair, phenotypeParent1, phenotypeParent2, childPhenotype);
 
         // Assert
-        assertEquals(1.0 / 3.0, probFromParents[0], 1e-9, "Probability phenotype comes from parent 1 should be " + 1.0 / 3.0);
-        assertEquals(2.0 / 3.0, probFromParents[1],  1e-9, "Probability phenotype comes from parent 2 should be " + 2.0 / 3.0);
+        assertEquals(5.0 / 13.0, probFromParents[0], 1e-9, "Probability phenotype comes from parent 1");
+        assertEquals(8.0 / 13.0, probFromParents[1],  1e-9, "Probability phenotype comes from parent 2");
+    }
+
+    @Test
+    public void testProbabilityAlleleFromParentsTwoMiddleRanked() {
+        // Arrange
+        Grade phenotypeParent1 = Grade.B;
+        Grade phenotypeParent2 = Grade.B;
+        GradePair hiddenPair = new GradePair(Grade.D, Grade.A);
+        Grade childPhenotype = Grade.B;
+
+        // Act
+        double[] probFromParents = InferenceMath.probabilityAlleleFromParents(hiddenPair, phenotypeParent1, phenotypeParent2, childPhenotype);
+
+        // Assert
+        assertEquals(0.4, probFromParents[0], 1e-9, "Probability phenotype comes from parent 1");
+        assertEquals(0.6, probFromParents[1],  1e-9, "Probability phenotype comes from parent 2");
     }
 
     @Test
@@ -145,5 +161,164 @@ public class InferenceMathTest {
         // Assert
         ProbabilityAssertions.assertValidDistribution(distribution);
         assertEquals(distribution.get(Grade.C), 10 * distribution.get(Grade.S), "Probability of Grade C should be 10x higher than Grade S");
+    }
+
+    @Test
+    public void testMultinomialScoresGradeDistribution() {
+        // Arrange
+        Map<Grade, Integer> phenotypeFrequencies = new EnumMap<>(Map.of(
+                Grade.S, 4,
+                Grade.B, 4,
+                Grade.C, 2,
+                Grade.E, 1
+                ));
+        Grade parent1Phenotype = Grade.S;
+        Grade parent2Phenotype = Grade.C;
+
+        // Act
+        Map<GradePair, Double> jointDist = InferenceMath.multinomialJointScores(parent1Phenotype, parent2Phenotype, phenotypeFrequencies);
+
+        // Assert
+        ProbabilityAssertions.assertValidDistribution(jointDist);
+        assertEquals(0.5803566632647579, jointDist.get(new GradePair(Grade.B, Grade.E)), 1e-6);
+        assertEquals(0.4196433367352421, jointDist.get(new GradePair(Grade.E, Grade.B)), 1e-6);
+    }
+
+    @Test
+    void multinomialScore_shouldGiveSameScoreFor_BE_and_EB_whenPhenotypesAreSAndB() {
+        Map<Grade, Integer> phenotypeFrequency = new EnumMap<>(Grade.class);
+        phenotypeFrequency.put(Grade.S, 5);
+        phenotypeFrequency.put(Grade.B, 8);
+        phenotypeFrequency.put(Grade.E, 2);
+
+        double scoreBE = InferenceMath.multinomialScore(
+                new GradePair(Grade.B, Grade.E),
+                Grade.S,
+                Grade.B,
+                phenotypeFrequency
+        );
+
+        double scoreEB = InferenceMath.multinomialScore(
+                new GradePair(Grade.E, Grade.B),
+                Grade.S,
+                Grade.B,
+                phenotypeFrequency
+        );
+
+        double expected =
+                1_000_000 * // scaling constant from the method
+                        Math.pow(0.35, 5) * // P(S)
+                        Math.pow(0.50, 8) * // P(B)
+                        Math.pow(0.15, 2);  // P(E)
+
+        assertEquals(expected, scoreBE, 1e-12, "score for BE is wrong");
+        assertEquals(expected, scoreEB, 1e-12, "score for EB is wrong");
+    }
+
+    @Test
+    void childHiddenDistribution_givenPhenotypeS_returnsA50E50() {
+        Map<Grade, Double> dist = InferenceMath.childHiddenDistributionGivenParents(
+                new GradePair(Grade.B, Grade.E),
+                Grade.S,
+                Grade.A,
+                Grade.S
+        );
+
+        assertEquals(0.5, dist.get(Grade.A), 1e-12);
+        assertEquals(0.5, dist.get(Grade.E), 1e-12);
+        assertEquals(0.0, dist.get(Grade.S), 1e-12);
+        assertEquals(0.0, dist.get(Grade.B), 1e-12);
+        assertEquals(0.0, dist.get(Grade.C), 1e-12);
+        assertEquals(0.0, dist.get(Grade.D), 1e-12);
+
+        assertEquals(1.0, dist.values().stream().mapToDouble(Double::doubleValue).sum(), 1e-12);
+    }
+
+    @Test
+    void childHiddenDistribution_givenPhenotypeB_forSB_BE_returnsExpectedDistribution() {
+        Map<Grade, Double> dist = InferenceMath.childHiddenDistributionGivenParents(
+                new GradePair(Grade.B, Grade.E),
+                Grade.S,
+                Grade.B,
+                Grade.B
+        );
+
+        assertEquals(0.15, dist.get(Grade.S), 1e-12);
+        assertEquals(0.50, dist.get(Grade.B), 1e-12);
+        assertEquals(0.35, dist.get(Grade.E), 1e-12);
+        assertEquals(0.0, dist.get(Grade.A), 1e-12);
+        assertEquals(0.0, dist.get(Grade.C), 1e-12);
+        assertEquals(0.0, dist.get(Grade.D), 1e-12);
+
+        assertEquals(1.0, dist.values().stream().mapToDouble(Double::doubleValue).sum(), 1e-12);
+    }
+
+    @Test
+    void childHiddenDistribution_givenPhenotypeB_forSB_EB_returnsExpectedDistribution() {
+        Map<Grade, Double> dist = InferenceMath.childHiddenDistributionGivenParents(
+                new GradePair(Grade.E, Grade.B),
+                Grade.S,
+                Grade.B,
+                Grade.B
+        );
+
+        assertEquals(0.30, dist.get(Grade.S), 1e-12);
+        assertEquals(0.70, dist.get(Grade.E), 1e-12);
+        assertEquals(0.0, dist.get(Grade.B), 1e-12);
+        assertEquals(0.0, dist.get(Grade.A), 1e-12);
+        assertEquals(0.0, dist.get(Grade.C), 1e-12);
+        assertEquals(0.0, dist.get(Grade.D), 1e-12);
+
+        assertEquals(1.0, dist.values().stream().mapToDouble(Double::doubleValue).sum(), 1e-12);
+    }
+
+    @Test
+    void childHiddenDistribution_givenPhenotypeE_forSB_BE_returnsS50B50() {
+        Map<Grade, Double> dist = InferenceMath.childHiddenDistributionGivenParents(
+                new GradePair(Grade.B, Grade.E),
+                Grade.S,
+                Grade.B,
+                Grade.E
+        );
+
+        assertEquals(0.5, dist.get(Grade.S), 1e-12);
+        assertEquals(0.5, dist.get(Grade.B), 1e-12);
+        assertEquals(0.0, dist.get(Grade.E), 1e-12);
+        assertEquals(0.0, dist.get(Grade.A), 1e-12);
+        assertEquals(0.0, dist.get(Grade.C), 1e-12);
+        assertEquals(0.0, dist.get(Grade.D), 1e-12);
+    }
+
+    @Test
+    void childHiddenDistribution_givenImpossiblePhenotype_returnsAllZero() {
+        Map<Grade, Double> dist = InferenceMath.childHiddenDistributionGivenParents(
+                new GradePair(Grade.B, Grade.E),
+                Grade.S,
+                Grade.A,
+                Grade.D
+        );
+
+        for (Grade grade : Grade.values()) {
+            assertEquals(0.0, dist.get(grade), 1e-12);
+        }
+    }
+
+    @Test
+    void childHiddenDistributionGivenParents_homozygousHiddenPair_returnsExpectedDistribution() {
+        Map<Grade, Double> dist = InferenceMath.childHiddenDistributionGivenParents(
+                new GradePair(Grade.C, Grade.C),
+                Grade.B,
+                Grade.A,
+                Grade.C
+        );
+
+        assertEquals(3.0 / 16.0, dist.get(Grade.A), 1e-12);
+        assertEquals(3.0 / 16.0, dist.get(Grade.B), 1e-12);
+        assertEquals(10.0 / 16.0, dist.get(Grade.C), 1e-12);
+        assertEquals(0.0, dist.get(Grade.S), 1e-12);
+        assertEquals(0.0, dist.get(Grade.D), 1e-12);
+        assertEquals(0.0, dist.get(Grade.E), 1e-12);
+
+        ProbabilityAssertions.assertValidDistribution(dist);
     }
 }

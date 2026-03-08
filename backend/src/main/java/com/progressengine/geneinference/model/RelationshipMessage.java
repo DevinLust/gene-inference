@@ -48,15 +48,11 @@ public class RelationshipMessage extends Message {
 
         boolean firstParentAsWeight = relationship.getParent2().equals(targetSheep);
         Map<Category, Map<Grade, Double>> weightDistribution = messages.getFirst().getDistribution();
-        // TODO - experimental cached values
         Map<Category, Map<GradePair, Double>> jointDistributions = relationship.getJointDistributions();
-//        for (Category category : Category.values()) {
-//            jointDistributions.put(category, relationship.getJointDistribution(category));
-//        }
 
         // need to incorporate child messages into the joint before marginalization
         for (int i = 1; i < messages.size(); i++) {
-            incorporateChildMessage(jointDistributions, messages.get(i), relationship.getParent1(), relationship.getParent2());
+            incorporateChildMessage(jointDistributions, messages.get(i));
         }
 
         Map<Category, Map<Grade, Double>> result = new EnumMap<>(Category.class);
@@ -66,35 +62,66 @@ public class RelationshipMessage extends Message {
         return result;
     }
 
-    protected void incorporateChildMessage(Map<Category, Map<GradePair, Double>> jointDistributions, Message message, Sheep parent1, Sheep parent2) {
-        Sheep child = (Sheep) message.getSource().getValue();
-        Map<Category, PhenotypeAtBirth> phenotypesAtBirth = child.getBirthRecord().getPhenotypesAtBirthOrganized();
+    @Override
+    public Map<Grade, Double> computeMessageForCategory(Category category, List<Message> messages) {
+        Relationship relationship = source.getValue();
+        Sheep targetSheep = target.getValue();
+
+        boolean firstParentAsWeight = relationship.getParent2().equals(targetSheep);
+        Map<Grade, Double> weightDistribution = messages.get(0).getDistribution().get(category);
+        Map<GradePair, Double> jointDistribution = relationship.getJointDistributions().get(category);
+
+        for (int i = 1; i < messages.size(); i++) {
+            incorporateChildMessageForCategory(category, jointDistribution, messages.get(i));
+        }
+
+        return halfJointMarginal(jointDistribution, weightDistribution, firstParentAsWeight);
+
+    }
+
+    protected void incorporateChildMessage(Map<Category, Map<GradePair, Double>> jointDistributions, Message message) {
         for (Category category : Category.values()) {
-            Map<GradePair, Double> jointDistribution = jointDistributions.get(category);
-
-            Map<Grade, Double> childDistribution = message.getDistribution().get(category);
-
-            Grade childPhenotype = phenotypesAtBirth.get(category).child();
-            Grade phenotype1 = phenotypesAtBirth.get(category).parent1();
-            Grade phenotype2 = phenotypesAtBirth.get(category).parent2();
-
-            // each hidden pair is scaled by how likely the phenotype is to come from one and how
-            // likely the other contributed the hidden allele
-            for (Map.Entry<GradePair, Double> entry : jointDistribution.entrySet()) {
-                GradePair pair = entry.getKey();
-                Double jointProb = entry.getValue();
-                double[] probFromParents = InferenceMath.probabilityAlleleFromParents(pair, phenotype1, phenotype2, childPhenotype);
-                // probability phenotype came from a parent multiplied the probability the child can have each of the other alleles from the other parent
-                double scalingFactor = probFromParents[0] * (childDistribution.get(phenotype2) + childDistribution.get(pair.getSecond())) +
-                        probFromParents[1] * (childDistribution.get(phenotype1) + childDistribution.get(pair.getFirst()));
-                entry.setValue(scalingFactor * jointProb);
-            }
-
-            InferenceMath.normalizeScores(jointDistribution);
+            incorporateChildMessageForCategory(category, jointDistributions.get(category), message);
         }
     }
 
-    // TODO - duplicated in LoopyInference
+    protected void incorporateChildMessageForCategory(
+            Category category,
+            Map<GradePair, Double> jointDistribution,
+            Message message
+    ) {
+        Sheep child = (Sheep) message.getSource().getValue();
+        Map<Category, PhenotypeAtBirth> phenotypesAtBirth = child.getBirthRecord().getPhenotypesAtBirthOrganized();
+        Map<Grade, Double> childDistribution = message.getDistribution().get(category);
+
+        Grade childPhenotype = phenotypesAtBirth.get(category).child();
+        Grade phenotype1 = phenotypesAtBirth.get(category).parent1();
+        Grade phenotype2 = phenotypesAtBirth.get(category).parent2();
+
+        for (Map.Entry<GradePair, Double> entry : jointDistribution.entrySet()) {
+            GradePair pair = entry.getKey();
+            double jointProb = entry.getValue();
+
+            Map<Grade, Double> expectedChildHidden =
+                    InferenceMath.childHiddenDistributionGivenParents(
+                            pair,
+                            phenotype1,
+                            phenotype2,
+                            childPhenotype
+                    );
+
+            double scalingFactor = 0.0;
+            for (Grade grade : Grade.values()) {
+                scalingFactor += expectedChildHidden.getOrDefault(grade, 0.0)
+                        * childDistribution.getOrDefault(grade, 0.0);
+            }
+
+            entry.setValue(jointProb * scalingFactor);
+        }
+
+        InferenceMath.normalizeScores(jointDistribution);
+    }
+
     private Map<Grade, Double> halfJointMarginal(Map<GradePair, Double> jointDistribution, Map<Grade, Double> weightDistribution, boolean firstParentAsWeight) {
         Map<Grade, Double> newHalfMarginal = new EnumMap<>(Grade.class);
 

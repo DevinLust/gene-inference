@@ -1,7 +1,6 @@
 package com.progressengine.geneinference.model;
 
 import com.progressengine.geneinference.model.enums.Category;
-import com.progressengine.geneinference.model.enums.DistributionType;
 import com.progressengine.geneinference.model.enums.Grade;
 import com.progressengine.geneinference.service.InferenceMath;
 import com.progressengine.geneinference.service.SheepService;
@@ -35,7 +34,6 @@ public class SheepMessage extends Message {
 
     @Override
     public Map<Category, Map<Grade, Double>> computeMessage(List<Message> messages) {
-        Sheep sheep = source.getValue();
         Map<Category, Map<Grade, Double>> distribution = new EnumMap<>(Category.class);
         for (Category category : Category.values()) {
             distribution.put(category, SheepService.createUniformDistribution());
@@ -46,6 +44,17 @@ public class SheepMessage extends Message {
             for (Category category : Category.values()) {
                 InferenceMath.productOfExperts(distribution.get(category), messageDist.get(category));
             }
+        }
+
+        return distribution;
+    }
+
+    @Override
+    public Map<Grade, Double> computeMessageForCategory(Category category, List<Message> messages) {
+        Map<Grade, Double> distribution = SheepService.createUniformDistribution();
+
+        for (Message message : messages) {
+            InferenceMath.productOfExperts(distribution, message.getDistribution().get(category));
         }
 
         return distribution;
