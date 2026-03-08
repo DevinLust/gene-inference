@@ -10,6 +10,8 @@ import java.util.*;
 
 public class FactorGraph {
 
+    private record MessageCategoryTask(Message message, Category category) {}
+
     private final Map<Node<?>, List<Node<?>>> adjacencyMatrix;
     private final Map<NodePair, Message> messageMap;
 
@@ -76,39 +78,78 @@ public class FactorGraph {
         return dependents;
     }
 
-    public Map<Category, Map<Grade, Double>> computeMessage(Message message) {
+    private List<MessageCategoryTask> dependentsOf(Message message, Category category) {
+        List<MessageCategoryTask> dependents = new ArrayList<>();
+        Node<?> target = message.getTarget();
+        Node<?> source = message.getSource();
+
+        List<Node<?>> targetNeighbors = adjacencyMatrix.get(target);
+        for (Node<?> neighbor : targetNeighbors) {
+            if (neighbor.equals(source)) continue;
+
+            NodePair nodePair = new NodePair(target, neighbor);
+            Message dependent = messageMap.get(nodePair);
+            dependents.add(new MessageCategoryTask(dependent, category));
+        }
+
+        return dependents;
+    }
+
+    public List<Message> operandsOf(Message message) {
         List<Message> operands = new ArrayList<>();
         Node<?> source = message.getSource();
         Node<?> target = message.getTarget();
 
-        List<Node<?>> sourceNeighbors = adjacencyMatrix.get(source);
-        for (Node<?> neighbor : sourceNeighbors) {
+        for (Node<?> neighbor : adjacencyMatrix.get(source)) {
             if (neighbor.equals(target)) continue;
-
-            NodePair nodePair = new NodePair(neighbor, source);
-            operands.add(messageMap.get(nodePair));
+            operands.add(messageMap.get(new NodePair(neighbor, source)));
         }
 
-        return message.computeMessage(operands);
+        return operands;
+    }
+
+    public Map<Category, Map<Grade, Double>> computeMessage(Message message) {
+        return message.computeMessage(operandsOf(message));
+    }
+
+    public Map<Grade, Double> computeMessageForCategory(Message message, Category category) {
+        return message.computeMessageForCategory(category, operandsOf(message));
     }
 
     public void recalculateAllMessages() {
-        Queue<Message> frontier = new ArrayDeque<>();
+        Queue<MessageCategoryTask> frontier = new ArrayDeque<>();
+        Set<MessageCategoryTask> queued = new HashSet<>();
+
         for (Message message : messageMap.values()) {
             if (message instanceof RelationshipMessage) {
-                frontier.add(message);
+                for (Category category : Category.values()) {
+                    MessageCategoryTask task = new MessageCategoryTask(message, category);
+                    frontier.add(task);
+                    queued.add(task);
+                }
             }
         }
 
-        int MAX_ITERATIONS = messageMap.size() * 20;
+        int maxIterations = messageMap.size() * Category.values().length * 20;
         int iterations = 0;
-        while (!frontier.isEmpty() && iterations < MAX_ITERATIONS) {
-            Message message = frontier.poll();
-            Map<Category, Map<Grade, Double>> newMessage = computeMessage(message);
 
-            if (!reachedConvergence(message, newMessage)) {
-                message.setDistribution(newMessage);
-                frontier.addAll(dependentsOf(message));
+        while (!frontier.isEmpty() && iterations < maxIterations) {
+            MessageCategoryTask task = frontier.poll();
+            queued.remove(task);
+
+            Message message = task.message();
+            Category category = task.category();
+
+            Map<Grade, Double> newDistribution = computeMessageForCategory(message, category);
+
+            if (!reachedConvergence(message, category, newDistribution)) {
+                message.setDistributionForCategory(category, newDistribution);
+
+                for (MessageCategoryTask dependent : dependentsOf(message, category)) {
+                    if (queued.add(dependent)) {
+                        frontier.add(dependent);
+                    }
+                }
                 iterations++;
             }
         }
@@ -136,7 +177,7 @@ public class FactorGraph {
     }
 
     private boolean reachedConvergence(Message message, Map<Category, Map<Grade, Double>> newMessage) {
-        double epsilon = 0.001;
+        double epsilon = 1e-3;
 
         Map<Category, Map<Grade, Double>> oldMessage = message.getDistribution();
         boolean converged = true;
@@ -153,6 +194,27 @@ public class FactorGraph {
         }
 
         return converged;
+    }
+
+    private boolean reachedConvergence(
+            Message message,
+            Category category,
+            Map<Grade, Double> newDistribution
+    ) {
+        double epsilon = 1e-3;
+        double threshold = epsilon * epsilon;
+
+        Map<Grade, Double> oldDistribution = message.getDistribution().get(category);
+
+        double distance = 0.0;
+        for (Grade grade : Grade.values()) {
+            double oldValue = oldDistribution.get(grade);
+            double newValue = newDistribution.get(grade);
+            double diff = oldValue - newValue;
+            distance += diff * diff;
+        }
+
+        return distance <= threshold * threshold;
     }
 
     private Map<Category, Map<Grade, Double>> newBelief() {

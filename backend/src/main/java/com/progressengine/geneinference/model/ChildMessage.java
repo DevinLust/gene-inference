@@ -53,64 +53,92 @@ public class ChildMessage extends RelationshipMessage {
         return accumulateConditionals(jointDistributions, child);
     }
 
+    @Override
+    public Map<Grade, Double> computeMessageForCategory(Category category, List<Message> messages) {
+        Relationship relationship = source.getValue();
+        Sheep child = target.getValue();
+
+        Message parent1Message = messages.get(0);
+        Message parent2Message = messages.get(1);
+
+        Map<GradePair, Double> jointDistribution = relationship.getJointDistributions().get(category);
+
+        incorporateParentsForCategory(category, jointDistribution, parent1Message, parent2Message);
+
+        for (Message siblingMessage : messages.subList(2, messages.size())) {
+            incorporateChildMessageForCategory(category, jointDistribution, siblingMessage);
+        }
+
+        return accumulateConditionalsForCategory(category, jointDistribution, child);
+    }
+
     private void incorporateParents(Map<Category, Map<GradePair, Double>> jointDistributions, Message parent1Message, Message parent2Message) {
         for (Category category : Category.values()) {
-            Map<GradePair, Double> jointDistribution = jointDistributions.get(category);
-            Map<Grade, Double> parent1Dist = parent1Message.getDistribution().get(category);
-            Map<Grade, Double> parent2Dist = parent2Message.getDistribution().get(category);
-            for (Map.Entry<GradePair, Double> entry : jointDistribution.entrySet()) {
-                GradePair pair = entry.getKey();
-                Double oldProb = entry.getValue();
-                entry.setValue(oldProb * parent1Dist.get(pair.getFirst()) *  parent2Dist.get(pair.getSecond()));
-            }
-            InferenceMath.normalizeScores(jointDistribution);
+            incorporateParentsForCategory(category, jointDistributions.get(category), parent1Message, parent2Message);
         }
     }
 
-    // TODO - nearly identical algorithm in EnsembleInference
+    private void incorporateParentsForCategory(Category category, Map<GradePair, Double> jointDistribution, Message parent1Message, Message parent2Message) {
+        Map<Grade, Double> parent1Dist = parent1Message.getDistribution().get(category);
+        Map<Grade, Double> parent2Dist = parent2Message.getDistribution().get(category);
+        for (Map.Entry<GradePair, Double> entry : jointDistribution.entrySet()) {
+            GradePair pair = entry.getKey();
+            Double oldProb = entry.getValue();
+            entry.setValue(oldProb * parent1Dist.get(pair.getFirst()) *  parent2Dist.get(pair.getSecond()));
+        }
+        InferenceMath.normalizeScores(jointDistribution);
+    }
+
     // Iterates through possible hidden pairs and weighting and accumulating their distributions
-    private Map<Category, Map<Grade, Double>> accumulateConditionals(Map<Category, Map<GradePair, Double>> jointDistributions, Sheep child) {
+    private Map<Category, Map<Grade, Double>> accumulateConditionals(
+            Map<Category, Map<GradePair, Double>> jointDistributions,
+            Sheep child
+    ) {
         Map<Category, Map<Grade, Double>> result = new EnumMap<>(Category.class);
-        Map<Category, PhenotypeAtBirth> phenotypesAtBirth = child.getBirthRecord().getPhenotypesAtBirthOrganized();
 
         for (Category category : Category.values()) {
-            Map<Grade, Double> catResult = new EnumMap<>(Grade.class);
-            fillMissingWithZero(catResult);
-            Map<GradePair, Double> jointDistribution = jointDistributions.get(category);
-            Grade parent1Phenotype = phenotypesAtBirth.get(category).parent1();
-            Grade parent2Phenotype = phenotypesAtBirth.get(category).parent2();
-            Grade childPhenotype = phenotypesAtBirth.get(category).child();
-
-            for (Map.Entry<GradePair, Double> entry : jointDistribution.entrySet()) {
-                GradePair pair = entry.getKey();
-                Map<Grade, Double> conditionalDist =
-                        InferenceMath.childHiddenDistributionGivenParents(
-                                pair,
-                                parent1Phenotype,
-                                parent2Phenotype,
-                                childPhenotype
-                        );
-                addDistributions(catResult, conditionalDist, jointDistribution.get(pair));
-            }
-
-            InferenceMath.normalizeScores(catResult);
-            result.put(category, catResult);
+            result.put(
+                    category,
+                    accumulateConditionalsForCategory(
+                            category,
+                            jointDistributions.get(category),
+                            child
+                    )
+            );
         }
 
         return result;
     }
 
-    // returns the expected distribution of the hidden allele of the child assuming these alleles for the parents
-    private Map<Grade, Double> combineConditional(double[] probFromParents, GradePair pair, Grade phenotype1, Grade phenotype2) {
+    private Map<Grade, Double> accumulateConditionalsForCategory(
+            Category category,
+            Map<GradePair, Double> jointDistribution,
+            Sheep child
+    ) {
         Map<Grade, Double> result = new EnumMap<>(Grade.class);
-        for (Grade grade : Grade.values()) {
-            result.put(grade, 0.0);
+        fillMissingWithZero(result);
+
+        Map<Category, PhenotypeAtBirth> phenotypesAtBirth =
+                child.getBirthRecord().getPhenotypesAtBirthOrganized();
+
+        Grade parent1Phenotype = phenotypesAtBirth.get(category).parent1();
+        Grade parent2Phenotype = phenotypesAtBirth.get(category).parent2();
+        Grade childPhenotype = phenotypesAtBirth.get(category).child();
+
+        for (Map.Entry<GradePair, Double> entry : jointDistribution.entrySet()) {
+            GradePair pair = entry.getKey();
+            double jointWeight = entry.getValue();
+
+            Map<Grade, Double> conditionalDist =
+                    InferenceMath.childHiddenDistributionGivenParents(
+                            pair,
+                            parent1Phenotype,
+                            parent2Phenotype,
+                            childPhenotype
+                    );
+
+            addDistributions(result, conditionalDist, jointWeight);
         }
-        // prob child's phen came from other parent * chance this parent's allele was picked
-        result.merge(phenotype1, probFromParents[1] * 0.5, Double::sum);
-        result.merge(pair.getFirst(), probFromParents[1] * 0.5, Double::sum);
-        result.merge(phenotype2, probFromParents[0] * 0.5, Double::sum);
-        result.merge(pair.getSecond(), probFromParents[0] * 0.5, Double::sum);
 
         InferenceMath.normalizeScores(result);
         return result;
