@@ -136,7 +136,7 @@ public class FactorGraph {
     }
 
     private boolean reachedConvergence(Message message, Map<Category, Map<Grade, Double>> newMessage) {
-        double epsilon = 0.01;
+        double epsilon = 0.001;
 
         Map<Category, Map<Grade, Double>> oldMessage = message.getDistribution();
         boolean converged = true;

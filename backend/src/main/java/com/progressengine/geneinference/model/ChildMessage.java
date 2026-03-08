@@ -39,11 +39,7 @@ public class ChildMessage extends RelationshipMessage {
         Message parent1Message = messages.get(0);
         Message parent2Message = messages.get(1);
 
-        // TODO - experimental joint dist
         Map<Category, Map<GradePair, Double>> jointDistributions = relationship.getJointDistributions();
-//        for (Category category : Category.values()) {
-//            jointDistributions.put(category, relationship.getJointDistribution(category));
-//        }
 
         // incorporate the parent messages into the joint distribution
         incorporateParents(jointDistributions, parent1Message, parent2Message);
@@ -87,8 +83,13 @@ public class ChildMessage extends RelationshipMessage {
 
             for (Map.Entry<GradePair, Double> entry : jointDistribution.entrySet()) {
                 GradePair pair = entry.getKey();
-                double[] probFromParents = InferenceMath.probabilityAlleleFromParents(pair, parent1Phenotype, parent2Phenotype, childPhenotype);
-                Map<Grade, Double> conditionalDist = combineConditional(probFromParents, pair, parent1Phenotype, parent2Phenotype);
+                Map<Grade, Double> conditionalDist =
+                        InferenceMath.childHiddenDistributionGivenParents(
+                                pair,
+                                parent1Phenotype,
+                                parent2Phenotype,
+                                childPhenotype
+                        );
                 addDistributions(catResult, conditionalDist, jointDistribution.get(pair));
             }
 

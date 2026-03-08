@@ -48,11 +48,7 @@ public class RelationshipMessage extends Message {
 
         boolean firstParentAsWeight = relationship.getParent2().equals(targetSheep);
         Map<Category, Map<Grade, Double>> weightDistribution = messages.getFirst().getDistribution();
-        // TODO - experimental cached values
         Map<Category, Map<GradePair, Double>> jointDistributions = relationship.getJointDistributions();
-//        for (Category category : Category.values()) {
-//            jointDistributions.put(category, relationship.getJointDistribution(category));
-//        }
 
         // need to incorporate child messages into the joint before marginalization
         for (int i = 1; i < messages.size(); i++) {
@@ -82,18 +78,19 @@ public class RelationshipMessage extends Message {
                 GradePair pair = entry.getKey();
                 double jointProb = entry.getValue();
 
-                double[] probFromParents = InferenceMath.probabilityAlleleFromParents(
-                        pair,
-                        phenotype1,
-                        phenotype2,
-                        childPhenotype
-                );
+                Map<Grade, Double> expectedChildHidden =
+                        InferenceMath.childHiddenDistributionGivenParents(
+                                pair,
+                                phenotype1,
+                                phenotype2,
+                                childPhenotype
+                        );
 
-                double scalingFactor =
-                        probFromParents[0] * (childDistribution.getOrDefault(phenotype2, 0.0)
-                                + childDistribution.getOrDefault(pair.getSecond(), 0.0))
-                                + probFromParents[1] * (childDistribution.getOrDefault(phenotype1, 0.0)
-                                + childDistribution.getOrDefault(pair.getFirst(), 0.0));
+                double scalingFactor = 0.0;
+                for (Grade grade : Grade.values()) {
+                    scalingFactor += expectedChildHidden.getOrDefault(grade, 0.0)
+                            * childDistribution.getOrDefault(grade, 0.0);
+                }
 
                 entry.setValue(jointProb * scalingFactor);
             }

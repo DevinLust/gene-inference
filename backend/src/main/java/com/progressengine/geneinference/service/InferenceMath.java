@@ -74,6 +74,49 @@ public final class InferenceMath {
         return probabilities;
     }
 
+    public static Map<Grade, Double> childHiddenDistributionGivenParents(
+            GradePair hiddenPair,
+            Grade parent1Phenotype,
+            Grade parent2Phenotype,
+            Grade childPhenotype
+    ) {
+        Map<Grade, Double> result = new EnumMap<>(Grade.class);
+        fillMissingValuesWithZero(result);
+
+        Grade[] parent1Alleles = {parent1Phenotype, hiddenPair.getFirst()};
+        Grade[] parent2Alleles = {parent2Phenotype, hiddenPair.getSecond()};
+
+        for (Grade allele1 : parent1Alleles) {
+            for (Grade allele2 : parent2Alleles) {
+                double inheritanceProb = 0.25;
+                double[] expressionProbabilities = GradeExpressionRules.probabilityExpressed(allele1, allele2);
+
+                // If allele1 is expressed as the observed phenotype,
+                // then the hidden allele is allele2.
+                if (allele1 == childPhenotype) {
+                    result.merge(
+                            allele2,
+                            inheritanceProb * expressionProbabilities[0],
+                            Double::sum
+                    );
+                }
+
+                // If allele2 is expressed as the observed phenotype,
+                // then the hidden allele is allele1.
+                if (allele2 == childPhenotype) {
+                    result.merge(
+                            allele1,
+                            inheritanceProb * expressionProbabilities[1],
+                            Double::sum
+                    );
+                }
+            }
+        }
+
+        normalizeScores(result);
+        return result;
+    }
+
 
     public static Map<GradePair, Double> multinomialJointScores(Grade phenotype1, Grade phenotype2, Map<Grade, Integer> phenotypeFrequency) {
         Map<GradePair, Double> multinomialDistribution = new HashMap<>();
@@ -110,7 +153,7 @@ public final class InferenceMath {
 
 
     // Returns a relative multinomial score based on the given hidden alleles, phenotypes, and phenotype frequency seen in the relationship
-    private static double multinomialScore(
+    public static double multinomialScore(
             GradePair hiddenPair,
             Grade phenotype1,
             Grade phenotype2,
@@ -171,13 +214,11 @@ public final class InferenceMath {
                         Double::sum
                 );
 
-                if (allele2 != allele1) {
-                    distribution.merge(
-                            allele2,
-                            inheritanceProb * expressionProbabilities[1],
-                            Double::sum
-                    );
-                }
+                distribution.merge(
+                        allele2,
+                        inheritanceProb * expressionProbabilities[1],
+                        Double::sum
+                );
             }
         }
 
