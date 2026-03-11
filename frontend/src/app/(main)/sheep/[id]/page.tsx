@@ -4,6 +4,8 @@ import EditableSheepName from '@/app/ui/sheep/editable-sheep-name';
 import GenotypeTable from '@/app/ui/sheep/genotype-table';
 import DistributionTable from '@/app/ui/sheep/distribution-table';
 import SheepDeleteButton from '@/app/ui/sheep/sheep-delete-button';
+import GraphBackButton from '@/app/ui/graph-back-button';
+import { RelationshipGraphLink } from '@/app/ui/buttons';
 import Link from 'next/link';
 
 export default async function SheepDetailPage(props: { params: Promise<{ id: string }> }) {
@@ -18,10 +20,10 @@ export default async function SheepDetailPage(props: { params: Promise<{ id: str
 
     return (
         <div>
-            <Link href="/sheep" className="text-blue-400 mb-8">Back to Sheep List</Link>
+            <GraphBackButton fallbackHref={"/sheep"} />
 
             {/* Name */}
-            <div className="flex flex-wrap justify-between mt-4">
+            <div className="flex flex-wrap justify-between">
                 <EditableSheepName sheepId={sheep.id} initialName={sheep.name ?? ""} />
                 <SheepDeleteButton sheepId={sheep.id} />
             </div>
@@ -31,7 +33,14 @@ export default async function SheepDetailPage(props: { params: Promise<{ id: str
             <p className="mb-2">ID: {sheep.id}</p>
 
             {/* Parent Relationship ID */}
-            <p className="my-2">Parent Relationship ID: {sheep.parentRelationshipId ?? "no registered parents"}</p>
+            <p className="my-2">
+                Parent Relationship:
+                { sheep.parentRelationshipId ?
+                    <RelationshipGraphLink relId={sheep.parentRelationshipId} />
+                    :
+                    <span className="text-gray-400"> (no registered parents)</span>
+                }
+            </p>
 
             {/* Genotypes */}
             <GenotypeTable sheep={sheep} />

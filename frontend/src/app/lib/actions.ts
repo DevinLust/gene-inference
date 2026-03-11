@@ -317,7 +317,7 @@ export async function recalculateBeliefs() {
     }
 
     revalidatePath('/sheep');
-    redirect('/sheep');
+    //redirect('/sheep');
 }
 
 

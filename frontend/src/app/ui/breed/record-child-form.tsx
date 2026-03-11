@@ -6,6 +6,7 @@ import { SheepSummary, Category, Grade } from '@/app/lib/definitions';
 import CategoryTag from '@/app/ui/category-tag';
 import SheepComboBox from "./sheep-combo-box";
 import { useBreedSheep } from "@/app/(main)/breed/breed-sheep-provider";
+import { useSearchParams } from "next/navigation";
 
 const categories: Category[] = ["SWIM", "FLY", "RUN", "POWER", "STAMINA"];
 const grades: Grade[] = ["S", "A", "B", "C", "D", "E"];
@@ -18,8 +19,16 @@ export default function RecordChildForm() {
     const [saveChild, setSaveChild] = useState(false);
 
     // controlled selections
-    const [parent1Id, setParent1Id] = useState<number | null>(null);
-    const [parent2Id, setParent2Id] = useState<number | null>(null);
+    const searchParams = useSearchParams();
+
+    const parseId = (value: string | null): number | null => {
+        if (!value) return null;
+        const n = Number(value);
+        return Number.isFinite(n) ? n : null;
+    };
+
+    const [parent1Id, setParent1Id] = useState<number | null>(parseId(searchParams.get("parent1Id")));
+    const [parent2Id, setParent2Id] = useState<number | null>(parseId(searchParams.get("parent2Id")));
 
     // child name (optional)
     const [childName, setChildName] = useState<string>("");

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { GraphLink } from "@/app/ui/graph-link";
 import { ReactNode } from "react";
 
 export function CreateSheep() {
@@ -29,6 +30,21 @@ export function SheepDetails({ sheepId, children, className }: SheepDetailsProps
   );
 }
 
+export function SheepGraphLink({ sheepId, children, className }: SheepDetailsProps) {
+    return (
+        <GraphLink
+            destination={{
+                type: "sheep",
+                id: String(sheepId),
+                href: `/sheep/${sheepId}`,
+            }}
+            className={`rounded text-blue-400 ml-2 hover:bg-gray-600 px-2 py-1 ${className ?? ""}`}
+        >
+            {children ?? "more details"}
+        </GraphLink>
+    );
+}
+
 export function RelationshipDetails({ relId }: { relId: string | number }) {
   return (
       <Link
@@ -40,24 +56,63 @@ export function RelationshipDetails({ relId }: { relId: string | number }) {
   );
 }
 
-export function BreedSheepButton() {
+export function RelationshipGraphLink({ relId, children }: { relId: string | number, children?: ReactNode }) {
+    return (
+        <GraphLink
+            destination={{
+                type: "relationship",
+                id: String(relId),
+                href: `/relationship/${relId}`,
+            }}
+            className={`rounded text-blue-400 ml-2 hover:bg-gray-600 px-2 py-1`}
+        >
+            {children ?? relId}
+        </GraphLink>
+    );
+}
+
+type BreedSheepButtonProps = {
+    parent1Id?: string | number;
+    parent2Id?: string | number;
+    label?: string;
+};
+
+export function BreedSheepButton({ parent1Id, parent2Id, label }: BreedSheepButtonProps) {
+    const params = new URLSearchParams();
+
+    if (parent1Id) params.set("parent1Id", String(parent1Id));
+    if (parent2Id) params.set("parent2Id", String(parent2Id));
+
+    const href = params.toString()
+        ? `/breed/create?${params.toString()}`
+        : "/breed/create";
+
     return (
         <Link
-            href={"/breed/create"}
+            href={href}
             className="flex h-10 items-center rounded-lg bg-blue-600 px-4 text-sm font-medium text-white transition-colors hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
         >
-            <span className="hidden md:block">Breed Sheep +</span>
+            <span className="hidden md:block">{label ?? "Breed Sheep +"}</span>
         </Link>
     );
 }
 
-export function RecordChildButton() {
+export function RecordChildButton({ parent1Id, parent2Id, label }: BreedSheepButtonProps) {
+    const params = new URLSearchParams();
+
+    if (parent1Id) params.set("parent1Id", String(parent1Id));
+    if (parent2Id) params.set("parent2Id", String(parent2Id));
+
+    const href = params.toString()
+        ? `/breed/record?${params.toString()}`
+        : "/breed/record";
+
     return (
         <Link
-            href={"/breed/record"}
+            href={href}
             className="flex h-10 items-center rounded-lg bg-purple-600 px-4 text-sm font-medium text-white transition-colors hover:bg-purple-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
         >
-            <span className="hidden md:block">Record Child +</span>
+            <span className="hidden md:block">{label ?? "Record Child +"}</span>
         </Link>
     );
 }

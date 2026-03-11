@@ -1,6 +1,6 @@
 import { fetchBirthRecordById } from '@/app/lib/data';
 import PhenotypesAtBirthTable from '@/app/ui/relationship/phenotypes-at-birth-table';
-import { RelationshipDetails, SheepDetails } from '@/app/ui/buttons';
+import { RelationshipDetails, SheepDetails, BreedSheepButton, RecordChildButton } from '@/app/ui/buttons';
 import BirthRecordDeleteButton from '@/app/ui/relationship/birth-record-delete-button';
 import { notFound } from 'next/navigation';
 
@@ -9,6 +9,8 @@ export default async function BirthRecordPage(props: { params: Promise<{ id: str
     const id = params.id;
 
     const birthRecord = await fetchBirthRecordById(id);
+    const parent1 = birthRecord.parentRelationshipSummary.parent1;
+    const parent2 = birthRecord.parentRelationshipSummary.parent2;
 
     if (!birthRecord) {
         notFound();
@@ -21,10 +23,14 @@ export default async function BirthRecordPage(props: { params: Promise<{ id: str
             {/* Id */}
             <div className="flex flex-wrap justify-between mt-4">
                 <p>ID: {birthRecord.id}</p>
-                <BirthRecordDeleteButton brId={birthRecord.id} />
+                <div className="flex flex-wrap justify-start gap-2">
+                    <BreedSheepButton parent1Id={parent1.id} parent2Id={parent2.id} label="Breed More +"/>
+                    <RecordChildButton parent1Id={parent1.id} parent2Id={parent2.id} label="Record Another +" />
+                    <BirthRecordDeleteButton brId={birthRecord.id} />
+                </div>
             </div>
 
-            {/* Relationship Id */}
+            {/* Relationship ID */}
             <div className="mt-4">
                 <p>
                     Relationship
@@ -32,14 +38,14 @@ export default async function BirthRecordPage(props: { params: Promise<{ id: str
                 </p>
                 <p>
                     Parent 1:
-                    <SheepDetails sheepId={birthRecord.parentRelationshipSummary.parent1.id}>
-                        <span>{birthRecord.parentRelationshipSummary.parent1.name ?? "(unnamed)"}</span>
+                    <SheepDetails sheepId={parent1.id}>
+                        <span>{parent1.name ?? "(unnamed)"}</span>
                     </SheepDetails>
                 </p>
                 <p>
                     Parent 2:
-                    <SheepDetails sheepId={birthRecord.parentRelationshipSummary.parent2.id}>
-                        <span>{birthRecord.parentRelationshipSummary.parent2.name ?? "(unnamed)"}</span>
+                    <SheepDetails sheepId={parent2.id}>
+                        <span>{parent2.name ?? "(unnamed)"}</span>
                     </SheepDetails>
                 </p>
             </div>
