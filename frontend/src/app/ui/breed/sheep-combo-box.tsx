@@ -90,7 +90,7 @@ export default function SheepCombobox({
                             setOpen(true);
                         }}
                         onFocus={() => setOpen(true)}
-                        placeholder="Search by name or id…"
+                        placeholder={selected ? "Change selection…" : "Search by name or id…"}
                         className="w-full bg-gray-800 border border-gray-500 rounded p-2"
                     />
 

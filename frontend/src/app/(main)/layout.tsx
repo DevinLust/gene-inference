@@ -1,4 +1,5 @@
 import SideNav from "@/app/ui/sidenav";
+import { GraphNavProvider } from "@/app/ui/graph-nav";
 import { redirect } from "next/navigation";
 import { createClient } from "@/app/lib/supabase/server";
 
@@ -12,7 +13,9 @@ export default async function Layout({ children }: { children: React.ReactNode }
             <div className="w-full flex-none md:w-64">
                 <SideNav />
             </div>
-            <div className="flex-grow p-6 md:overflow-y-auto md:p-12">{children}</div>
+            <GraphNavProvider>
+                <div className="flex-grow p-6 md:overflow-y-auto md:p-12">{children}</div>
+            </GraphNavProvider>
         </div>
     );
 }

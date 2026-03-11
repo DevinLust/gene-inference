@@ -1,3 +1,4 @@
+import {GraphEntry} from "../ui/graph-nav";
 
 export function buildQuery(paramsObj: Record<string, unknown>) {
     const params = new URLSearchParams();
@@ -15,4 +16,26 @@ export function buildQuery(paramsObj: Record<string, unknown>) {
     }
 
     return params.toString();
+}
+
+export function detectNode(pathname: string): GraphEntry | null {
+    const parts = pathname.split("/");
+
+    if (parts[1] === "sheep" && parts[2]) {
+        return {
+            type: "sheep",
+            id: parts[2],
+            href: pathname,
+        };
+    }
+
+    if (parts[1] === "relationship" && parts[2]) {
+        return {
+            type: "relationship",
+            id: parts[2],
+            href: pathname,
+        };
+    }
+
+    return null;
 }
