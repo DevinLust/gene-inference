@@ -1,6 +1,6 @@
 import { Sheep, Category } from '@/app/lib/definitions';
 import CategoryTag from '@/app/ui/category-tag';
-import EvolveButton from '@/app/ui/sheep/evolve-button';
+import EvolveButton from "@/app/ui/sheep/evolve-button";
 
 export default function GenotypeTable({ sheep }: { sheep: Sheep }) {
     return (
@@ -28,10 +28,21 @@ export default function GenotypeTable({ sheep }: { sheep: Sheep }) {
                         <tbody>
                         {Object.entries(sheep.genotypes).map(([category, genotype]) => (
                             <tr key={category} className="border-t border-white/10 odd:bg-white/5 hover:bg-white/20 transition-colors">
-                                <td className="p-2"><CategoryTag category={category as Category} /></td>
-                                <td className="text-center p-2">{genotype.phenotype}</td>
-                                <td className="text-center p-2">{genotype.hiddenAllele ?? "unknown"}</td>
-                                <td className="text-center p-2"><EvolveButton sheepId={sheep.id} category={category as Category} /></td>
+                                <td className="p-2">
+                                    <CategoryTag category={category as Category} />
+                                </td>
+
+                                <td className="text-center p-2">
+                                    {genotype.phenotype}
+                                </td>
+
+                                <td className="text-center p-2">
+                                    {genotype.hiddenAllele ?? "unknown"}
+                                </td>
+
+                                <td className="text-center p-2">
+                                    <EvolveButton sheepId={sheep.id} category={category as Category} />
+                                </td>
                             </tr>
                         ))}
                         </tbody>
