@@ -18,9 +18,11 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/actuator/health",
-                                "/actuator/health/**"
+                                "/actuator/health/**",
+                                "/ws/**",
+                                "/ws"
                         ).permitAll()
-                        .requestMatchers("/docs/**").permitAll()
+                        .requestMatchers("/docs/**", "/docs").permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(oauth -> oauth.jwt(Customizer.withDefaults()))
