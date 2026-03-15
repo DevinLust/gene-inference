@@ -1,26 +1,43 @@
 package com.progressengine.geneinference.dto;
 
-import java.util.Map;
+import com.progressengine.geneinference.model.enums.RunEventType;
 
 public class RunEvent {
-    private String type;          // stage_changed, propagation_batch, belief_updated, completed
+
+    private RunEventType type;
     private String runId;
     private Object payload;
 
-    public RunEvent() {}
+    public RunEvent() {
+    }
 
-    public RunEvent(String type, String runId, Object payload) {
+    public RunEvent(RunEventType type, String runId, Object payload) {
         this.type = type;
         this.runId = runId;
         this.payload = payload;
     }
 
-    public String getType() { return type; }
-    public void setType(String type) { this.type = type; }
+    public RunEventType getType() {
+        return type;
+    }
 
-    public String getRunId() { return runId; }
-    public void setRunId(String runId) { this.runId = runId; }
+    public void setType(RunEventType type) {
+        this.type = type;
+    }
 
-    public Object getPayload() { return payload; }
-    public void setPayload(Object payload) { this.payload = payload; }
+    public String getRunId() {
+        return runId;
+    }
+
+    public void setRunId(String runId) {
+        this.runId = runId;
+    }
+
+    public Object getPayload() {
+        return payload;
+    }
+
+    public void setPayload(Object payload) {
+        this.payload = payload;
+    }
 }

@@ -4,29 +4,59 @@ import { useEffect, useRef, useState } from "react";
 import { Client, IMessage } from "@stomp/stompjs";
 import { createClient as createSupabaseClient } from "@/app/lib/supabase/browser";
 
+type RunEventType = "RUN_STARTED" | "STEP_EVENT" | "COMPLETED";
+type RunStage = "MESSAGE_PASSING" | "BELIEF_UPDATE" | "COMPLETED";
+
+type RunStartedPayload = {
+    totalSteps: number;
+    currentStep: number;
+    stage: RunStage;
+};
+
+type StepEventPayload = {
+    stepIndex: number;
+    totalSteps: number;
+    stage: RunStage;
+    message: string;
+};
+
+type CompletedPayload = {
+    message: string;
+};
+
 type RunEvent = {
-    type: string;
+    type: RunEventType;
     runId: string;
-    payload: any;
+    payload: RunStartedPayload | StepEventPayload | CompletedPayload;
+};
+
+type LogEntry = {
+    kind: RunEventType;
+    text: string;
 };
 
 export default function SocketTest() {
     const stompRef = useRef<Client | null>(null);
-    const [events, setEvents] = useState<RunEvent[]>([]);
-    const [isConnected, setIsConnected] = useState(false);
+
     const [accessToken, setAccessToken] = useState<string | null>(null);
+    const [isConnected, setIsConnected] = useState(false);
+
+    const [runId, setRunId] = useState<string | null>(null);
+    const [currentStep, setCurrentStep] = useState(0);
+    const [totalSteps, setTotalSteps] = useState(0);
+    const [stage, setStage] = useState<RunStage | "IDLE">("IDLE");
+    const [isCompleted, setIsCompleted] = useState(false);
+    const [log, setLog] = useState<LogEntry[]>([]);
 
     useEffect(() => {
         const supabase = createSupabaseClient();
 
         const loadInitialSession = async () => {
             const { data, error } = await supabase.auth.getSession();
-
             if (error) {
-                console.error("Failed to get Supabase session:", error);
+                console.error("Failed to get session:", error);
                 return;
             }
-
             setAccessToken(data.session?.access_token ?? null);
         };
 
@@ -56,12 +86,11 @@ export default function SocketTest() {
         });
 
         client.onConnect = () => {
-            console.log("Connected to WebSocket");
             setIsConnected(true);
 
             client.subscribe("/user/queue/run-events", (message: IMessage) => {
-                const body: RunEvent = JSON.parse(message.body);
-                setEvents((prev) => [...prev, body]);
+                const event: RunEvent = JSON.parse(message.body);
+                handleRunEvent(event);
             });
         };
 
@@ -78,7 +107,7 @@ export default function SocketTest() {
         };
 
         client.onStompError = (frame) => {
-            console.error("Broker error:", frame.headers["message"], frame.body);
+            console.error("STOMP broker error:", frame.headers["message"], frame.body);
         };
 
         client.activate();
@@ -90,29 +119,132 @@ export default function SocketTest() {
         };
     }, [accessToken]);
 
-    const startRun = () => {
+    function handleRunEvent(event: RunEvent) {
+        switch (event.type) {
+            case "RUN_STARTED": {
+                const payload = event.payload as RunStartedPayload;
+                setRunId(event.runId);
+                setCurrentStep(payload.currentStep);
+                setTotalSteps(payload.totalSteps);
+                setStage(payload.stage);
+                setIsCompleted(false);
+                setLog([
+                    {
+                        kind: "RUN_STARTED",
+                        text: `Run started (${event.runId})`,
+                    },
+                ]);
+                break;
+            }
+
+            case "STEP_EVENT": {
+                const payload = event.payload as StepEventPayload;
+                setCurrentStep(payload.stepIndex);
+                setTotalSteps(payload.totalSteps);
+                setStage(payload.stage);
+                setLog((prev) => [
+                    ...prev,
+                    {
+                        kind: "STEP_EVENT",
+                        text: `Step ${payload.stepIndex}/${payload.totalSteps} [${payload.stage}] - ${payload.message}`,
+                    },
+                ]);
+                break;
+            }
+
+            case "COMPLETED": {
+                const payload = event.payload as CompletedPayload;
+                setStage("COMPLETED");
+                setIsCompleted(true);
+                setLog((prev) => [
+                    ...prev,
+                    {
+                        kind: "COMPLETED",
+                        text: `Completed - ${payload.message}`,
+                    },
+                ]);
+                break;
+            }
+
+            default:
+                console.warn("Unknown event type:", event);
+        }
+    }
+
+    function startRun() {
         const client = stompRef.current;
         if (!client || !client.connected) return;
 
+        setRunId(null);
+        setCurrentStep(0);
+        setTotalSteps(0);
+        setStage("IDLE");
+        setIsCompleted(false);
+        setLog([]);
+
         client.publish({
             destination: "/app/run.start",
-            body: JSON.stringify({
-                graphId: "test-graph",
-                focusSheepId: "sheep-1",
-            }),
+            body: JSON.stringify({}),
         });
-    };
+    }
+
+    function nextStep() {
+        const client = stompRef.current;
+        if (!client || !client.connected || !runId || isCompleted) return;
+
+        client.publish({
+            destination: "/app/run.nextStep",
+            body: JSON.stringify({ runId }),
+        });
+    }
 
     return (
-        <div style={{ padding: 20 }}>
-            <button onClick={startRun} disabled={!isConnected}>
-                {isConnected ? "Start Run" : "Connecting..."}
-            </button>
+        <div className="p-6 space-y-4 text-white">
+            <div className="space-y-1">
+                <div>Socket: {isConnected ? "Connected" : "Disconnected"}</div>
+                <div>Run ID: {runId ?? "None"}</div>
+                <div>Stage: {stage}</div>
+                <div>
+                    Step: {currentStep} / {totalSteps}
+                </div>
+                <div>Status: {isCompleted ? "Completed" : "Active / Idle"}</div>
+            </div>
 
-            <h3>Events</h3>
-            {events.map((event, i) => (
-                <pre key={i}>{JSON.stringify(event, null, 2)}</pre>
-            ))}
+            <div className="flex gap-3">
+                <button
+                    onClick={startRun}
+                    disabled={!isConnected}
+                    className="rounded bg-blue-600 px-4 py-2 disabled:opacity-50"
+                >
+                    Start Demo Run
+                </button>
+
+                <button
+                    onClick={nextStep}
+                    disabled={!isConnected || !runId || isCompleted}
+                    className="rounded bg-green-600 px-4 py-2 disabled:opacity-50"
+                >
+                    Next Step
+                </button>
+            </div>
+
+            <div className="rounded border border-gray-600 p-4">
+                <h3 className="mb-3 font-semibold">Event Log</h3>
+                <div className="space-y-2">
+                    {log.length === 0 ? (
+                        <div className="text-gray-400">No events yet.</div>
+                    ) : (
+                        log.map((entry, index) => (
+                            <div
+                                key={index}
+                                className="rounded bg-gray-800 px-3 py-2 text-sm"
+                            >
+                                {entry.text}
+                            </div>
+                        ))
+                    )}
+                </div>
+            </div>
         </div>
     );
 }
