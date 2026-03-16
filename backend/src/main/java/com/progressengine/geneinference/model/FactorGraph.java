@@ -218,6 +218,30 @@ public class FactorGraph {
         return beliefs;
     }
 
+    public Map<Category, Map<Grade, Double>> computeBeliefForSheep(Sheep sheep) {
+        Node<Sheep> node = sheepToNode.get(sheep);
+        if (node == null) {
+            throw new IllegalArgumentException("Sheep is not in factor graph");
+        }
+
+        Map<Category, Map<Grade, Double>> belief = newBelief();
+
+        for (Node<?> neighbor : adjacencyMatrix.get(node)) {
+            NodePair nodePair = new NodePair(neighbor, node);
+            Message message = messageMap.get(nodePair);
+
+            for (Category category : Category.values()) {
+                InferenceMath.productOfExperts(
+                        belief.get(category),
+                        message.getDistribution().get(category)
+                );
+            }
+        }
+
+        sheep.setDistributionByType(belief, DistributionType.INFERRED);
+        return belief;
+    }
+
     private boolean reachedConvergence(Message message, Map<Category, Map<Grade, Double>> newMessage) {
         double epsilon = 1e-3;
 

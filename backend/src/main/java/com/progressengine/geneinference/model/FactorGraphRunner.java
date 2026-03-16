@@ -20,6 +20,8 @@ public class FactorGraphRunner {
     private RunStage stage;
     private boolean completed;
     private Category visibleCategory;
+    private final List<Sheep> scopedBeliefSheep;
+    private int beliefIndex;
 
     public FactorGraphRunner(FactorGraph graph, Sheep observedSheep, String userId) {
         this.userId = userId;
@@ -39,6 +41,16 @@ public class FactorGraphRunner {
         this.stage = RunStage.MESSAGE_PASSING;
         this.completed = false;
         this.visibleCategory = Category.SWIM;
+
+        this.scopedBeliefSheep = new ArrayList<>();
+        this.scopedBeliefSheep.add(observedSheep);
+
+        for (Sheep sheep : scope.getScopedSheep()) {
+            if (!sheep.equals(observedSheep)) {
+                this.scopedBeliefSheep.add(sheep);
+            }
+        }
+        this.beliefIndex = 0;
     }
 
     public LbpStepResult nextStep() {
@@ -111,15 +123,30 @@ public class FactorGraphRunner {
             }
         }
 
-        // TODO - add belief updates here
         if (stage == RunStage.BELIEF_UPDATE) {
-            stage = RunStage.COMPLETED;
+            if (beliefIndex < scopedBeliefSheep.size()) {
+                Sheep sheep = scopedBeliefSheep.get(beliefIndex);
+                graph.computeBeliefForSheep(sheep);
+
+                beliefIndex++;
+                stepIndex++;
+
+                return new LbpStepResult(
+                        stepIndex,
+                        RunStage.BELIEF_UPDATE,
+                        "Computed final belief for sheep " + sheep.getId(),
+                        false
+                );
+            }
+
             completed = true;
+            stage = RunStage.COMPLETED;
+
             return new LbpStepResult(
                     stepIndex,
-                    RunStage.BELIEF_UPDATE,
-                    "Belief Update Stage placeholder",
-                    false
+                    RunStage.COMPLETED,
+                    "Final belief computation complete",
+                    true
             );
         }
 
@@ -149,12 +176,10 @@ public class FactorGraphRunner {
     }
 
     public int getEstimatedTotalSteps() {
-        if (stage == RunStage.MESSAGE_PASSING) {
-            return maxIterations;
-        } else if (stage == RunStage.BELIEF_UPDATE) {
-            return scope.getScopedNodes().size();
-        }
-        return stepIndex;
+        int beliefSteps = scopedBeliefSheep.size();
+        int estimatedMessageSteps = Math.max(10, maxIterations / 50);
+
+        return estimatedMessageSteps + beliefSteps;
     }
 
     private MessageWaveType waveTypeOf(Message message) {
