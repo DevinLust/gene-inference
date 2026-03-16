@@ -8,10 +8,34 @@ import { Category } from "@/app/lib/definitions";
 type RunEventType = "RUN_STARTED" | "STEP_EVENT" | "COMPLETED";
 type RunStage = "MESSAGE_PASSING" | "BELIEF_UPDATE" | "COMPLETED";
 
+type VisualNode = {
+    id: string;
+    type: "sheep" | "relationship";
+    label: string;
+    x: number;
+    y: number;
+    center: boolean;
+};
+
+type VisualEdge = {
+    id: string;
+    sourceId: string;
+    targetId: string;
+    type: "full" | "stub";
+    visibleTarget: boolean;
+};
+
+type VisualGraphSnapshot = {
+    centerNodeId: string;
+    nodes: VisualNode[];
+    edges: VisualEdge[];
+};
+
 type RunStartedPayload = {
     totalSteps: number;
     currentStep: number;
-    stage: RunStage;
+    stage: "MESSAGE_PASSING" | "BELIEF_UPDATE" | "COMPLETED";
+    graph: VisualGraphSnapshot;
 };
 
 type StepEventPayload = {
@@ -50,6 +74,7 @@ export default function SocketTest() {
     const [stage, setStage] = useState<RunStage | "IDLE">("IDLE");
     const [isCompleted, setIsCompleted] = useState(false);
     const [log, setLog] = useState<LogEntry[]>([]);
+    const [graph, setGraph] = useState<VisualGraphSnapshot | null>(null);
 
     const [targetSheepId, setTargetSheepId] = useState<number | null>(null);
     const [selectedCategory, setSelectedCategory] = useState<Category>("SWIM");
@@ -129,11 +154,14 @@ export default function SocketTest() {
         switch (event.type) {
             case "RUN_STARTED": {
                 const payload = event.payload as RunStartedPayload;
+
                 setRunId(event.runId);
                 setCurrentStep(payload.currentStep);
                 setTotalSteps(payload.totalSteps);
                 setStage(payload.stage);
                 setIsCompleted(false);
+                setGraph(payload.graph);
+
                 setLog([
                     {
                         kind: "RUN_STARTED",
@@ -178,6 +206,7 @@ export default function SocketTest() {
     }
 
     function startRun() {
+        setGraph(null);
         const client = stompRef.current;
         if (!client || !client.connected || targetSheepId == null) return;
 
@@ -237,7 +266,7 @@ export default function SocketTest() {
                 </select>
                 <button
                     onClick={startRun}
-                    disabled={!isConnected && targetSheepId == null}
+                    disabled={!isConnected || targetSheepId == null}
                     className="rounded bg-blue-600 px-4 py-2 disabled:opacity-50"
                 >
                     Start Run
@@ -255,6 +284,14 @@ export default function SocketTest() {
             <div className="rounded border border-gray-600 p-4">
                 <h3 className="mb-3 font-semibold">Event Log</h3>
                 <div className="space-y-2">
+                    {graph && (
+                        <div className="rounded border border-gray-600 p-4">
+                            <h3 className="mb-2 font-semibold">Graph JSON</h3>
+                            <pre className="text-xs overflow-auto bg-gray-900 p-3 rounded">
+                              {JSON.stringify(graph, null, 2)}
+                            </pre>
+                        </div>
+                    )}
                     {log.length === 0 ? (
                         <div className="text-gray-400">No events yet.</div>
                     ) : (

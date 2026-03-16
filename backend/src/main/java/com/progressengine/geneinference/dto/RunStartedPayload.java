@@ -7,14 +7,16 @@ public class RunStartedPayload {
     private int totalSteps;
     private int currentStep;
     private RunStage stage;
+    private VisualGraphSnapshot graph;
 
     public RunStartedPayload() {
     }
 
-    public RunStartedPayload(int totalSteps, int currentStep, RunStage stage) {
+    public RunStartedPayload(int totalSteps, int currentStep, RunStage stage, VisualGraphSnapshot graph) {
         this.totalSteps = totalSteps;
         this.currentStep = currentStep;
         this.stage = stage;
+        this.graph = graph;
     }
 
     public int getTotalSteps() {
@@ -39,5 +41,13 @@ public class RunStartedPayload {
 
     public void setStage(RunStage stage) {
         this.stage = stage;
+    }
+
+    public VisualGraphSnapshot getGraph() {
+        return graph;
+    }
+
+    public void setGraph(VisualGraphSnapshot graph) {
+        this.graph = graph;
     }
 }

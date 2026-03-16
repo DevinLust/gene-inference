@@ -175,6 +175,10 @@ public class FactorGraphRunner {
         return completed;
     }
 
+    public VisualizationScope getScope() {
+        return scope;
+    }
+
     public int getEstimatedTotalSteps() {
         int beliefSteps = scopedBeliefSheep.size();
         int estimatedMessageSteps = Math.max(10, maxIterations / 50);

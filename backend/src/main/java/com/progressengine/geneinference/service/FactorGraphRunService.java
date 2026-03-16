@@ -1,13 +1,10 @@
 package com.progressengine.geneinference.service;
 
-import com.progressengine.geneinference.dto.CompletedPayload;
-import com.progressengine.geneinference.dto.RunEvent;
+import com.progressengine.geneinference.dto.*;
 import com.progressengine.geneinference.model.*;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.RunEventType;
 import com.progressengine.geneinference.model.enums.RunStage;
-import com.progressengine.geneinference.dto.RunStartedPayload;
-import com.progressengine.geneinference.dto.StepEventPayload;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
@@ -42,13 +39,16 @@ public class FactorGraphRunService {
         runners.put(runId, runner);
         activeRunByUserId.put(userIdStr, runId);
 
+        VisualGraphSnapshot visualGraph = graph.buildVisualGraph(runner.getScope());
+
         return new RunEvent(
                 RunEventType.RUN_STARTED,
                 runId,
                 new RunStartedPayload(
                         runner.getEstimatedTotalSteps(),
                         0,
-                        RunStage.MESSAGE_PASSING
+                        RunStage.MESSAGE_PASSING,
+                        visualGraph
                 )
         );
     }

@@ -1,5 +1,8 @@
 package com.progressengine.geneinference.model;
 
+import com.progressengine.geneinference.dto.VisualEdgeDTO;
+import com.progressengine.geneinference.dto.VisualGraphSnapshot;
+import com.progressengine.geneinference.dto.VisualNodeDTO;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.DistributionType;
 import com.progressengine.geneinference.model.enums.Grade;
@@ -78,6 +81,93 @@ public class FactorGraph {
         scopedNodes.addAll(adjacencyMatrix.get(targetNode));
 
         return new VisualizationScope(targetSheep, scopedNodes, scopedSheep);
+    }
+
+    public VisualGraphSnapshot buildVisualGraph(VisualizationScope scope) {
+        List<VisualNodeDTO> nodes = new ArrayList<>();
+        List<VisualEdgeDTO> edges = new ArrayList<>();
+
+        Node<Sheep> centerNode = sheepToNode.get(scope.getCenterSheep());
+        String centerNodeId = nodeId(centerNode);
+
+        Set<Node<?>> displayedNodes = new HashSet<>();
+        displayedNodes.add(centerNode);
+
+        nodes.add(new VisualNodeDTO(
+                centerNodeId,
+                "sheep",
+                "Sheep " + scope.getCenterSheep().getId(),
+                0,
+                0,
+                true
+        ));
+
+        List<Node<?>> neighbors = adjacencyMatrix.getOrDefault(centerNode, List.of());
+        double radius = 200.0;
+
+        for (int i = 0; i < neighbors.size(); i++) {
+            Node<?> neighbor = neighbors.get(i);
+            double angle = (2 * Math.PI * i) / Math.max(1, neighbors.size());
+            double x = radius * Math.cos(angle);
+            double y = radius * Math.sin(angle);
+
+            if (neighbor instanceof RelationshipNode relationshipNode) {
+                displayedNodes.add(relationshipNode);
+
+                String relationshipNodeId = nodeId(relationshipNode);
+
+                nodes.add(new VisualNodeDTO(
+                        relationshipNodeId,
+                        "relationship",
+                        "Relationship " + relationshipNode.getValue().getId(),
+                        x,
+                        y,
+                        false
+                ));
+
+                edges.add(new VisualEdgeDTO(
+                        centerNodeId + "--" + relationshipNodeId,
+                        centerNodeId,
+                        relationshipNodeId,
+                        "full",
+                        true
+                ));
+            }
+        }
+
+        for (Node<?> displayedNode : displayedNodes) {
+            if (displayedNode instanceof RelationshipNode relationshipNode) {
+                String relationshipNodeId = nodeId(relationshipNode);
+
+                for (Node<?> relative : adjacencyMatrix.getOrDefault(relationshipNode, List.of())) {
+                    if (displayedNodes.contains(relative)) {
+                        continue;
+                    }
+
+                    String stubTargetId = nodeId(relative);
+
+                    edges.add(new VisualEdgeDTO(
+                            relationshipNodeId + "--" + stubTargetId,
+                            relationshipNodeId,
+                            stubTargetId,
+                            "stub",
+                            false
+                    ));
+                }
+            }
+        }
+
+        return new VisualGraphSnapshot(centerNodeId, nodes, edges);
+    }
+
+    private String nodeId(Node<?> node) {
+        if (node instanceof SheepNode sheepNode) {
+            return "sheep-" + sheepNode.getValue().getId();
+        }
+        if (node instanceof RelationshipNode relationshipNode) {
+            return "relationship-" + relationshipNode.getValue().getId();
+        }
+        throw new IllegalStateException("Unknown node type");
     }
 
     public List<MessageCategoryTask> initialFrontierTasks() {
