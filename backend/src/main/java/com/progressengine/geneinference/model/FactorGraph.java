@@ -10,23 +10,24 @@ import java.util.*;
 
 public class FactorGraph {
 
-    private record MessageCategoryTask(Message message, Category category) {}
 
     private final Map<Node<?>, List<Node<?>>> adjacencyMatrix;
     private final Map<NodePair, Message> messageMap;
+    private final Map<Sheep, Node<Sheep>> sheepToNode;
+    private final Map<Relationship, Node<Relationship>> relationshipToNode;
 
     public FactorGraph(List<Sheep> allSheep, List<Relationship> allRelationships) {
         adjacencyMatrix = new HashMap<>();
         messageMap = new HashMap<>();
 
-        Map<Sheep, Node<Sheep>> sheepToNode = new HashMap<>();
+        this.sheepToNode = new HashMap<>();
         for (Sheep sheep : allSheep) {
             Node<Sheep> sheepNode = new SheepNode(sheep);
             adjacencyMatrix.put(sheepNode, new ArrayList<>());
             sheepToNode.put(sheep, sheepNode);
         }
 
-        Map<Relationship, Node<Relationship>> relationshipToNode = new HashMap<>();
+        this.relationshipToNode = new HashMap<>();
         for (Relationship relationship : allRelationships) {
             Node<Relationship> relationshipNode = new RelationshipNode(relationship);
             relationshipToNode.put(relationship, relationshipNode);
@@ -62,6 +63,43 @@ public class FactorGraph {
         }
     }
 
+    public VisualizationScope buildScope(Sheep targetSheep) {
+        Node<Sheep> targetNode = sheepToNode.get(targetSheep);
+        if (targetNode == null) {
+            throw new IllegalArgumentException("Target sheep is not in factor graph");
+        }
+
+        Set<Node<?>> scopedNodes = new HashSet<>();
+        Set<Sheep> scopedSheep = new HashSet<>();
+
+        scopedNodes.add(targetNode);
+        scopedSheep.add(targetSheep);
+
+        scopedNodes.addAll(adjacencyMatrix.get(targetNode));
+
+        return new VisualizationScope(targetSheep, scopedNodes, scopedSheep);
+    }
+
+    public List<MessageCategoryTask> initialFrontierTasks() {
+        List<MessageCategoryTask> tasks = new ArrayList<>();
+
+        for (Message message : messageMap.values()) {
+            if (message instanceof RelationshipMessage) {
+                for (Category category : Category.values()) {
+                    tasks.add(new MessageCategoryTask(message, category));
+                }
+            }
+        }
+
+        return tasks;
+    }
+
+
+    public int estimatedMaxIterations() {
+        return messageMap.size() * Category.values().length * 20;
+    }
+
+
     public List<Message> dependentsOf(Message message) {
         List<Message> dependents = new ArrayList<>();
         Node<?> target = message.getTarget();
@@ -78,7 +116,11 @@ public class FactorGraph {
         return dependents;
     }
 
-    private List<MessageCategoryTask> dependentsOf(Message message, Category category) {
+    public List<MessageCategoryTask> dependentsOf(MessageCategoryTask messageCategoryTask) {
+        return dependentsOf(messageCategoryTask.message(), messageCategoryTask.category());
+    }
+
+    public List<MessageCategoryTask> dependentsOf(Message message, Category category) {
         List<MessageCategoryTask> dependents = new ArrayList<>();
         Node<?> target = message.getTarget();
         Node<?> source = message.getSource();
@@ -196,7 +238,7 @@ public class FactorGraph {
         return converged;
     }
 
-    private boolean reachedConvergence(
+    public boolean reachedConvergence(
             Message message,
             Category category,
             Map<Grade, Double> newDistribution

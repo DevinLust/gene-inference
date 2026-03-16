@@ -1,7 +1,4 @@
 package com.progressengine.geneinference.dto;
 
-public class StartRunRequest {
-
-    public StartRunRequest() {
-    }
+public record StartRunRequest(Integer sheepId) {
 }

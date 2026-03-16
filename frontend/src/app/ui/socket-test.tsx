@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Client, IMessage } from "@stomp/stompjs";
 import { createClient as createSupabaseClient } from "@/app/lib/supabase/browser";
+import { Category } from "@/app/lib/definitions";
 
 type RunEventType = "RUN_STARTED" | "STEP_EVENT" | "COMPLETED";
 type RunStage = "MESSAGE_PASSING" | "BELIEF_UPDATE" | "COMPLETED";
@@ -35,6 +36,8 @@ type LogEntry = {
     text: string;
 };
 
+const CATEGORIES: Category[] = ["SWIM", "FLY", "RUN", "POWER", "STAMINA"];
+
 export default function SocketTest() {
     const stompRef = useRef<Client | null>(null);
 
@@ -47,6 +50,9 @@ export default function SocketTest() {
     const [stage, setStage] = useState<RunStage | "IDLE">("IDLE");
     const [isCompleted, setIsCompleted] = useState(false);
     const [log, setLog] = useState<LogEntry[]>([]);
+
+    const [targetSheepId, setTargetSheepId] = useState<number | null>(null);
+    const [selectedCategory, setSelectedCategory] = useState<Category>("SWIM");
 
     useEffect(() => {
         const supabase = createSupabaseClient();
@@ -173,18 +179,15 @@ export default function SocketTest() {
 
     function startRun() {
         const client = stompRef.current;
-        if (!client || !client.connected) return;
+        if (!client || !client.connected || targetSheepId == null) return;
 
-        setRunId(null);
-        setCurrentStep(0);
-        setTotalSteps(0);
-        setStage("IDLE");
-        setIsCompleted(false);
-        setLog([]);
+        sessionStorage.removeItem("activeRunId");
 
         client.publish({
             destination: "/app/run.start",
-            body: JSON.stringify({}),
+            body: JSON.stringify({
+                sheepId: targetSheepId,
+            }),
         });
     }
 
@@ -194,7 +197,10 @@ export default function SocketTest() {
 
         client.publish({
             destination: "/app/run.nextStep",
-            body: JSON.stringify({ runId }),
+            body: JSON.stringify({
+                runId,
+                category: selectedCategory,
+            }),
         });
     }
 
@@ -211,12 +217,30 @@ export default function SocketTest() {
             </div>
 
             <div className="flex gap-3">
+                <input
+                    type="number"
+                    value={targetSheepId ?? ""}
+                    onChange={(e) => setTargetSheepId(e.target.value ? Number(e.target.value) : null)}
+                    className="rounded border border-gray-500 px-3 py-2 text-white"
+                    placeholder="Target sheep id"
+                />
+                <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value as Category)}
+                    className="rounded border boarder-gray-500 px-3 py-2 text-white"
+                >
+                    {CATEGORIES.map((c) => (
+                        <option key={c} value={c}>
+                            {c}
+                        </option>
+                    ))}
+                </select>
                 <button
                     onClick={startRun}
-                    disabled={!isConnected}
+                    disabled={!isConnected && targetSheepId == null}
                     className="rounded bg-blue-600 px-4 py-2 disabled:opacity-50"
                 >
-                    Start Demo Run
+                    Start Run
                 </button>
 
                 <button
