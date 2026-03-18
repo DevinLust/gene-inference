@@ -88,10 +88,16 @@ public class FactorGraph {
         List<VisualEdgeDTO> edges = new ArrayList<>();
 
         Node<Sheep> centerNode = sheepToNode.get(scope.getCenterSheep());
+        if (centerNode == null) {
+            throw new IllegalArgumentException("Center sheep is not in graph");
+        }
+
         String centerNodeId = nodeId(centerNode);
 
         Set<Node<?>> displayedNodes = new HashSet<>();
         displayedNodes.add(centerNode);
+
+        Map<Node<?>, double[]> positions = new HashMap<>();
 
         nodes.add(new VisualNodeDTO(
                 centerNodeId,
@@ -113,6 +119,7 @@ public class FactorGraph {
 
             if (neighbor instanceof RelationshipNode relationshipNode) {
                 displayedNodes.add(relationshipNode);
+                positions.put(relationshipNode, new double[]{x, y});
 
                 String relationshipNodeId = nodeId(relationshipNode);
 
@@ -130,34 +137,79 @@ public class FactorGraph {
                         centerNodeId,
                         relationshipNodeId,
                         "full",
-                        true
+                        true,
+                        null,
+                        null,
+                        null
                 ));
             }
         }
 
         for (Node<?> displayedNode : displayedNodes) {
-            if (displayedNode instanceof RelationshipNode relationshipNode) {
-                String relationshipNodeId = nodeId(relationshipNode);
+            if (!(displayedNode instanceof RelationshipNode relationshipNode)) {
+                continue;
+            }
 
-                for (Node<?> relative : adjacencyMatrix.getOrDefault(relationshipNode, List.of())) {
-                    if (displayedNodes.contains(relative)) {
-                        continue;
-                    }
+            String relationshipNodeId = nodeId(relationshipNode);
 
-                    String stubTargetId = nodeId(relative);
-
-                    edges.add(new VisualEdgeDTO(
-                            relationshipNodeId + "--" + stubTargetId,
-                            relationshipNodeId,
-                            stubTargetId,
-                            "stub",
-                            false
-                    ));
+            List<Node<?>> hiddenNeighbors = new ArrayList<>();
+            for (Node<?> relative : adjacencyMatrix.getOrDefault(relationshipNode, List.of())) {
+                if (!displayedNodes.contains(relative)) {
+                    hiddenNeighbors.add(relative);
                 }
+            }
+
+            double[] sourcePos = positions.get(relationshipNode);
+            double baseAngle = outwardAngle(sourcePos[0], sourcePos[1]);
+
+            for (int i = 0; i < hiddenNeighbors.size(); i++) {
+                Node<?> hiddenNeighbor = hiddenNeighbors.get(i);
+                String stubTargetId = nodeId(hiddenNeighbor);
+
+                double stubAngle = fanoutAngle(baseAngle, i, hiddenNeighbors.size());
+
+                edges.add(new VisualEdgeDTO(
+                        relationshipNodeId + "--" + stubTargetId,
+                        relationshipNodeId,
+                        stubTargetId,
+                        "stub",
+                        false,
+                        stubAngle,
+                        i,
+                        hiddenNeighbors.size()
+                ));
             }
         }
 
         return new VisualGraphSnapshot(centerNodeId, nodes, edges);
+    }
+
+    private double nodeX(Node<?> node, Node<Sheep> centerNode, java.util.Map<Node<?>, double[]> positions) {
+        if (node.equals(centerNode)) return 0.0;
+        double[] pos = positions.get(node);
+        return pos == null ? 0.0 : pos[0];
+    }
+
+    private double nodeY(Node<?> node, Node<Sheep> centerNode, java.util.Map<Node<?>, double[]> positions) {
+        if (node.equals(centerNode)) return 0.0;
+        double[] pos = positions.get(node);
+        return pos == null ? 0.0 : pos[1];
+    }
+
+    private double outwardAngle(double x, double y) {
+        return Math.atan2(y, x);
+    }
+
+    private double fanoutAngle(double baseAngle, int index, int count) {
+        if (count <= 1) {
+            return baseAngle;
+        }
+
+        double spread = Math.PI / 3.0; // 60 degrees total spread
+        double step = spread / (count - 1);
+        double start = baseAngle - spread / 2.0;
+
+        return start + index * step;
     }
 
     private String nodeId(Node<?> node) {

@@ -23,6 +23,9 @@ type VisualEdge = {
     targetId: string;
     type: "full" | "stub";
     visibleTarget: boolean;
+    stubAngleRadians?: number | null;
+    stubIndex?: number | null;
+    stubCount?: number | null;
 };
 
 type VisualGraphSnapshot = {
@@ -233,6 +236,60 @@ export default function SocketTest() {
         });
     }
 
+    function rayExitOffset(
+        ux: number,
+        uy: number,
+        halfWidth: number,
+        halfHeight: number,
+        padding = 6
+    ) {
+        const tx = Math.abs(ux) > 1e-6 ? halfWidth / Math.abs(ux) : Number.POSITIVE_INFINITY;
+        const ty = Math.abs(uy) > 1e-6 ? halfHeight / Math.abs(uy) : Number.POSITIVE_INFINITY;
+
+        const t = Math.min(tx, ty) + padding;
+
+        return {
+            dx: ux * t,
+            dy: uy * t,
+        };
+    }
+
+    function rectExitOffset(
+        ux: number,
+        uy: number,
+        halfWidth: number,
+        halfHeight: number,
+        padding = 0
+    ) {
+        const tx = Math.abs(ux) > 1e-6 ? halfWidth / Math.abs(ux) : Number.POSITIVE_INFINITY;
+        const ty = Math.abs(uy) > 1e-6 ? halfHeight / Math.abs(uy) : Number.POSITIVE_INFINITY;
+        const t = Math.min(tx, ty) + padding;
+        return { dx: ux * t, dy: uy * t };
+    }
+
+    const GRAPH_WIDTH = 700;
+    const GRAPH_HEIGHT = 500;
+    const CENTER_X = GRAPH_WIDTH / 2;
+    const CENTER_Y = GRAPH_HEIGHT / 2;
+
+    const graphScale = (() => {
+        if (!graph || graph.nodes.length === 0) return 1;
+
+        const maxX = Math.max(...graph.nodes.map((n) => Math.abs(n.x)));
+        const maxY = Math.max(...graph.nodes.map((n) => Math.abs(n.y)));
+
+        const paddingX = 140;
+        const paddingY = 100;
+
+        const usableHalfWidth = GRAPH_WIDTH / 2 - paddingX;
+        const usableHalfHeight = GRAPH_HEIGHT / 2 - paddingY;
+
+        const scaleX = maxX > 0 ? usableHalfWidth / maxX : 1;
+        const scaleY = maxY > 0 ? usableHalfHeight / maxY : 1;
+
+        return Math.min(1, scaleX, scaleY);
+    })();
+
     return (
         <div className="p-6 space-y-4 text-white">
             <div className="space-y-1">
@@ -256,7 +313,7 @@ export default function SocketTest() {
                 <select
                     value={selectedCategory}
                     onChange={(e) => setSelectedCategory(e.target.value as Category)}
-                    className="rounded border boarder-gray-500 px-3 py-2 text-white"
+                    className="rounded border border-gray-500 px-3 py-2 text-white"
                 >
                     {CATEGORIES.map((c) => (
                         <option key={c} value={c}>
@@ -286,10 +343,175 @@ export default function SocketTest() {
                 <div className="space-y-2">
                     {graph && (
                         <div className="rounded border border-gray-600 p-4">
-                            <h3 className="mb-2 font-semibold">Graph JSON</h3>
-                            <pre className="text-xs overflow-auto bg-gray-900 p-3 rounded">
-                              {JSON.stringify(graph, null, 2)}
-                            </pre>
+                            <h3 className="mb-3 font-semibold">Graph Preview</h3>
+
+                            {/* 👇 THIS is the new wrapper */}
+                            <div className="overflow-auto max-h-[500px] max-w-full">
+                                <svg
+                                    width={1200}
+                                    height={800}
+                                    viewBox="0 0 1200 800"
+                                    className="rounded border border-gray-700 bg-gray-900"
+                                >
+                                {(() => {
+                                    const SVG_WIDTH = 1200;
+                                    const SVG_HEIGHT = 800;
+
+                                    const CENTER_X = SVG_WIDTH / 2;
+                                    const CENTER_Y = SVG_HEIGHT / 2;
+
+                                    const nodeSize = (type: "sheep" | "relationship") =>
+                                        type === "relationship"
+                                            ? { width: 200, height: 80 }
+                                            : { width: 160, height: 80 };
+
+                                    const nodeMap = new Map(
+                                        graph.nodes.map((n) => [
+                                            n.id,
+                                            {
+                                                ...n,
+                                                cx: CENTER_X + n.x,
+                                                cy: CENTER_Y + n.y,
+                                                ...nodeSize(n.type),
+                                            },
+                                        ])
+                                    );
+
+                                    return (
+                                        <>
+                                            {/* Edges */}
+                                            {graph.edges.map((edge) => {
+                                                const source = nodeMap.get(edge.sourceId);
+                                                const target = nodeMap.get(edge.targetId);
+
+                                                if (!source) return null;
+
+                                                if (edge.type === "full") {
+                                                    if (!target) return null;
+
+                                                    const dx = target.cx - source.cx;
+                                                    const dy = target.cy - source.cy;
+                                                    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+                                                    const ux = dx / len;
+                                                    const uy = dy / len;
+
+                                                    const sourceExit = rectExitOffset(
+                                                        ux,
+                                                        uy,
+                                                        source.width / 2,
+                                                        source.height / 2,
+                                                        2
+                                                    );
+
+                                                    const targetExit = rectExitOffset(
+                                                        -ux,
+                                                        -uy,
+                                                        target.width / 2,
+                                                        target.height / 2,
+                                                        2
+                                                    );
+
+                                                    const x1 = source.cx + sourceExit.dx;
+                                                    const y1 = source.cy + sourceExit.dy;
+                                                    const x2 = target.cx + targetExit.dx;
+                                                    const y2 = target.cy + targetExit.dy;
+
+                                                    return (
+                                                        <line
+                                                            key={edge.id}
+                                                            x1={x1}
+                                                            y1={y1}
+                                                            x2={x2}
+                                                            y2={y2}
+                                                            stroke="white"
+                                                            strokeWidth="3"
+                                                            strokeLinecap="round"
+                                                        />
+                                                    );
+                                                }
+
+                                                const angle = edge.stubAngleRadians ?? 0;
+                                                const ux = Math.cos(angle);
+                                                const uy = Math.sin(angle);
+
+                                                const sourceExit = rectExitOffset(
+                                                    ux,
+                                                    uy,
+                                                    source.width / 2,
+                                                    source.height / 2,
+                                                    4
+                                                );
+
+                                                const x1 = source.cx + sourceExit.dx;
+                                                const y1 = source.cy + sourceExit.dy;
+
+                                                const stubLength = 65;
+                                                const x2 = x1 + ux * stubLength;
+                                                const y2 = y1 + uy * stubLength;
+
+                                                return (
+                                                    <g key={edge.id}>
+                                                        <line
+                                                            x1={x1}
+                                                            y1={y1}
+                                                            x2={x2}
+                                                            y2={y2}
+                                                            stroke="orange"
+                                                            strokeWidth="4"
+                                                            strokeDasharray="8 6"
+                                                            strokeLinecap="round"
+                                                        />
+                                                        <circle cx={x2} cy={y2} r="6" fill="orange" />
+                                                    </g>
+                                                );
+                                            })}
+
+                                            {/* Nodes */}
+                                            {Array.from(nodeMap.values()).map((node) => {
+                                                const x = node.cx - node.width / 2;
+                                                const y = node.cy - node.height / 2;
+                                                const fill =
+                                                    node.type === "relationship" ? "#a000e8" : "#2563eb";
+                                                const stroke = node.center ? "#93c5fd" : "#d8b4fe";
+
+                                                return (
+                                                    <g key={node.id}>
+                                                        <rect
+                                                            x={x}
+                                                            y={y}
+                                                            width={node.width}
+                                                            height={node.height}
+                                                            rx={10}
+                                                            fill={fill}
+                                                            stroke={stroke}
+                                                            strokeWidth={2}
+                                                        />
+                                                        <text
+                                                            x={node.cx}
+                                                            y={node.cy - 4}
+                                                            fill="white"
+                                                            fontSize="18"
+                                                            textAnchor="middle"
+                                                        >
+                                                            {node.label}
+                                                        </text>
+                                                        <text
+                                                            x={node.cx}
+                                                            y={node.cy + 20}
+                                                            fill="rgba(255,255,255,0.7)"
+                                                            fontSize="12"
+                                                            textAnchor="middle"
+                                                        >
+                                                            {node.id}
+                                                        </text>
+                                                    </g>
+                                                );
+                                            })}
+                                        </>
+                                    );
+                                })()}
+                            </svg>
+                            </div>
                         </div>
                     )}
                     {log.length === 0 ? (
