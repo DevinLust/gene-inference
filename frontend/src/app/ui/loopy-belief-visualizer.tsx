@@ -73,7 +73,7 @@ type LogEntry = {
 
 const CATEGORIES: Category[] = ["SWIM", "FLY", "RUN", "POWER", "STAMINA"];
 
-export default function SocketTest() {
+export default function LoopyBeliefVisualizer() {
     const stompRef = useRef<Client | null>(null);
 
     const [accessToken, setAccessToken] = useState<string | null>(null);
@@ -646,17 +646,34 @@ export default function SocketTest() {
                                                                 Math.min(edgeLength * 0.22, 90 * SCALE)
                                                             );
 
-                                                            let bendSign = 1;
-                                                            if (edge.stubIndex != null && edge.stubCount != null && edge.stubCount > 1) {
-                                                                const midpoint = (edge.stubCount - 1) / 2;
-                                                                bendSign = edge.stubIndex < midpoint ? -1 : 1;
-                                                            }
-
                                                             const mx = (x1 + x2) / 2;
                                                             const my = (y1 + y2) / 2;
 
-                                                            const cx = mx + px * (laneOffset + bendSign * bendMagnitude);
-                                                            const cy = my + py * (laneOffset + bendSign * bendMagnitude);
+// choose the perpendicular direction that bends farther away from the graph center
+                                                            const candidate1X = mx + px * bendMagnitude;
+                                                            const candidate1Y = my + py * bendMagnitude;
+
+                                                            const candidate2X = mx - px * bendMagnitude;
+                                                            const candidate2Y = my - py * bendMagnitude;
+
+// graph center in the current translated SVG space
+                                                            const centerNode = Array.from(nodeMap.values()).find((n) => n.center);
+                                                            const graphCenterX = centerNode ? centerNode.cx : 0;
+                                                            const graphCenterY = centerNode ? centerNode.cy : 0;
+
+                                                            const dist1 =
+                                                                (candidate1X - graphCenterX) * (candidate1X - graphCenterX) +
+                                                                (candidate1Y - graphCenterY) * (candidate1Y - graphCenterY);
+
+                                                            const dist2 =
+                                                                (candidate2X - graphCenterX) * (candidate2X - graphCenterX) +
+                                                                (candidate2Y - graphCenterY) * (candidate2Y - graphCenterY);
+
+// pick the side that is farther from the graph center
+                                                            const outwardSign = dist1 >= dist2 ? 1 : -1;
+
+                                                            const cx = mx + px * (laneOffset + outwardSign * bendMagnitude);
+                                                            const cy = my + py * (laneOffset + outwardSign * bendMagnitude);
 
                                                             const pathD = quadraticPathWithControl(x1, y1, x2, y2, cx, cy);
 

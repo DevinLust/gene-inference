@@ -45,6 +45,17 @@ export function SheepGraphLink({ sheepId, children, className }: SheepDetailsPro
     );
 }
 
+export function LBPVisualizerLink() {
+    return (
+        <Link
+            href={`/lbp-visualizer`}
+            className="flex h-10 items-center rounded-lg bg-yellow-600 px-4 text-sm font-medium text-white transition-colors hover:bg-yellow-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+        >
+            Visualize Beliefs
+        </Link>
+    );
+}
+
 export function RelationshipDetails({ relId }: { relId: string | number }) {
   return (
       <Link
