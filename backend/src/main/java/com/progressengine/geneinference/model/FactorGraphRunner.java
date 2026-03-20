@@ -55,11 +55,14 @@ public class FactorGraphRunner {
 
     public LbpStepResult nextStep() {
         if (completed) {
-            return new LbpStepResult(stepIndex, RunStage.COMPLETED, "Run already completed", true);
+            return new LbpStepResult(stepIndex, RunStage.COMPLETED, "Run already completed", true, null, null, null, null);
         }
 
         // Message passing stage
         if (stage == RunStage.MESSAGE_PASSING) {
+            List<String> activeFullEdgeIds = new ArrayList<>();
+            List<String> activeStubEdgeIds = new ArrayList<>();
+            Set<String> seenEdgeIds = new HashSet<>();
             List<MessageCategoryTask> visibleWaveTasks = new ArrayList<>();
             MessageWaveType currentWaveType = null;
 
@@ -69,6 +72,30 @@ public class FactorGraphRunner {
 
                 Message message = task.message();
                 Category category = task.category();
+
+                boolean visible = isVisible(task);
+                MessageWaveType taskWaveType = visible ? waveTypeOf(message) : null;
+
+                if (visible) {
+                    if (currentWaveType == null) {
+                        currentWaveType = taskWaveType;
+                    } else if (taskWaveType != currentWaveType) {
+                        frontier.addFirst(task);
+                        queued.add(task);
+
+                        stepIndex++;
+                        return new LbpStepResult(
+                                stepIndex,
+                                RunStage.MESSAGE_PASSING,
+                                describeWave(currentWaveType, visibleWaveTasks.size()),
+                                false,
+                                currentWaveType,
+                                visibleCategory.name(),
+                                activeFullEdgeIds,
+                                activeStubEdgeIds
+                        );
+                    }
+                }
 
                 Map<Grade, Double> newDistribution = graph.computeMessageForCategory(message, category);
 
@@ -86,30 +113,23 @@ public class FactorGraphRunner {
 
                 iterations++;
 
-                if (!isVisible(task)) {
+                if (!visible) {
                     continue;
                 }
 
-                MessageWaveType taskWaveType = waveTypeOf(message);
-
-                if (currentWaveType == null) {
-                    currentWaveType = taskWaveType;
-                }
-
-                if (taskWaveType != currentWaveType) {
-                    frontier.addFirst(task);
-                    queued.add(task);
-
-                    stepIndex++;
-                    return new LbpStepResult(
-                            stepIndex,
-                            RunStage.MESSAGE_PASSING,
-                            describeWave(currentWaveType, visibleWaveTasks.size()),
-                            false
-                    );
-                }
-
                 visibleWaveTasks.add(task);
+
+                String edgeId = graph.visualEdgeIdForMessage(message, scope);
+                if (edgeId != null && seenEdgeIds.add(edgeId)) {
+                    boolean sourceDisplayed = scope.getScopedNodes().contains(message.getSource());
+                    boolean targetDisplayed = scope.getScopedNodes().contains(message.getTarget());
+
+                    if (sourceDisplayed && targetDisplayed) {
+                        activeFullEdgeIds.add(edgeId);
+                    } else {
+                        activeStubEdgeIds.add(edgeId);
+                    }
+                }
             }
             stage = RunStage.BELIEF_UPDATE;
             if (!visibleWaveTasks.isEmpty()) {
@@ -118,7 +138,11 @@ public class FactorGraphRunner {
                         stepIndex,
                         RunStage.MESSAGE_PASSING,
                         describeWave(currentWaveType, visibleWaveTasks.size()),
-                        false
+                        false,
+                        currentWaveType,
+                        visibleCategory.name(),
+                        activeFullEdgeIds,
+                        activeStubEdgeIds
                 );
             }
         }
@@ -135,7 +159,11 @@ public class FactorGraphRunner {
                         stepIndex,
                         RunStage.BELIEF_UPDATE,
                         "Computed final belief for sheep " + sheep.getId(),
-                        false
+                        false,
+                        null,
+                        null,
+                        null,
+                        null
                 );
             }
 
@@ -146,11 +174,15 @@ public class FactorGraphRunner {
                     stepIndex,
                     RunStage.COMPLETED,
                     "Final belief computation complete",
-                    true
+                    true,
+                    null,
+                    null,
+                    null,
+                    null
             );
         }
 
-        return new LbpStepResult(stepIndex, RunStage.COMPLETED, "Run already completed", true);
+        return new LbpStepResult(stepIndex, RunStage.COMPLETED, "Run already completed", true, null, null, null, null);
     }
 
     public String getUserId() {

@@ -1,8 +1,6 @@
 package com.progressengine.geneinference.controller;
 
-import com.progressengine.geneinference.dto.NextStepRequest;
-import com.progressengine.geneinference.dto.RunEvent;
-import com.progressengine.geneinference.dto.StartRunRequest;
+import com.progressengine.geneinference.dto.*;
 import com.progressengine.geneinference.service.FactorGraphRunService;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessagingTemplate;

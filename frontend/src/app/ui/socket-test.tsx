@@ -29,9 +29,16 @@ type VisualEdge = {
 };
 
 type VisualGraphSnapshot = {
-    centerNodeId: string;
+    centerSheepId: string;
     nodes: VisualNode[];
     edges: VisualEdge[];
+};
+
+type MessageWaveDelta = {
+    waveType: "SHEEP_TO_RELATIONSHIP" | "RELATIONSHIP_TO_SHEEP";
+    category: string;
+    activeFullEdgeIds: string[];
+    activeStubEdgeIds: string[];
 };
 
 type RunStartedPayload = {
@@ -46,6 +53,7 @@ type StepEventPayload = {
     totalSteps: number;
     stage: RunStage;
     message: string;
+    delta?: MessageWaveDelta | null;
 };
 
 type CompletedPayload = {
@@ -81,6 +89,11 @@ export default function SocketTest() {
 
     const [targetSheepId, setTargetSheepId] = useState<number | null>(null);
     const [selectedCategory, setSelectedCategory] = useState<Category>("SWIM");
+
+    const [activeFullEdgeIds, setActiveFullEdgeIds] = useState<string[]>([]);
+    const [activeStubEdgeIds, setActiveStubEdgeIds] = useState<string[]>([]);
+    const [currentWaveType, setCurrentWaveType] = useState<string | null>(null);
+    const [currentCategory, setCurrentCategory] = useState<string | null>(null);
 
     useEffect(() => {
         const supabase = createSupabaseClient();
@@ -179,6 +192,18 @@ export default function SocketTest() {
                 setCurrentStep(payload.stepIndex);
                 setTotalSteps(payload.totalSteps);
                 setStage(payload.stage);
+
+                if (payload.delta) {
+                    setActiveFullEdgeIds(payload.delta.activeFullEdgeIds);
+                    setActiveStubEdgeIds(payload.delta.activeStubEdgeIds);
+                    setCurrentWaveType(payload.delta.waveType);
+                    setCurrentCategory(payload.delta.category);
+                } else {
+                    setActiveFullEdgeIds([]);
+                    setActiveStubEdgeIds([]);
+                    setCurrentWaveType(null);
+                }
+
                 setLog((prev) => [
                     ...prev,
                     {
@@ -267,6 +292,17 @@ export default function SocketTest() {
         return { dx: ux * t, dy: uy * t };
     }
 
+    function activeEdgeColor(waveType: string | null) {
+        switch (waveType) {
+            case "SHEEP_TO_RELATIONSHIP":
+                return "#22d3ee"; // cyan
+            case "RELATIONSHIP_TO_SHEEP":
+                return "#facc15"; // yellow/gold
+            default:
+                return "gold";
+        }
+    }
+
     const GRAPH_WIDTH = 700;
     const GRAPH_HEIGHT = 500;
     const CENTER_X = GRAPH_WIDTH / 2;
@@ -278,8 +314,8 @@ export default function SocketTest() {
         const maxX = Math.max(...graph.nodes.map((n) => Math.abs(n.x)));
         const maxY = Math.max(...graph.nodes.map((n) => Math.abs(n.y)));
 
-        const paddingX = 140;
-        const paddingY = 100;
+        const paddingX = 70;
+        const paddingY = 50;
 
         const usableHalfWidth = GRAPH_WIDTH / 2 - paddingX;
         const usableHalfHeight = GRAPH_HEIGHT / 2 - paddingY;
@@ -289,6 +325,80 @@ export default function SocketTest() {
 
         return Math.min(1, scaleX, scaleY);
     })();
+
+    const SCALE = 0.6;
+    const LAYOUT_X_SCALE = 1.15;
+    const LAYOUT_Y_SCALE = 0.80;
+
+    function activeArrowMarker(waveType: string | null) {
+        switch (waveType) {
+            case "SHEEP_TO_RELATIONSHIP":
+                return "url(#arrowhead-cyan)";
+            case "RELATIONSHIP_TO_SHEEP":
+                return "url(#arrowhead-gold)";
+            default:
+                return undefined;
+        }
+    }
+
+    function quadraticPathWithLane(
+        x1: number,
+        y1: number,
+        x2: number,
+        y2: number,
+        bend: number,
+        laneOffset: number
+    ) {
+        const mx = (x1 + x2) / 2;
+        const my = (y1 + y2) / 2;
+
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const len = Math.sqrt(dx * dx + dy * dy) || 1;
+
+        const px = -dy / len;
+        const py = dx / len;
+
+        const cx = mx + px * (bend + laneOffset);
+        const cy = my + py * (bend + laneOffset);
+
+        return `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`;
+    }
+
+    function fanAngleOffset(index: number, count: number, maxSpreadRadians: number) {
+        if (count <= 1) return 0;
+
+        const start = -maxSpreadRadians / 2;
+        const step = maxSpreadRadians / (count - 1);
+        return start + index * step;
+    }
+
+    function rotateVector(x: number, y: number, angle: number) {
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+        return {
+            x: x * cos - y * sin,
+            y: x * sin + y * cos,
+        };
+    }
+
+    function centeredFanOffset(index: number, count: number, maxOffset: number) {
+        if (count <= 1) return 0;
+        const midpoint = (count - 1) / 2;
+        if (midpoint === 0) return 0;
+        return ((index - midpoint) / midpoint) * maxOffset;
+    }
+
+    function quadraticPathWithControl(
+        x1: number,
+        y1: number,
+        x2: number,
+        y2: number,
+        cx: number,
+        cy: number
+    ) {
+        return `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`;
+    }
 
     return (
         <div className="p-6 space-y-4 text-white">
@@ -344,187 +454,366 @@ export default function SocketTest() {
                     {graph && (
                         <div className="rounded border border-gray-600 p-4">
                             <h3 className="mb-3 font-semibold">Graph Preview</h3>
-
-                            {/* 👇 THIS is the new wrapper */}
-                            <div className="overflow-auto max-h-[500px] max-w-full">
-                                <svg
-                                    width={1200}
-                                    height={800}
-                                    viewBox="0 0 1200 800"
-                                    className="rounded border border-gray-700 bg-gray-900"
-                                >
+                            <div className="overflow-auto max-w-full max-h-[80vh]">
                                 {(() => {
-                                    const SVG_WIDTH = 1200;
-                                    const SVG_HEIGHT = 800;
-
-                                    const CENTER_X = SVG_WIDTH / 2;
-                                    const CENTER_Y = SVG_HEIGHT / 2;
-
                                     const nodeSize = (type: "sheep" | "relationship") =>
                                         type === "relationship"
-                                            ? { width: 200, height: 80 }
-                                            : { width: 160, height: 80 };
+                                            ? { width: 150 * SCALE, height: 70 * SCALE }
+                                            : { width: 140 * SCALE, height: 70 * SCALE };
+
+                                    const rawNodes = graph.nodes.map((n) => {
+                                        const size = nodeSize(n.type);
+
+                                        return {
+                                            ...n,
+                                            ...size,
+                                            rawCx: n.x * SCALE * LAYOUT_X_SCALE,
+                                            rawCy: n.y * SCALE * LAYOUT_Y_SCALE,
+                                        };
+                                    });
+
+                                    const minX = Math.min(...rawNodes.map((n) => n.rawCx - n.width / 2));
+                                    const maxX = Math.max(...rawNodes.map((n) => n.rawCx + n.width / 2));
+                                    const minY = Math.min(...rawNodes.map((n) => n.rawCy - n.height / 2));
+                                    const maxY = Math.max(...rawNodes.map((n) => n.rawCy + n.height / 2));
+
+                                    const paddingX = 120;
+                                    const paddingY = 120;
+
+                                    const svgWidth = Math.max(900, maxX - minX + paddingX * 2);
+                                    const svgHeight = Math.max(700, maxY - minY + paddingY * 2);
+
+                                    const offsetX = paddingX - minX;
+                                    const offsetY = paddingY - minY;
 
                                     const nodeMap = new Map(
-                                        graph.nodes.map((n) => [
+                                        rawNodes.map((n) => [
                                             n.id,
                                             {
                                                 ...n,
-                                                cx: CENTER_X + n.x,
-                                                cy: CENTER_Y + n.y,
-                                                ...nodeSize(n.type),
+                                                cx: n.rawCx + offsetX,
+                                                cy: n.rawCy + offsetY,
                                             },
                                         ])
                                     );
 
                                     return (
-                                        <>
-                                            {/* Edges */}
-                                            {graph.edges.map((edge) => {
-                                                const source = nodeMap.get(edge.sourceId);
-                                                const target = nodeMap.get(edge.targetId);
+                                        <svg
+                                            width={svgWidth}
+                                            height={svgHeight}
+                                            viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+                                            className="rounded border border-gray-700 bg-gray-900"
+                                        >
+                                            <defs>
+                                                <marker
+                                                    id="arrowhead-cyan"
+                                                    markerWidth="8"
+                                                    markerHeight="8"
+                                                    refX="6"
+                                                    refY="4"
+                                                    orient="auto-start-reverse"
+                                                    markerUnits="userSpaceOnUse"
+                                                >
+                                                    <path d="M0,0 L0,8 L8,4 z" fill="#22d3ee" />
+                                                </marker>
 
-                                                if (!source) return null;
+                                                <marker
+                                                    id="arrowhead-gold"
+                                                    markerWidth="8"
+                                                    markerHeight="8"
+                                                    refX="6"
+                                                    refY="4"
+                                                    orient="auto-start-reverse"
+                                                    markerUnits="userSpaceOnUse"
+                                                >
+                                                    <path d="M0,0 L0,8 L8,4 z" fill="#facc15" />
+                                                </marker>
+                                            </defs>
 
-                                                if (edge.type === "full") {
-                                                    if (!target) return null;
+                                            <>
+                                                {/* Edges */}
+                                                {graph.edges.map((edge) => {
+                                                    const source = nodeMap.get(edge.sourceId);
+                                                    const target = nodeMap.get(edge.targetId);
+                                                    const highlightColor = activeEdgeColor(currentWaveType);
 
-                                                    const dx = target.cx - source.cx;
-                                                    const dy = target.cy - source.cy;
-                                                    const len = Math.sqrt(dx * dx + dy * dy) || 1;
-                                                    const ux = dx / len;
-                                                    const uy = dy / len;
+                                                    if (!source) return null;
 
-                                                    const sourceExit = rectExitOffset(
-                                                        ux,
-                                                        uy,
+                                                    // ---------- FULL EDGES ----------
+                                                    if (edge.type === "full") {
+                                                        if (!target) return null;
+
+                                                        const reverseId = (() => {
+                                                            const [a, b] = edge.id.split("--");
+                                                            return `${b}--${a}`;
+                                                        })();
+
+                                                        const isActive =
+                                                            activeFullEdgeIds.includes(edge.id) ||
+                                                            activeFullEdgeIds.includes(reverseId);
+
+                                                        const isOuterFullEdge =
+                                                            (source.type === "relationship" && target.type === "sheep" && !target.center) ||
+                                                            (source.type === "sheep" && !source.center && target.type === "relationship");
+
+                                                        // Stable geometry orientation:
+                                                        // always relationship -> sheep for mixed sheep/relationship full edges
+                                                        let geomFrom = source;
+                                                        let geomTo = target;
+
+                                                        if (
+                                                            (source.type === "relationship" && target.type === "sheep") ||
+                                                            (source.type === "sheep" && target.type === "relationship")
+                                                        ) {
+                                                            if (source.type === "sheep") {
+                                                                geomFrom = target;
+                                                                geomTo = source;
+                                                            }
+                                                        }
+
+                                                        const dx = geomTo.cx - geomFrom.cx;
+                                                        const dy = geomTo.cy - geomFrom.cy;
+                                                        const len = Math.sqrt(dx * dx + dy * dy) || 1;
+
+                                                        let ux = dx / len;
+                                                        let uy = dy / len;
+
+                                                        // subtle fan-out for sibling outer full edges
+                                                        if (isOuterFullEdge && edge.stubIndex != null && edge.stubCount != null) {
+                                                            const offset = fanAngleOffset(edge.stubIndex, edge.stubCount, 0.35);
+                                                            const rotated = rotateVector(ux, uy, offset);
+                                                            ux = rotated.x;
+                                                            uy = rotated.y;
+                                                        }
+
+                                                        const fromExit = rectExitOffset(
+                                                            ux,
+                                                            uy,
+                                                            geomFrom.width / 2,
+                                                            geomFrom.height / 2,
+                                                            2
+                                                        );
+
+                                                        const toExit = rectExitOffset(
+                                                            -ux,
+                                                            -uy,
+                                                            geomTo.width / 2,
+                                                            geomTo.height / 2,
+                                                            6
+                                                        );
+
+                                                        let x1 = geomFrom.cx + fromExit.dx;
+                                                        let y1 = geomFrom.cy + fromExit.dy;
+                                                        let x2 = geomTo.cx + toExit.dx;
+                                                        let y2 = geomTo.cy + toExit.dy;
+
+                                                        // Active arrow direction depends on wave, but geometry does not
+                                                        let markerStart: string | undefined = undefined;
+                                                        let markerEnd: string | undefined = undefined;
+
+                                                        if (isActive && currentWaveType) {
+                                                            if (currentWaveType === "RELATIONSHIP_TO_SHEEP") {
+                                                                markerEnd = activeArrowMarker(currentWaveType);
+                                                            } else if (currentWaveType === "SHEEP_TO_RELATIONSHIP") {
+                                                                markerStart = activeArrowMarker(currentWaveType);
+                                                            }
+                                                        }
+
+                                                        if (isOuterFullEdge) {
+                                                            let laneOffset = 0;
+
+                                                            if (edge.stubIndex != null && edge.stubCount != null) {
+                                                                laneOffset = centeredFanOffset(edge.stubIndex, edge.stubCount, 22 * SCALE);
+                                                            }
+
+                                                            const px = -uy;
+                                                            const py = ux;
+
+                                                            const sourceLaneOffset = laneOffset * 0.45;
+                                                            const targetLaneOffset = laneOffset * 1.35;
+
+                                                            x1 += px * sourceLaneOffset;
+                                                            y1 += py * sourceLaneOffset;
+                                                            x2 += px * targetLaneOffset;
+                                                            y2 += py * targetLaneOffset;
+
+                                                            const dxCurve = x2 - x1;
+                                                            const dyCurve = y2 - y1;
+                                                            const edgeLength = Math.sqrt(dxCurve * dxCurve + dyCurve * dyCurve) || 1;
+
+                                                            const bendMagnitude = Math.max(
+                                                                24 * SCALE,
+                                                                Math.min(edgeLength * 0.22, 90 * SCALE)
+                                                            );
+
+                                                            let bendSign = 1;
+                                                            if (edge.stubIndex != null && edge.stubCount != null && edge.stubCount > 1) {
+                                                                const midpoint = (edge.stubCount - 1) / 2;
+                                                                bendSign = edge.stubIndex < midpoint ? -1 : 1;
+                                                            }
+
+                                                            const mx = (x1 + x2) / 2;
+                                                            const my = (y1 + y2) / 2;
+
+                                                            const cx = mx + px * (laneOffset + bendSign * bendMagnitude);
+                                                            const cy = my + py * (laneOffset + bendSign * bendMagnitude);
+
+                                                            const pathD = quadraticPathWithControl(x1, y1, x2, y2, cx, cy);
+
+                                                            return (
+                                                                <path
+                                                                    key={edge.id}
+                                                                    d={pathD}
+                                                                    fill="none"
+                                                                    stroke={isActive ? highlightColor : "rgba(156, 163, 175, 0.45)"}
+                                                                    strokeWidth={isActive ? 2.5 : 2.0}
+                                                                    opacity={isActive ? 1 : 0.45}
+                                                                    markerStart={markerStart}
+                                                                    markerEnd={markerEnd}
+                                                                />
+                                                            );
+                                                        }
+
+                                                        return (
+                                                            <line
+                                                                key={edge.id}
+                                                                x1={x1}
+                                                                y1={y1}
+                                                                x2={x2}
+                                                                y2={y2}
+                                                                stroke={isActive ? highlightColor : "rgba(156, 163, 175, 0.45)"}
+                                                                strokeWidth={isActive ? 2.5 : 2.0}
+                                                                opacity={isActive ? 1 : 0.45}
+                                                                markerStart={markerStart}
+                                                                markerEnd={markerEnd}
+                                                            />
+                                                        );
+                                                    }
+
+                                                    // ---------- STUB EDGES ----------
+                                                    const angle = edge.stubAngleRadians ?? 0;
+
+                                                    // outward from displayed node toward hidden node
+                                                    const outwardUx = Math.cos(angle);
+                                                    const outwardUy = Math.sin(angle);
+
+                                                    const isActive = activeStubEdgeIds.includes(edge.id);
+
+                                                    // Message goes outward if it originates at the displayed node.
+                                                    const isOutwardMessage =
+                                                        !isActive ||
+                                                        (source.type === "relationship"
+                                                            ? currentWaveType === "RELATIONSHIP_TO_SHEEP"
+                                                            : currentWaveType === "SHEEP_TO_RELATIONSHIP");
+
+                                                    // boundary point on the outward-facing side of the displayed node
+                                                    const outwardExit = rectExitOffset(
+                                                        outwardUx,
+                                                        outwardUy,
                                                         source.width / 2,
                                                         source.height / 2,
-                                                        2
+                                                        6
                                                     );
 
-                                                    const targetExit = rectExitOffset(
-                                                        -ux,
-                                                        -uy,
-                                                        target.width / 2,
-                                                        target.height / 2,
-                                                        2
-                                                    );
+                                                    const boundaryX = source.cx + outwardExit.dx;
+                                                    const boundaryY = source.cy + outwardExit.dy;
 
-                                                    const x1 = source.cx + sourceExit.dx;
-                                                    const y1 = source.cy + sourceExit.dy;
-                                                    const x2 = target.cx + targetExit.dx;
-                                                    const y2 = target.cy + targetExit.dy;
+                                                    const stubLength = 65 * SCALE;
+
+                                                    let x1: number, y1: number, x2: number, y2: number;
+
+                                                    if (isOutwardMessage) {
+                                                        // displayed node -> hidden node
+                                                        x1 = boundaryX;
+                                                        y1 = boundaryY;
+                                                        x2 = boundaryX + outwardUx * stubLength;
+                                                        y2 = boundaryY + outwardUy * stubLength;
+                                                    } else {
+                                                        // hidden node -> displayed node
+                                                        x1 = boundaryX + outwardUx * stubLength;
+                                                        y1 = boundaryY + outwardUy * stubLength;
+                                                        x2 = boundaryX;
+                                                        y2 = boundaryY;
+                                                    }
 
                                                     return (
-                                                        <line
-                                                            key={edge.id}
-                                                            x1={x1}
-                                                            y1={y1}
-                                                            x2={x2}
-                                                            y2={y2}
-                                                            stroke="white"
-                                                            strokeWidth="3"
-                                                            strokeLinecap="round"
-                                                        />
+                                                        <g key={edge.id}>
+                                                            <line
+                                                                x1={x1}
+                                                                y1={y1}
+                                                                x2={x2}
+                                                                y2={y2}
+                                                                stroke={isActive ? highlightColor : "rgba(156, 163, 175, 0.45)"}
+                                                                strokeWidth={isActive ? 3.5 : 2.5}
+                                                                strokeDasharray="8 6"
+                                                                strokeLinecap="round"
+                                                                opacity={isActive ? 1 : 0.8}
+                                                                markerEnd={isActive ? activeArrowMarker(currentWaveType) : undefined}
+                                                            />
+
+                                                            {(!isActive || !isOutwardMessage) && (
+                                                                <circle
+                                                                    cx={isOutwardMessage ? x2 : x1}
+                                                                    cy={isOutwardMessage ? y2 : y1}
+                                                                    r={isActive ? 6 : 5}
+                                                                    fill={isActive ? highlightColor : "rgba(156, 163, 175, 0.45)"}
+                                                                />
+                                                            )}
+                                                        </g>
                                                     );
-                                                }
+                                                })}
 
-                                                const angle = edge.stubAngleRadians ?? 0;
-                                                const ux = Math.cos(angle);
-                                                const uy = Math.sin(angle);
+                                                {/* Nodes */}
+                                                {Array.from(nodeMap.values()).map((node) => {
+                                                    const x = node.cx - node.width / 2;
+                                                    const y = node.cy - node.height / 2;
+                                                    const fill =
+                                                        node.type === "relationship"
+                                                            ? "#a000e8"
+                                                            : "#2563eb";
+                                                    const stroke = node.center
+                                                        ? "#93c5fd"
+                                                        : "#d8b4fe";
 
-                                                const sourceExit = rectExitOffset(
-                                                    ux,
-                                                    uy,
-                                                    source.width / 2,
-                                                    source.height / 2,
-                                                    4
-                                                );
-
-                                                const x1 = source.cx + sourceExit.dx;
-                                                const y1 = source.cy + sourceExit.dy;
-
-                                                const stubLength = 65;
-                                                const x2 = x1 + ux * stubLength;
-                                                const y2 = y1 + uy * stubLength;
-
-                                                return (
-                                                    <g key={edge.id}>
-                                                        <line
-                                                            x1={x1}
-                                                            y1={y1}
-                                                            x2={x2}
-                                                            y2={y2}
-                                                            stroke="orange"
-                                                            strokeWidth="4"
-                                                            strokeDasharray="8 6"
-                                                            strokeLinecap="round"
-                                                        />
-                                                        <circle cx={x2} cy={y2} r="6" fill="orange" />
-                                                    </g>
-                                                );
-                                            })}
-
-                                            {/* Nodes */}
-                                            {Array.from(nodeMap.values()).map((node) => {
-                                                const x = node.cx - node.width / 2;
-                                                const y = node.cy - node.height / 2;
-                                                const fill =
-                                                    node.type === "relationship" ? "#a000e8" : "#2563eb";
-                                                const stroke = node.center ? "#93c5fd" : "#d8b4fe";
-
-                                                return (
-                                                    <g key={node.id}>
-                                                        <rect
-                                                            x={x}
-                                                            y={y}
-                                                            width={node.width}
-                                                            height={node.height}
-                                                            rx={10}
-                                                            fill={fill}
-                                                            stroke={stroke}
-                                                            strokeWidth={2}
-                                                        />
-                                                        <text
-                                                            x={node.cx}
-                                                            y={node.cy - 4}
-                                                            fill="white"
-                                                            fontSize="18"
-                                                            textAnchor="middle"
-                                                        >
-                                                            {node.label}
-                                                        </text>
-                                                        <text
-                                                            x={node.cx}
-                                                            y={node.cy + 20}
-                                                            fill="rgba(255,255,255,0.7)"
-                                                            fontSize="12"
-                                                            textAnchor="middle"
-                                                        >
-                                                            {node.id}
-                                                        </text>
-                                                    </g>
-                                                );
-                                            })}
-                                        </>
+                                                    return (
+                                                        <g key={node.id}>
+                                                            <rect
+                                                                x={x}
+                                                                y={y}
+                                                                width={node.width}
+                                                                height={node.height}
+                                                                rx={10}
+                                                                fill={fill}
+                                                                stroke={stroke}
+                                                                strokeWidth={2}
+                                                            />
+                                                            <text
+                                                                x={node.cx}
+                                                                y={node.cy - 4}
+                                                                fill="white"
+                                                                fontSize={18 * SCALE}
+                                                                textAnchor="middle"
+                                                            >
+                                                                {node.label}
+                                                            </text>
+                                                            <text
+                                                                x={node.cx}
+                                                                y={node.cy + 20 * SCALE}
+                                                                fill="rgba(255,255,255,0.7)"
+                                                                fontSize={12 * SCALE}
+                                                                textAnchor="middle"
+                                                            >
+                                                                {node.id}
+                                                            </text>
+                                                        </g>
+                                                    );
+                                                })}
+                                            </>
+                                        </svg>
                                     );
                                 })()}
-                            </svg>
                             </div>
                         </div>
-                    )}
-                    {log.length === 0 ? (
-                        <div className="text-gray-400">No events yet.</div>
-                    ) : (
-                        log.map((entry, index) => (
-                            <div
-                                key={index}
-                                className="rounded bg-gray-800 px-3 py-2 text-sm"
-                            >
-                                {entry.text}
-                            </div>
-                        ))
                     )}
                 </div>
             </div>

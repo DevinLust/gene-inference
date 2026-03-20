@@ -8,15 +8,17 @@ public class StepEventPayload {
     private int totalSteps;
     private RunStage stage;
     private String message;
+    private Object delta;
 
     public StepEventPayload() {
     }
 
-    public StepEventPayload(int stepIndex, int totalSteps, RunStage stage, String message) {
+    public StepEventPayload(int stepIndex, int totalSteps, RunStage stage, String message, Object delta) {
         this.stepIndex = stepIndex;
         this.totalSteps = totalSteps;
         this.stage = stage;
         this.message = message;
+        this.delta = delta;
     }
 
     public int getStepIndex() {
@@ -49,5 +51,13 @@ public class StepEventPayload {
 
     public void setMessage(String message) {
         this.message = message;
+    }
+
+    public Object getDelta() {
+        return delta;
+    }
+
+    public void setDelta(Object delta) {
+        this.delta = delta;
     }
 }

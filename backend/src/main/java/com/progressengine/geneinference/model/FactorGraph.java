@@ -78,7 +78,18 @@ public class FactorGraph {
         scopedNodes.add(targetNode);
         scopedSheep.add(targetSheep);
 
-        scopedNodes.addAll(adjacencyMatrix.get(targetNode));
+        List<Node<?>> relationshipNeighbors = adjacencyMatrix.getOrDefault(targetNode, List.of());
+        for (Node<?> relationshipNode : relationshipNeighbors) {
+            scopedNodes.add(relationshipNode);
+
+            for (Node<?> relativeNode : adjacencyMatrix.getOrDefault(relationshipNode, List.of())) {
+                scopedNodes.add(relativeNode);
+
+                if (relativeNode instanceof SheepNode sheepNode) {
+                    scopedSheep.add(sheepNode.getValue());
+                }
+            }
+        }
 
         return new VisualizationScope(targetSheep, scopedNodes, scopedSheep);
     }
@@ -94,35 +105,45 @@ public class FactorGraph {
 
         String centerNodeId = nodeId(centerNode);
 
-        Set<Node<?>> displayedNodes = new HashSet<>();
-        displayedNodes.add(centerNode);
-
+        Set<Node<?>> displayedNodes = new HashSet<>(scope.getScopedNodes());
         Map<Node<?>, double[]> positions = new HashMap<>();
+        Set<String> addedNodeIds = new HashSet<>();
+        Set<String> addedEdgeIds = new HashSet<>();
 
+        // ---- Center sheep ----
+        positions.put(centerNode, new double[]{0.0, 0.0});
         nodes.add(new VisualNodeDTO(
                 centerNodeId,
                 "sheep",
                 "Sheep " + scope.getCenterSheep().getId(),
-                0,
-                0,
+                0.0,
+                0.0,
                 true
         ));
+        addedNodeIds.add(centerNodeId);
 
-        List<Node<?>> neighbors = adjacencyMatrix.getOrDefault(centerNode, List.of());
-        double radius = 200.0;
+        // ---- Relationship nodes on inner ring ----
+        List<RelationshipNode> relationshipNodes = adjacencyMatrix.getOrDefault(centerNode, List.of())
+                .stream()
+                .filter(n -> n instanceof RelationshipNode)
+                .map(n -> (RelationshipNode) n)
+                .toList();
 
-        for (int i = 0; i < neighbors.size(); i++) {
-            Node<?> neighbor = neighbors.get(i);
-            double angle = (2 * Math.PI * i) / Math.max(1, neighbors.size());
-            double x = radius * Math.cos(angle);
-            double y = radius * Math.sin(angle);
+        double relationshipRadius = 240.0;
+        Map<RelationshipNode, Double> relationshipAngles = new HashMap<>();
 
-            if (neighbor instanceof RelationshipNode relationshipNode) {
-                displayedNodes.add(relationshipNode);
-                positions.put(relationshipNode, new double[]{x, y});
+        for (int i = 0; i < relationshipNodes.size(); i++) {
+            RelationshipNode relationshipNode = relationshipNodes.get(i);
 
-                String relationshipNodeId = nodeId(relationshipNode);
+            double angle = (2 * Math.PI * i) / Math.max(1, relationshipNodes.size());
+            double x = relationshipRadius * Math.cos(angle);
+            double y = relationshipRadius * Math.sin(angle);
 
+            relationshipAngles.put(relationshipNode, angle);
+            positions.put(relationshipNode, new double[]{x, y});
+
+            String relationshipNodeId = nodeId(relationshipNode);
+            if (addedNodeIds.add(relationshipNodeId)) {
                 nodes.add(new VisualNodeDTO(
                         relationshipNodeId,
                         "relationship",
@@ -131,9 +152,12 @@ public class FactorGraph {
                         y,
                         false
                 ));
+            }
 
+            String edgeId = structuralEdgeId(centerNode, relationshipNode);
+            if (addedEdgeIds.add(edgeId)) {
                 edges.add(new VisualEdgeDTO(
-                        centerNodeId + "--" + relationshipNodeId,
+                        edgeId,
                         centerNodeId,
                         relationshipNodeId,
                         "full",
@@ -145,43 +169,215 @@ public class FactorGraph {
             }
         }
 
-        for (Node<?> displayedNode : displayedNodes) {
-            if (!(displayedNode instanceof RelationshipNode relationshipNode)) {
-                continue;
-            }
+        // ---- Relative sheep on outer ring, sector centered on relationship angle ----
+        double sheepRadius = 460.0;
 
+        for (int i = 0; i < relationshipNodes.size(); i++) {
+            RelationshipNode relationshipNode = relationshipNodes.get(i);
             String relationshipNodeId = nodeId(relationshipNode);
 
+            double centerAngle = relationshipAngles.get(relationshipNode);
+
+            // reserve some gap between sectors
+            double maxSpreadFromNeighbors;
+
+            if (relationshipNodes.size() == 1) {
+                maxSpreadFromNeighbors = Math.PI; // allow up to 180°
+            } else {
+                double prevAngle = relationshipAngles.get(
+                        relationshipNodes.get((i - 1 + relationshipNodes.size()) % relationshipNodes.size())
+                );
+                double nextAngle = relationshipAngles.get(
+                        relationshipNodes.get((i + 1) % relationshipNodes.size())
+                );
+
+                double leftGap = angularDistance(centerAngle, prevAngle);
+                double rightGap = angularDistance(nextAngle, centerAngle);
+                double minNeighborGap = Math.min(leftGap, rightGap);
+
+                maxSpreadFromNeighbors = Math.max(0.0, minNeighborGap * 0.82);
+            }
+
+            List<SheepNode> visibleSheepNeighbors = new ArrayList<>();
             List<Node<?>> hiddenNeighbors = new ArrayList<>();
+
             for (Node<?> relative : adjacencyMatrix.getOrDefault(relationshipNode, List.of())) {
-                if (!displayedNodes.contains(relative)) {
+                if (relative.equals(centerNode)) {
+                    continue;
+                }
+
+                if (displayedNodes.contains(relative) && relative instanceof SheepNode sheepNode) {
+                    visibleSheepNeighbors.add(sheepNode);
+                } else if (!displayedNodes.contains(relative)) {
                     hiddenNeighbors.add(relative);
                 }
             }
 
-            double[] sourcePos = positions.get(relationshipNode);
+            // place visible relatives
+            double desiredSpread = relationshipSectorSpread(visibleSheepNeighbors.size());
+            double actualSpread = Math.min(desiredSpread, maxSpreadFromNeighbors);
+
+            List<Double> sheepAngles = evenlySpacedAngles(centerAngle, actualSpread, visibleSheepNeighbors.size());
+
+            for (int j = 0; j < visibleSheepNeighbors.size(); j++) {
+                SheepNode sheepNode = visibleSheepNeighbors.get(j);
+                double sheepAngle = sheepAngles.get(j);
+
+                double sheepX = sheepRadius * Math.cos(sheepAngle);
+                double sheepY = sheepRadius * Math.sin(sheepAngle);
+
+                positions.put(sheepNode, new double[]{sheepX, sheepY});
+
+                String sheepNodeId = nodeId(sheepNode);
+                if (addedNodeIds.add(sheepNodeId)) {
+                    nodes.add(new VisualNodeDTO(
+                            sheepNodeId,
+                            "sheep",
+                            "Sheep " + sheepNode.getValue().getId(),
+                            sheepX,
+                            sheepY,
+                            false
+                    ));
+                }
+
+                String edgeId = structuralEdgeId(relationshipNode, sheepNode);
+                if (addedEdgeIds.add(edgeId)) {
+                    edges.add(new VisualEdgeDTO(
+                            edgeId,
+                            relationshipNodeId,
+                            sheepNodeId,
+                            "full",
+                            true,
+                            null,
+                            j,
+                            visibleSheepNeighbors.size()
+                    ));
+                }
+            }
+
+            // hidden neighbors become stubs, fanned in the same sector
+            double stubSpread = Math.min(
+                    relationshipSectorSpread(hiddenNeighbors.size()),
+                    maxSpreadFromNeighbors
+            );
+            List<Double> stubAngles = evenlySpacedAngles(centerAngle, stubSpread, hiddenNeighbors.size());
+
+            for (int j = 0; j < hiddenNeighbors.size(); j++) {
+                Node<?> hiddenNeighbor = hiddenNeighbors.get(j);
+                String hiddenNeighborId = nodeId(hiddenNeighbor);
+                double stubAngle = stubAngles.get(j);
+
+                String edgeId = relationshipNodeId + "--" + hiddenNeighborId;
+                if (addedEdgeIds.add(edgeId)) {
+                    edges.add(new VisualEdgeDTO(
+                            edgeId,
+                            relationshipNodeId,
+                            hiddenNeighborId,
+                            "stub",
+                            false,
+                            stubAngle,
+                            j,
+                            hiddenNeighbors.size()
+                    ));
+                }
+            }
+        }
+
+        // ---- Boundary stubs from any displayed sheep to hidden relationship neighbors ----
+        for (Node<?> displayedNode : displayedNodes) {
+            if (!(displayedNode instanceof SheepNode sheepNode)) {
+                continue;
+            }
+            if (displayedNode.equals(centerNode)) {
+                continue;
+            }
+
+            String displayedNodeId = nodeId(sheepNode);
+            double[] sourcePos = positions.get(sheepNode);
+            if (sourcePos == null) {
+                continue;
+            }
+
+            List<Node<?>> hiddenNeighbors = new ArrayList<>();
+            for (Node<?> neighbor : adjacencyMatrix.getOrDefault(displayedNode, List.of())) {
+                if (!displayedNodes.contains(neighbor)) {
+                    hiddenNeighbors.add(neighbor);
+                }
+            }
+
+            if (hiddenNeighbors.isEmpty()) {
+                continue;
+            }
+
             double baseAngle = outwardAngle(sourcePos[0], sourcePos[1]);
+            double spread = Math.min(
+                    relationshipSectorSpread(hiddenNeighbors.size()),
+                    Math.PI
+            );
+            List<Double> stubAngles = evenlySpacedAngles(baseAngle, spread, hiddenNeighbors.size());
 
-            for (int i = 0; i < hiddenNeighbors.size(); i++) {
-                Node<?> hiddenNeighbor = hiddenNeighbors.get(i);
-                String stubTargetId = nodeId(hiddenNeighbor);
+            for (int j = 0; j < hiddenNeighbors.size(); j++) {
+                Node<?> hiddenNeighbor = hiddenNeighbors.get(j);
+                String hiddenNeighborId = nodeId(hiddenNeighbor);
+                double stubAngle = stubAngles.get(j);
 
-                double stubAngle = fanoutAngle(baseAngle, i, hiddenNeighbors.size());
-
-                edges.add(new VisualEdgeDTO(
-                        relationshipNodeId + "--" + stubTargetId,
-                        relationshipNodeId,
-                        stubTargetId,
-                        "stub",
-                        false,
-                        stubAngle,
-                        i,
-                        hiddenNeighbors.size()
-                ));
+                String edgeId = displayedNodeId + "--" + hiddenNeighborId;
+                if (addedEdgeIds.add(edgeId)) {
+                    edges.add(new VisualEdgeDTO(
+                            edgeId,
+                            displayedNodeId,
+                            hiddenNeighborId,
+                            "stub",
+                            false,
+                            stubAngle,
+                            j,
+                            hiddenNeighbors.size()
+                    ));
+                }
             }
         }
 
         return new VisualGraphSnapshot(centerNodeId, nodes, edges);
+    }
+
+    private double normalizeAngle(double angle) {
+        while (angle <= -Math.PI) angle += 2 * Math.PI;
+        while (angle > Math.PI) angle -= 2 * Math.PI;
+        return angle;
+    }
+
+    private double angularDistance(double a, double b) {
+        return Math.abs(normalizeAngle(a - b));
+    }
+
+    private double relationshipSectorSpread(int relativeCount) {
+        if (relativeCount <= 1) {
+            return Math.toRadians(55);
+        }
+
+        double spread = Math.toRadians(55 + 22 * (relativeCount - 1));
+        return Math.min(spread, Math.PI);
+    }
+
+    private List<Double> evenlySpacedAngles(double centerAngle, double spread, int count) {
+        List<Double> angles = new ArrayList<>();
+        if (count <= 0) {
+            return angles;
+        }
+
+        if (count == 1) {
+            angles.add(centerAngle);
+            return angles;
+        }
+
+        double start = centerAngle - spread / 2.0;
+        double step = spread / (count - 1);
+
+        for (int i = 0; i < count; i++) {
+            angles.add(start + i * step);
+        }
+
+        return angles;
     }
 
     private double nodeX(Node<?> node, Node<Sheep> centerNode, java.util.Map<Node<?>, double[]> positions) {
@@ -194,6 +390,38 @@ public class FactorGraph {
         if (node.equals(centerNode)) return 0.0;
         double[] pos = positions.get(node);
         return pos == null ? 0.0 : pos[1];
+    }
+
+    private String structuralEdgeId(Node<?> a, Node<?> b) {
+        String aId = nodeId(a);
+        String bId = nodeId(b);
+
+        if (aId.compareTo(bId) < 0) {
+            return aId + "--" + bId;
+        }
+        return bId + "--" + aId;
+    }
+
+    public String visualEdgeIdForMessage(Message message, VisualizationScope scope) {
+        Node<?> source = message.getSource();
+        Node<?> target = message.getTarget();
+
+        boolean sourceDisplayed = scope.getScopedNodes().contains(source);
+        boolean targetDisplayed = scope.getScopedNodes().contains(target);
+
+        if (sourceDisplayed && targetDisplayed) {
+            return structuralEdgeId(source, target);
+        }
+
+        if (sourceDisplayed && !targetDisplayed) {
+            return nodeId(source) + "--" + nodeId(target);
+        }
+
+        if (!sourceDisplayed && targetDisplayed) {
+            return nodeId(target) + "--" + nodeId(source);
+        }
+
+        return null;
     }
 
     private double outwardAngle(double x, double y) {

@@ -79,6 +79,17 @@ public class FactorGraphRunService {
             );
         }
 
+        MessageWaveDelta delta = null;
+
+        if (step.stage() == RunStage.MESSAGE_PASSING) {
+            delta = new MessageWaveDelta(
+                    step.waveType().name(),
+                    step.category(),
+                    step.activeFullEdgeIds(),
+                    step.activeStubEdgeIds()
+            );
+        }
+
         return new RunEvent(
                 RunEventType.STEP_EVENT,
                 runId,
@@ -86,7 +97,8 @@ public class FactorGraphRunService {
                         step.stepIndex(),
                         runner.getEstimatedTotalSteps(),
                         step.stage(),
-                        step.message()
+                        step.message(),
+                        delta
                 )
         );
     }
