@@ -1,8 +1,9 @@
 import { Category, SheepFilter, Grade } from "@/app/lib/definitions";
-import { CreateSheep } from "@/app/ui/buttons";
+import { CreateSheep, LBPVisualizerLink } from "@/app/ui/buttons";
 import SheepList from "@/app/ui/sheep/sheep-list";
 import RecalculateBeliefsButton from "@/app/ui/sheep/recalculate-beliefs-button";
 import { Suspense } from 'react';
+import Link from 'next/link';
 
 const CATEGORIES: Category[] = ["SWIM", "FLY", "RUN", "POWER", "STAMINA"];
 
@@ -30,6 +31,7 @@ export default async function SheepPage(props: {
             <div className="mt-4 mb-4 flex items-center justify-start gap-2 md:mt-8">
                 <CreateSheep />
                 <RecalculateBeliefsButton />
+                <LBPVisualizerLink />
             </div>
 
             <Suspense fallback={<p>Loading List...</p>}>

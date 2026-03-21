@@ -1,8 +1,12 @@
 package com.progressengine.geneinference.model;
 
+import com.progressengine.geneinference.dto.VisualEdgeDTO;
+import com.progressengine.geneinference.dto.VisualGraphSnapshot;
+import com.progressengine.geneinference.dto.VisualNodeDTO;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.DistributionType;
 import com.progressengine.geneinference.model.enums.Grade;
+import com.progressengine.geneinference.model.enums.RelationshipEdgeRole;
 import com.progressengine.geneinference.service.InferenceMath;
 import com.progressengine.geneinference.service.SheepService;
 
@@ -10,23 +14,24 @@ import java.util.*;
 
 public class FactorGraph {
 
-    private record MessageCategoryTask(Message message, Category category) {}
 
     private final Map<Node<?>, List<Node<?>>> adjacencyMatrix;
     private final Map<NodePair, Message> messageMap;
+    private final Map<Sheep, Node<Sheep>> sheepToNode;
+    private final Map<Relationship, Node<Relationship>> relationshipToNode;
 
     public FactorGraph(List<Sheep> allSheep, List<Relationship> allRelationships) {
         adjacencyMatrix = new HashMap<>();
         messageMap = new HashMap<>();
 
-        Map<Sheep, Node<Sheep>> sheepToNode = new HashMap<>();
+        this.sheepToNode = new HashMap<>();
         for (Sheep sheep : allSheep) {
             Node<Sheep> sheepNode = new SheepNode(sheep);
             adjacencyMatrix.put(sheepNode, new ArrayList<>());
             sheepToNode.put(sheep, sheepNode);
         }
 
-        Map<Relationship, Node<Relationship>> relationshipToNode = new HashMap<>();
+        this.relationshipToNode = new HashMap<>();
         for (Relationship relationship : allRelationships) {
             Node<Relationship> relationshipNode = new RelationshipNode(relationship);
             relationshipToNode.put(relationship, relationshipNode);
@@ -62,6 +67,442 @@ public class FactorGraph {
         }
     }
 
+    public VisualizationScope buildScope(Sheep targetSheep) {
+        Node<Sheep> targetNode = sheepToNode.get(targetSheep);
+        if (targetNode == null) {
+            throw new IllegalArgumentException("Target sheep is not in factor graph");
+        }
+
+        Set<Node<?>> scopedNodes = new HashSet<>();
+        Set<Sheep> scopedSheep = new HashSet<>();
+
+        scopedNodes.add(targetNode);
+        scopedSheep.add(targetSheep);
+
+        List<Node<?>> relationshipNeighbors = adjacencyMatrix.getOrDefault(targetNode, List.of());
+        for (Node<?> relationshipNode : relationshipNeighbors) {
+            scopedNodes.add(relationshipNode);
+
+            for (Node<?> relativeNode : adjacencyMatrix.getOrDefault(relationshipNode, List.of())) {
+                scopedNodes.add(relativeNode);
+
+                if (relativeNode instanceof SheepNode sheepNode) {
+                    scopedSheep.add(sheepNode.getValue());
+                }
+            }
+        }
+
+        return new VisualizationScope(targetSheep, scopedNodes, scopedSheep);
+    }
+
+    public VisualGraphSnapshot buildVisualGraph(VisualizationScope scope) {
+        List<VisualNodeDTO> nodes = new ArrayList<>();
+        List<VisualEdgeDTO> edges = new ArrayList<>();
+
+        Node<Sheep> centerNode = sheepToNode.get(scope.getCenterSheep());
+        if (centerNode == null) {
+            throw new IllegalArgumentException("Center sheep is not in graph");
+        }
+
+        String centerNodeId = nodeId(centerNode);
+
+        Set<Node<?>> displayedNodes = new HashSet<>(scope.getScopedNodes());
+        Map<Node<?>, double[]> positions = new HashMap<>();
+        Set<String> addedNodeIds = new HashSet<>();
+        Set<String> addedEdgeIds = new HashSet<>();
+
+        // ---- Center sheep ----
+        positions.put(centerNode, new double[]{0.0, 0.0});
+        nodes.add(new VisualNodeDTO(
+                centerNodeId,
+                "sheep",
+                "Sheep " + scope.getCenterSheep().getId(),
+                0.0,
+                0.0,
+                true
+        ));
+        addedNodeIds.add(centerNodeId);
+
+        // ---- Relationship nodes on inner ring ----
+        List<RelationshipNode> relationshipNodes = adjacencyMatrix.getOrDefault(centerNode, List.of())
+                .stream()
+                .filter(n -> n instanceof RelationshipNode)
+                .map(n -> (RelationshipNode) n)
+                .toList();
+
+        double relationshipRadius = 240.0;
+        Map<RelationshipNode, Double> relationshipAngles = new HashMap<>();
+
+        for (int i = 0; i < relationshipNodes.size(); i++) {
+            RelationshipNode relationshipNode = relationshipNodes.get(i);
+
+            double angle = (2 * Math.PI * i) / Math.max(1, relationshipNodes.size());
+            double x = relationshipRadius * Math.cos(angle);
+            double y = relationshipRadius * Math.sin(angle);
+
+            relationshipAngles.put(relationshipNode, angle);
+            positions.put(relationshipNode, new double[]{x, y});
+
+            String relationshipNodeId = nodeId(relationshipNode);
+            if (addedNodeIds.add(relationshipNodeId)) {
+                nodes.add(new VisualNodeDTO(
+                        relationshipNodeId,
+                        "relationship",
+                        "Relationship " + relationshipNode.getValue().getId(),
+                        x,
+                        y,
+                        false
+                ));
+            }
+
+            String edgeId = structuralEdgeId(centerNode, relationshipNode);
+            if (addedEdgeIds.add(edgeId)) {
+                edges.add(new VisualEdgeDTO(
+                        edgeId,
+                        centerNodeId,
+                        relationshipNodeId,
+                        "full",
+                        true,
+                        relationshipRole(relationshipNode, (SheepNode) centerNode),
+                        null,
+                        null,
+                        null
+                ));
+            }
+        }
+
+        // ---- Relative sheep on outer ring, sector centered on relationship angle ----
+        double sheepRadius = 460.0;
+
+        for (int i = 0; i < relationshipNodes.size(); i++) {
+            RelationshipNode relationshipNode = relationshipNodes.get(i);
+            String relationshipNodeId = nodeId(relationshipNode);
+
+            double centerAngle = relationshipAngles.get(relationshipNode);
+
+            // reserve some gap between sectors
+            double maxSpreadFromNeighbors;
+
+            if (relationshipNodes.size() == 1) {
+                maxSpreadFromNeighbors = Math.PI; // allow up to 180°
+            } else {
+                double prevAngle = relationshipAngles.get(
+                        relationshipNodes.get((i - 1 + relationshipNodes.size()) % relationshipNodes.size())
+                );
+                double nextAngle = relationshipAngles.get(
+                        relationshipNodes.get((i + 1) % relationshipNodes.size())
+                );
+
+                double leftGap = angularDistance(centerAngle, prevAngle);
+                double rightGap = angularDistance(nextAngle, centerAngle);
+                double minNeighborGap = Math.min(leftGap, rightGap);
+
+                maxSpreadFromNeighbors = Math.max(0.0, minNeighborGap * 0.82);
+            }
+
+            List<SheepNode> visibleSheepNeighbors = new ArrayList<>();
+            List<Node<?>> hiddenNeighbors = new ArrayList<>();
+
+            for (Node<?> relative : adjacencyMatrix.getOrDefault(relationshipNode, List.of())) {
+                if (relative.equals(centerNode)) {
+                    continue;
+                }
+
+                if (displayedNodes.contains(relative) && relative instanceof SheepNode sheepNode) {
+                    visibleSheepNeighbors.add(sheepNode);
+                } else if (!displayedNodes.contains(relative)) {
+                    hiddenNeighbors.add(relative);
+                }
+            }
+
+            // place visible relatives
+            double desiredSpread = relationshipSectorSpread(visibleSheepNeighbors.size());
+            double actualSpread = Math.min(desiredSpread, maxSpreadFromNeighbors);
+
+            List<Double> sheepAngles = evenlySpacedAngles(centerAngle, actualSpread, visibleSheepNeighbors.size());
+
+            for (int j = 0; j < visibleSheepNeighbors.size(); j++) {
+                SheepNode sheepNode = visibleSheepNeighbors.get(j);
+                double sheepAngle = sheepAngles.get(j);
+
+                double sheepX = sheepRadius * Math.cos(sheepAngle);
+                double sheepY = sheepRadius * Math.sin(sheepAngle);
+
+                positions.put(sheepNode, new double[]{sheepX, sheepY});
+
+                String sheepNodeId = nodeId(sheepNode);
+                if (addedNodeIds.add(sheepNodeId)) {
+                    nodes.add(new VisualNodeDTO(
+                            sheepNodeId,
+                            "sheep",
+                            "Sheep " + sheepNode.getValue().getId(),
+                            sheepX,
+                            sheepY,
+                            false
+                    ));
+                }
+
+                String edgeId = structuralEdgeId(relationshipNode, sheepNode);
+                if (addedEdgeIds.add(edgeId)) {
+                    edges.add(new VisualEdgeDTO(
+                            edgeId,
+                            relationshipNodeId,
+                            sheepNodeId,
+                            "full",
+                            true,
+                            relationshipRole(relationshipNode, sheepNode),
+                            null,
+                            j,
+                            visibleSheepNeighbors.size()
+                    ));
+                }
+            }
+
+            // hidden neighbors become stubs, fanned in the same sector
+            double stubSpread = Math.min(
+                    relationshipSectorSpread(hiddenNeighbors.size()),
+                    maxSpreadFromNeighbors
+            );
+            List<Double> stubAngles = evenlySpacedAngles(centerAngle, stubSpread, hiddenNeighbors.size());
+
+            for (int j = 0; j < hiddenNeighbors.size(); j++) {
+                Node<?> hiddenNeighbor = hiddenNeighbors.get(j);
+                String hiddenNeighborId = nodeId(hiddenNeighbor);
+                double stubAngle = stubAngles.get(j);
+
+                String edgeId = relationshipNodeId + "--" + hiddenNeighborId;
+                if (addedEdgeIds.add(edgeId)) {
+                    RelationshipEdgeRole role = null;
+                    if (hiddenNeighbor instanceof SheepNode hiddenSheepNode) {
+                        role = relationshipRole(relationshipNode, hiddenSheepNode);
+                    }
+
+                    edges.add(new VisualEdgeDTO(
+                            edgeId,
+                            relationshipNodeId,
+                            hiddenNeighborId,
+                            "stub",
+                            false,
+                            role,
+                            stubAngle,
+                            j,
+                            hiddenNeighbors.size()
+                    ));
+                }
+            }
+        }
+
+        // ---- Boundary stubs from any displayed sheep to hidden relationship neighbors ----
+        for (Node<?> displayedNode : displayedNodes) {
+            if (!(displayedNode instanceof SheepNode sheepNode)) {
+                continue;
+            }
+            if (displayedNode.equals(centerNode)) {
+                continue;
+            }
+
+            String displayedNodeId = nodeId(sheepNode);
+            double[] sourcePos = positions.get(sheepNode);
+            if (sourcePos == null) {
+                continue;
+            }
+
+            List<Node<?>> hiddenNeighbors = new ArrayList<>();
+            for (Node<?> neighbor : adjacencyMatrix.getOrDefault(displayedNode, List.of())) {
+                if (!displayedNodes.contains(neighbor)) {
+                    hiddenNeighbors.add(neighbor);
+                }
+            }
+
+            if (hiddenNeighbors.isEmpty()) {
+                continue;
+            }
+
+            double baseAngle = outwardAngle(sourcePos[0], sourcePos[1]);
+            double spread = Math.min(
+                    relationshipSectorSpread(hiddenNeighbors.size()),
+                    Math.PI
+            );
+            List<Double> stubAngles = evenlySpacedAngles(baseAngle, spread, hiddenNeighbors.size());
+
+            for (int j = 0; j < hiddenNeighbors.size(); j++) {
+                Node<?> hiddenNeighbor = hiddenNeighbors.get(j);
+                String hiddenNeighborId = nodeId(hiddenNeighbor);
+                double stubAngle = stubAngles.get(j);
+
+                String edgeId = displayedNodeId + "--" + hiddenNeighborId;
+                if (addedEdgeIds.add(edgeId)) {
+                    RelationshipEdgeRole role = null;
+                    if (hiddenNeighbor instanceof RelationshipNode hiddenRelationshipNode) {
+                        role = relationshipRole(hiddenRelationshipNode, sheepNode);
+                    }
+
+                    edges.add(new VisualEdgeDTO(
+                            edgeId,
+                            displayedNodeId,
+                            hiddenNeighborId,
+                            "stub",
+                            false,
+                            role,
+                            stubAngle,
+                            j,
+                            hiddenNeighbors.size()
+                    ));
+                }
+            }
+        }
+
+        return new VisualGraphSnapshot(centerNodeId, nodes, edges);
+    }
+
+    private RelationshipEdgeRole relationshipRole(RelationshipNode relationshipNode, SheepNode sheepNode) {
+        Relationship relationship = relationshipNode.getValue();
+        Sheep sheep = sheepNode.getValue();
+
+        if (sheep.equals(relationship.getParent1()) || sheep.equals(relationship.getParent2())) {
+            return RelationshipEdgeRole.PARENT;
+        }
+
+        if (relationship.equals(sheep.getParentRelationship())) {
+            return RelationshipEdgeRole.CHILD;
+        }
+
+        throw new IllegalStateException(
+                "Could not determine relationship role for relationship " +
+                        relationship.getId() + " and sheep " + sheep.getId()
+        );
+    }
+
+    private double normalizeAngle(double angle) {
+        while (angle <= -Math.PI) angle += 2 * Math.PI;
+        while (angle > Math.PI) angle -= 2 * Math.PI;
+        return angle;
+    }
+
+    private double angularDistance(double a, double b) {
+        return Math.abs(normalizeAngle(a - b));
+    }
+
+    private double relationshipSectorSpread(int relativeCount) {
+        if (relativeCount <= 1) {
+            return Math.toRadians(55);
+        }
+
+        double spread = Math.toRadians(55 + 22 * (relativeCount - 1));
+        return Math.min(spread, Math.PI);
+    }
+
+    private List<Double> evenlySpacedAngles(double centerAngle, double spread, int count) {
+        List<Double> angles = new ArrayList<>();
+        if (count <= 0) {
+            return angles;
+        }
+
+        if (count == 1) {
+            angles.add(centerAngle);
+            return angles;
+        }
+
+        double start = centerAngle - spread / 2.0;
+        double step = spread / (count - 1);
+
+        for (int i = 0; i < count; i++) {
+            angles.add(start + i * step);
+        }
+
+        return angles;
+    }
+
+    private double nodeX(Node<?> node, Node<Sheep> centerNode, java.util.Map<Node<?>, double[]> positions) {
+        if (node.equals(centerNode)) return 0.0;
+        double[] pos = positions.get(node);
+        return pos == null ? 0.0 : pos[0];
+    }
+
+    private double nodeY(Node<?> node, Node<Sheep> centerNode, java.util.Map<Node<?>, double[]> positions) {
+        if (node.equals(centerNode)) return 0.0;
+        double[] pos = positions.get(node);
+        return pos == null ? 0.0 : pos[1];
+    }
+
+    private String structuralEdgeId(Node<?> a, Node<?> b) {
+        String aId = nodeId(a);
+        String bId = nodeId(b);
+
+        if (aId.compareTo(bId) < 0) {
+            return aId + "--" + bId;
+        }
+        return bId + "--" + aId;
+    }
+
+    public String visualEdgeIdForMessage(Message message, VisualizationScope scope) {
+        Node<?> source = message.getSource();
+        Node<?> target = message.getTarget();
+
+        boolean sourceDisplayed = scope.getScopedNodes().contains(source);
+        boolean targetDisplayed = scope.getScopedNodes().contains(target);
+
+        if (sourceDisplayed && targetDisplayed) {
+            return structuralEdgeId(source, target);
+        }
+
+        if (sourceDisplayed && !targetDisplayed) {
+            return nodeId(source) + "--" + nodeId(target);
+        }
+
+        if (!sourceDisplayed && targetDisplayed) {
+            return nodeId(target) + "--" + nodeId(source);
+        }
+
+        return null;
+    }
+
+    private double outwardAngle(double x, double y) {
+        return Math.atan2(y, x);
+    }
+
+    private double fanoutAngle(double baseAngle, int index, int count) {
+        if (count <= 1) {
+            return baseAngle;
+        }
+
+        double spread = Math.PI / 3.0; // 60 degrees total spread
+        double step = spread / (count - 1);
+        double start = baseAngle - spread / 2.0;
+
+        return start + index * step;
+    }
+
+    private String nodeId(Node<?> node) {
+        if (node instanceof SheepNode sheepNode) {
+            return "sheep-" + sheepNode.getValue().getId();
+        }
+        if (node instanceof RelationshipNode relationshipNode) {
+            return "relationship-" + relationshipNode.getValue().getId();
+        }
+        throw new IllegalStateException("Unknown node type");
+    }
+
+    public List<MessageCategoryTask> initialFrontierTasks() {
+        List<MessageCategoryTask> tasks = new ArrayList<>();
+
+        for (Message message : messageMap.values()) {
+            if (message instanceof RelationshipMessage) {
+                for (Category category : Category.values()) {
+                    tasks.add(new MessageCategoryTask(message, category));
+                }
+            }
+        }
+
+        return tasks;
+    }
+
+
+    public int estimatedMaxIterations() {
+        return messageMap.size() * Category.values().length * 20;
+    }
+
+
     public List<Message> dependentsOf(Message message) {
         List<Message> dependents = new ArrayList<>();
         Node<?> target = message.getTarget();
@@ -78,7 +519,11 @@ public class FactorGraph {
         return dependents;
     }
 
-    private List<MessageCategoryTask> dependentsOf(Message message, Category category) {
+    public List<MessageCategoryTask> dependentsOf(MessageCategoryTask messageCategoryTask) {
+        return dependentsOf(messageCategoryTask.message(), messageCategoryTask.category());
+    }
+
+    public List<MessageCategoryTask> dependentsOf(Message message, Category category) {
         List<MessageCategoryTask> dependents = new ArrayList<>();
         Node<?> target = message.getTarget();
         Node<?> source = message.getSource();
@@ -176,6 +621,46 @@ public class FactorGraph {
         return beliefs;
     }
 
+    public Map<Category, Map<Grade, Double>> computeBeliefForSheep(Sheep sheep) {
+        Node<Sheep> node = sheepToNode.get(sheep);
+        if (node == null) {
+            throw new IllegalArgumentException("Sheep is not in factor graph");
+        }
+
+        Map<Category, Map<Grade, Double>> belief = newBelief();
+
+        for (Node<?> neighbor : adjacencyMatrix.get(node)) {
+            NodePair nodePair = new NodePair(neighbor, node);
+            Message message = messageMap.get(nodePair);
+
+            for (Category category : Category.values()) {
+                InferenceMath.productOfExperts(
+                        belief.get(category),
+                        message.getDistribution().get(category)
+                );
+            }
+        }
+        return belief;
+    }
+
+    public List<Message> incomingMessagesForSheep(Sheep sheep) {
+        Node<Sheep> sheepNode = sheepToNode.get(sheep);
+        if (sheepNode == null) {
+            throw new IllegalArgumentException("Sheep is not in factor graph");
+        }
+
+        List<Message> incoming = new ArrayList<>();
+
+        for (Node<?> neighbor : adjacencyMatrix.getOrDefault(sheepNode, List.of())) {
+            Message message = messageMap.get(new NodePair(neighbor, sheepNode));
+            if (message != null) {
+                incoming.add(message);
+            }
+        }
+
+        return incoming;
+    }
+
     private boolean reachedConvergence(Message message, Map<Category, Map<Grade, Double>> newMessage) {
         double epsilon = 1e-3;
 
@@ -196,7 +681,7 @@ public class FactorGraph {
         return converged;
     }
 
-    private boolean reachedConvergence(
+    public boolean reachedConvergence(
             Message message,
             Category category,
             Map<Grade, Double> newDistribution

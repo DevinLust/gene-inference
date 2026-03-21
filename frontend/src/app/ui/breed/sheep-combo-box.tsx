@@ -120,7 +120,7 @@ export default function SheepCombobox({
                 </div>
 
                 {/* Selected sheep box */}
-                <div className="min-w-[180px] max-w-[240px] rounded border border-gray-600 bg-gray-800 px-3 py-2">
+                <div className={`min-w-[180px] max-w-[240px] rounded border ${selected ? "border-gray-400" : "border-gray-600"} bg-gray-800 px-3 py-2`}>
                     <div className="text-xs text-gray-300">Selected</div>
 
                     {selected ? (
