@@ -6,6 +6,7 @@ import com.progressengine.geneinference.dto.VisualNodeDTO;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.DistributionType;
 import com.progressengine.geneinference.model.enums.Grade;
+import com.progressengine.geneinference.model.enums.RelationshipEdgeRole;
 import com.progressengine.geneinference.service.InferenceMath;
 import com.progressengine.geneinference.service.SheepService;
 
@@ -162,6 +163,7 @@ public class FactorGraph {
                         relationshipNodeId,
                         "full",
                         true,
+                        relationshipRole(relationshipNode, (SheepNode) centerNode),
                         null,
                         null,
                         null
@@ -248,6 +250,7 @@ public class FactorGraph {
                             sheepNodeId,
                             "full",
                             true,
+                            relationshipRole(relationshipNode, sheepNode),
                             null,
                             j,
                             visibleSheepNeighbors.size()
@@ -269,12 +272,18 @@ public class FactorGraph {
 
                 String edgeId = relationshipNodeId + "--" + hiddenNeighborId;
                 if (addedEdgeIds.add(edgeId)) {
+                    RelationshipEdgeRole role = null;
+                    if (hiddenNeighbor instanceof SheepNode hiddenSheepNode) {
+                        role = relationshipRole(relationshipNode, hiddenSheepNode);
+                    }
+
                     edges.add(new VisualEdgeDTO(
                             edgeId,
                             relationshipNodeId,
                             hiddenNeighborId,
                             "stub",
                             false,
+                            role,
                             stubAngle,
                             j,
                             hiddenNeighbors.size()
@@ -323,12 +332,18 @@ public class FactorGraph {
 
                 String edgeId = displayedNodeId + "--" + hiddenNeighborId;
                 if (addedEdgeIds.add(edgeId)) {
+                    RelationshipEdgeRole role = null;
+                    if (hiddenNeighbor instanceof RelationshipNode hiddenRelationshipNode) {
+                        role = relationshipRole(hiddenRelationshipNode, sheepNode);
+                    }
+
                     edges.add(new VisualEdgeDTO(
                             edgeId,
                             displayedNodeId,
                             hiddenNeighborId,
                             "stub",
                             false,
+                            role,
                             stubAngle,
                             j,
                             hiddenNeighbors.size()
@@ -338,6 +353,24 @@ public class FactorGraph {
         }
 
         return new VisualGraphSnapshot(centerNodeId, nodes, edges);
+    }
+
+    private RelationshipEdgeRole relationshipRole(RelationshipNode relationshipNode, SheepNode sheepNode) {
+        Relationship relationship = relationshipNode.getValue();
+        Sheep sheep = sheepNode.getValue();
+
+        if (sheep.equals(relationship.getParent1()) || sheep.equals(relationship.getParent2())) {
+            return RelationshipEdgeRole.PARENT;
+        }
+
+        if (relationship.equals(sheep.getParentRelationship())) {
+            return RelationshipEdgeRole.CHILD;
+        }
+
+        throw new IllegalStateException(
+                "Could not determine relationship role for relationship " +
+                        relationship.getId() + " and sheep " + sheep.getId()
+        );
     }
 
     private double normalizeAngle(double angle) {
@@ -607,9 +640,25 @@ public class FactorGraph {
                 );
             }
         }
-
-        sheep.setDistributionByType(belief, DistributionType.INFERRED);
         return belief;
+    }
+
+    public List<Message> incomingMessagesForSheep(Sheep sheep) {
+        Node<Sheep> sheepNode = sheepToNode.get(sheep);
+        if (sheepNode == null) {
+            throw new IllegalArgumentException("Sheep is not in factor graph");
+        }
+
+        List<Message> incoming = new ArrayList<>();
+
+        for (Node<?> neighbor : adjacencyMatrix.getOrDefault(sheepNode, List.of())) {
+            Message message = messageMap.get(new NodePair(neighbor, sheepNode));
+            if (message != null) {
+                incoming.add(message);
+            }
+        }
+
+        return incoming;
     }
 
     private boolean reachedConvergence(Message message, Map<Category, Map<Grade, Double>> newMessage) {

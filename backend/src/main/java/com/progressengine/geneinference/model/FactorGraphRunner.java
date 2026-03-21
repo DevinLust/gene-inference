@@ -150,20 +150,43 @@ public class FactorGraphRunner {
         if (stage == RunStage.BELIEF_UPDATE) {
             if (beliefIndex < scopedBeliefSheep.size()) {
                 Sheep sheep = scopedBeliefSheep.get(beliefIndex);
-                graph.computeBeliefForSheep(sheep);
+
+                Map<Category, Map<Grade, Double>> belief = graph.computeBeliefForSheep(sheep);
+
+                List<String> activeFullEdgeIds = new ArrayList<>();
+                List<String> activeStubEdgeIds = new ArrayList<>();
+                Set<String> seenEdgeIds = new HashSet<>();
+
+                for (Message message : graph.incomingMessagesForSheep(sheep)) {
+                    String edgeId = graph.visualEdgeIdForMessage(message, scope);
+                    if (edgeId == null || !seenEdgeIds.add(edgeId)) {
+                        continue;
+                    }
+
+                    boolean sourceDisplayed = scope.getScopedNodes().contains(message.getSource());
+                    boolean targetDisplayed = scope.getScopedNodes().contains(message.getTarget());
+
+                    if (sourceDisplayed && targetDisplayed) {
+                        activeFullEdgeIds.add(edgeId);
+                    } else {
+                        activeStubEdgeIds.add(edgeId);
+                    }
+                }
 
                 beliefIndex++;
                 stepIndex++;
+                System.out.println(activeFullEdgeIds);
+                System.out.println(activeStubEdgeIds);
 
                 return new LbpStepResult(
                         stepIndex,
                         RunStage.BELIEF_UPDATE,
                         "Computed final belief for sheep " + sheep.getId(),
                         false,
-                        null,
-                        null,
-                        null,
-                        null
+                        MessageWaveType.RELATIONSHIP_TO_SHEEP,
+                        visibleCategory.name(),
+                        activeFullEdgeIds,
+                        activeStubEdgeIds
                 );
             }
 

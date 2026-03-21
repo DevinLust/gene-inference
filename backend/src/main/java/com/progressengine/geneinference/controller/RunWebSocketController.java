@@ -28,7 +28,7 @@ public class RunWebSocketController {
         String userIdStr = principal.getName();
         UUID userId = UUID.fromString(userIdStr);
 
-        RunEvent event = factorGraphRunService.startRun(userId, request.sheepId());
+        RunEvent event = factorGraphRunService.startRun(userId, request.sheepId(), request.demo());
 
         messagingTemplate.convertAndSendToUser(
                 userIdStr,

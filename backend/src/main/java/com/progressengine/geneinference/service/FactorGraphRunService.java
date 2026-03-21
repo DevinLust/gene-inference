@@ -19,21 +19,40 @@ public class FactorGraphRunService {
     private final RelationshipService relationshipService;
     private final Map<String, String> activeRunByUserId = new ConcurrentHashMap<>();
     private final Map<String, FactorGraphRunner> runners = new ConcurrentHashMap<>();
+    private final DemoGraphService demoGraphService;
 
-    public FactorGraphRunService(SheepService sheepService, RelationshipService relationshipService) {
+    public FactorGraphRunService(
+            SheepService sheepService,
+            RelationshipService relationshipService,
+            DemoGraphService demoGraphService
+    ) {
         this.sheepService = sheepService;
         this.relationshipService = relationshipService;
+        this.demoGraphService = demoGraphService;
     }
 
     @Transactional
-    public RunEvent startRun(UUID userId, Integer targetSheepId) {
+    public RunEvent startRun(UUID userId, Integer targetSheepId, boolean demo) {
         String userIdStr = userId.toString();
         removeActiveRunForUser(userIdStr);
 
         String runId = UUID.randomUUID().toString();
 
-        Sheep targetSheep =  sheepService.findByIdAndUserId(targetSheepId, userId);
-        FactorGraph graph = new FactorGraph(sheepService.getAllSheep(userId), relationshipService.getAllRelationships(userId)); // sheep + relationships
+        FactorGraph graph;
+        Sheep targetSheep;
+
+        if (demo) {
+            DemoGraphData demoGraph = demoGraphService.getDefaultDemoGraph();
+            graph = new FactorGraph(demoGraph.sheep(), demoGraph.relationships());
+            targetSheep = demoGraph.targetSheep();
+        } else {
+            targetSheep = sheepService.findByIdAndUserId(targetSheepId, userId);
+            graph = new FactorGraph(
+                    sheepService.getAllSheep(userId),
+                    relationshipService.getAllRelationships(userId)
+            );
+        }
+
         FactorGraphRunner runner = new FactorGraphRunner(graph, targetSheep, userIdStr);
 
         runners.put(runId, runner);
@@ -81,7 +100,7 @@ public class FactorGraphRunService {
 
         MessageWaveDelta delta = null;
 
-        if (step.stage() == RunStage.MESSAGE_PASSING) {
+        if (step.stage() == RunStage.MESSAGE_PASSING || step.stage() == RunStage.BELIEF_UPDATE) {
             delta = new MessageWaveDelta(
                     step.waveType().name(),
                     step.category(),

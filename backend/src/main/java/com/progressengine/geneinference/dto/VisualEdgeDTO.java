@@ -1,11 +1,14 @@
 package com.progressengine.geneinference.dto;
 
+import com.progressengine.geneinference.model.enums.RelationshipEdgeRole;
+
 public class VisualEdgeDTO {
     private String id;
     private String sourceId;
     private String targetId;
     private String type; // full or stub
     private boolean visibleTarget;
+    private RelationshipEdgeRole relationshipRole;
 
     private Double stubAngleRadians;
     private Integer stubIndex;
@@ -20,6 +23,7 @@ public class VisualEdgeDTO {
             String targetId,
             String type,
             boolean visibleTarget,
+            RelationshipEdgeRole relationshipRole,
             Double stubAngleRadians,
             Integer stubIndex,
             Integer stubCount
@@ -29,6 +33,7 @@ public class VisualEdgeDTO {
         this.targetId = targetId;
         this.type = type;
         this.visibleTarget = visibleTarget;
+        this.relationshipRole = relationshipRole;
         this.stubAngleRadians = stubAngleRadians;
         this.stubIndex = stubIndex;
         this.stubCount = stubCount;
@@ -72,6 +77,14 @@ public class VisualEdgeDTO {
 
     public void setVisibleTarget(boolean visibleTarget) {
         this.visibleTarget = visibleTarget;
+    }
+
+    public RelationshipEdgeRole getRelationshipRole() {
+        return relationshipRole;
+    }
+
+    public void setRelationshipRole(RelationshipEdgeRole relationshipRole) {
+        this.relationshipRole = relationshipRole;
     }
 
     public Double getStubAngleRadians() {

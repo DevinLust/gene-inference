@@ -3,10 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import { Client, IMessage } from "@stomp/stompjs";
 import { createClient as createSupabaseClient } from "@/app/lib/supabase/browser";
-import { Category } from "@/app/lib/definitions";
+import { Category, SheepSummary } from "@/app/lib/definitions";
+import { useBreedSheep } from "@/app/(main)/breed/breed-sheep-provider";
+import SheepCombobox from "@/app/ui/breed/sheep-combo-box";
 
 type RunEventType = "RUN_STARTED" | "STEP_EVENT" | "COMPLETED";
 type RunStage = "MESSAGE_PASSING" | "BELIEF_UPDATE" | "COMPLETED";
+type RunSource = "USER" | "DEMO";
 
 type VisualNode = {
     id: string;
@@ -23,6 +26,7 @@ type VisualEdge = {
     targetId: string;
     type: "full" | "stub";
     visibleTarget: boolean;
+    relationshipRole?: "PARENT" | "CHILD" | null;
     stubAngleRadians?: number | null;
     stubIndex?: number | null;
     stubCount?: number | null;
@@ -74,11 +78,14 @@ type LogEntry = {
 const CATEGORIES: Category[] = ["SWIM", "FLY", "RUN", "POWER", "STAMINA"];
 
 export default function LoopyBeliefVisualizer() {
+    const sheep: SheepSummary[] = useBreedSheep();
+
     const stompRef = useRef<Client | null>(null);
 
     const [accessToken, setAccessToken] = useState<string | null>(null);
     const [isConnected, setIsConnected] = useState(false);
 
+    const [runSource, setRunSource] = useState<RunSource | null>(null);
     const [runId, setRunId] = useState<string | null>(null);
     const [currentStep, setCurrentStep] = useState(0);
     const [totalSteps, setTotalSteps] = useState(0);
@@ -89,6 +96,7 @@ export default function LoopyBeliefVisualizer() {
 
     const [targetSheepId, setTargetSheepId] = useState<number | null>(null);
     const [selectedCategory, setSelectedCategory] = useState<Category>("SWIM");
+    const [isSelectingSheep, setIsSelectingSheep] = useState(false);
 
     const [activeFullEdgeIds, setActiveFullEdgeIds] = useState<string[]>([]);
     const [activeStubEdgeIds, setActiveStubEdgeIds] = useState<string[]>([]);
@@ -181,7 +189,10 @@ export default function LoopyBeliefVisualizer() {
                 setLog([
                     {
                         kind: "RUN_STARTED",
-                        text: `Run started (${event.runId})`,
+                        text:
+                            runSource === "DEMO"
+                                ? `Demo run started (${event.runId})`
+                                : `Run started (${event.runId})`,
                     },
                 ]);
                 break;
@@ -202,6 +213,7 @@ export default function LoopyBeliefVisualizer() {
                     setActiveFullEdgeIds([]);
                     setActiveStubEdgeIds([]);
                     setCurrentWaveType(null);
+                    setCurrentCategory(null);
                 }
 
                 setLog((prev) => [
@@ -216,8 +228,15 @@ export default function LoopyBeliefVisualizer() {
 
             case "COMPLETED": {
                 const payload = event.payload as CompletedPayload;
+
+                setActiveFullEdgeIds([]);
+                setActiveStubEdgeIds([]);
+                setCurrentWaveType(null);
+                setCurrentCategory(null);
+
                 setStage("COMPLETED");
                 setIsCompleted(true);
+
                 setLog((prev) => [
                     ...prev,
                     {
@@ -233,17 +252,51 @@ export default function LoopyBeliefVisualizer() {
         }
     }
 
-    function startRun() {
+    function resetRunView() {
         setGraph(null);
+        setRunId(null);
+        setCurrentStep(0);
+        setTotalSteps(0);
+        setStage("IDLE");
+        setIsCompleted(false);
+        setActiveFullEdgeIds([]);
+        setActiveStubEdgeIds([]);
+        setCurrentWaveType(null);
+        setCurrentCategory(null);
+        setLog([]);
+    }
+
+    function startRun() {
+        resetRunView();
+
         const client = stompRef.current;
         if (!client || !client.connected || targetSheepId == null) return;
 
+        setRunSource("USER");
         sessionStorage.removeItem("activeRunId");
 
         client.publish({
             destination: "/app/run.start",
             body: JSON.stringify({
                 sheepId: targetSheepId,
+                demo: false,
+            }),
+        });
+    }
+
+    function startDemo() {
+        resetRunView();
+
+        const client = stompRef.current;
+        if (!client || !client.connected) return;
+
+        setRunSource("DEMO");
+        sessionStorage.removeItem("activeRunId");
+
+        client.publish({
+            destination: "/app/run.start",
+            body: JSON.stringify({
+                demo: true,
             }),
         });
     }
@@ -261,24 +314,6 @@ export default function LoopyBeliefVisualizer() {
         });
     }
 
-    function rayExitOffset(
-        ux: number,
-        uy: number,
-        halfWidth: number,
-        halfHeight: number,
-        padding = 6
-    ) {
-        const tx = Math.abs(ux) > 1e-6 ? halfWidth / Math.abs(ux) : Number.POSITIVE_INFINITY;
-        const ty = Math.abs(uy) > 1e-6 ? halfHeight / Math.abs(uy) : Number.POSITIVE_INFINITY;
-
-        const t = Math.min(tx, ty) + padding;
-
-        return {
-            dx: ux * t,
-            dy: uy * t,
-        };
-    }
-
     function rectExitOffset(
         ux: number,
         uy: number,
@@ -290,17 +325,6 @@ export default function LoopyBeliefVisualizer() {
         const ty = Math.abs(uy) > 1e-6 ? halfHeight / Math.abs(uy) : Number.POSITIVE_INFINITY;
         const t = Math.min(tx, ty) + padding;
         return { dx: ux * t, dy: uy * t };
-    }
-
-    function activeEdgeColor(waveType: string | null) {
-        switch (waveType) {
-            case "SHEEP_TO_RELATIONSHIP":
-                return "#22d3ee"; // cyan
-            case "RELATIONSHIP_TO_SHEEP":
-                return "#facc15"; // yellow/gold
-            default:
-                return "gold";
-        }
     }
 
     const GRAPH_WIDTH = 700;
@@ -330,39 +354,50 @@ export default function LoopyBeliefVisualizer() {
     const LAYOUT_X_SCALE = 1.15;
     const LAYOUT_Y_SCALE = 0.80;
 
-    function activeArrowMarker(waveType: string | null) {
-        switch (waveType) {
-            case "SHEEP_TO_RELATIONSHIP":
-                return "url(#arrowhead-cyan)";
-            case "RELATIONSHIP_TO_SHEEP":
-                return "url(#arrowhead-gold)";
-            default:
-                return undefined;
+    function activeEdgeColor(
+        stage: RunStage | "IDLE",
+        waveType: string | null,
+        relationshipRole?: "PARENT" | "CHILD" | null
+    ) {
+        if (stage === "BELIEF_UPDATE") {
+            return relationshipRole === "CHILD" ? "#14b8a6" : "#84cc16";
         }
+
+        if (waveType === "SHEEP_TO_RELATIONSHIP") {
+            return relationshipRole === "CHILD" ? "#a78bfa" : "#22d3ee";
+        }
+
+        if (waveType === "RELATIONSHIP_TO_SHEEP") {
+            return relationshipRole === "CHILD" ? "#fb7185" : "#facc15";
+        }
+
+        return "gold";
     }
 
-    function quadraticPathWithLane(
-        x1: number,
-        y1: number,
-        x2: number,
-        y2: number,
-        bend: number,
-        laneOffset: number
+    function activeArrowMarker(
+        stage: RunStage | "IDLE",
+        waveType: string | null,
+        relationshipRole?: "PARENT" | "CHILD" | null
     ) {
-        const mx = (x1 + x2) / 2;
-        const my = (y1 + y2) / 2;
+        if (stage === "BELIEF_UPDATE") {
+            return relationshipRole === "CHILD"
+                ? "url(#arrowhead-teal)"
+                : "url(#arrowhead-lime)";
+        }
 
-        const dx = x2 - x1;
-        const dy = y2 - y1;
-        const len = Math.sqrt(dx * dx + dy * dy) || 1;
+        if (waveType === "SHEEP_TO_RELATIONSHIP") {
+            return relationshipRole === "CHILD"
+                ? "url(#arrowhead-purple)"
+                : "url(#arrowhead-cyan)";
+        }
 
-        const px = -dy / len;
-        const py = dx / len;
+        if (waveType === "RELATIONSHIP_TO_SHEEP") {
+            return relationshipRole === "CHILD"
+                ? "url(#arrowhead-red)"
+                : "url(#arrowhead-gold)";
+        }
 
-        const cx = mx + px * (bend + laneOffset);
-        const cy = my + py * (bend + laneOffset);
-
-        return `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`;
+        return undefined;
     }
 
     function fanAngleOffset(index: number, count: number, maxSpreadRadians: number) {
@@ -400,11 +435,73 @@ export default function LoopyBeliefVisualizer() {
         return `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`;
     }
 
+    function LegendRow({
+                           color,
+                           label,
+                       }: {
+        color: string;
+        label: string;
+    }) {
+        return (
+            <div className="flex items-center gap-2">
+                <div
+                    className="w-4 h-4 rounded"
+                    style={{ backgroundColor: color }}
+                />
+                <span>{label}</span>
+            </div>
+        );
+    }
+
+    function Legend({
+                        stage,
+                    }: {
+        stage: RunStage | "IDLE";
+    }) {
+        return (
+            <div className="rounded border border-gray-600 p-3 text-sm space-y-2 max-w-sm">
+                <div className="font-semibold">Legend</div>
+
+                {stage === "MESSAGE_PASSING" && (
+                    <>
+                        <div>
+                            <div className="text-gray-300 mb-1">Sheep → Relationship</div>
+                            <LegendRow color="#22d3ee" label="Parent edge" />
+                            <LegendRow color="#a78bfa" label="Child edge" />
+                        </div>
+
+                        <div>
+                            <div className="text-gray-300 mb-1">Relationship → Sheep</div>
+                            <LegendRow color="#facc15" label="Parent edge" />
+                            <LegendRow color="#fb7185" label="Child edge" />
+                        </div>
+                    </>
+                )}
+
+                {stage === "BELIEF_UPDATE" && (
+                    <div>
+                        <div className="text-gray-300 mb-1">Belief Update</div>
+                        <LegendRow color="#84cc16" label="Parent edge" />
+                        <LegendRow color="#14b8a6" label="Child edge" />
+                    </div>
+                )}
+            </div>
+        );
+    }
+
     return (
         <div className="p-6 space-y-4 text-white">
             <div className="space-y-1">
                 <div>Socket: {isConnected ? "Connected" : "Disconnected"}</div>
                 <div>Run ID: {runId ?? "None"}</div>
+                <div>
+                    Source:{" "}
+                    {runSource === "DEMO"
+                        ? "Demo graph"
+                        : runSource === "USER"
+                            ? "Your graph"
+                            : "None"}
+                </div>
                 <div>Stage: {stage}</div>
                 <div>
                     Step: {currentStep} / {totalSteps}
@@ -412,49 +509,89 @@ export default function LoopyBeliefVisualizer() {
                 <div>Status: {isCompleted ? "Completed" : "Active / Idle"}</div>
             </div>
 
-            <div className="flex gap-3">
-                <input
-                    type="number"
-                    value={targetSheepId ?? ""}
-                    onChange={(e) => setTargetSheepId(e.target.value ? Number(e.target.value) : null)}
-                    className="rounded border border-gray-500 px-3 py-2 text-white"
-                    placeholder="Target sheep id"
-                />
-                <select
-                    value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value as Category)}
-                    className="rounded border border-gray-500 px-3 py-2 text-white"
-                >
-                    {CATEGORIES.map((c) => (
-                        <option key={c} value={c}>
-                            {c}
-                        </option>
-                    ))}
-                </select>
-                <button
-                    onClick={startRun}
-                    disabled={!isConnected || targetSheepId == null}
-                    className="rounded bg-blue-600 px-4 py-2 disabled:opacity-50"
-                >
-                    Start Run
-                </button>
+            <div className="grid grid-cols-1 gap-2 max-w-sm">
 
-                <button
-                    onClick={nextStep}
-                    disabled={!isConnected || !runId || isCompleted}
-                    className="rounded bg-green-600 px-4 py-2 disabled:opacity-50"
+                <div
+                    className={
+                        runSource === "DEMO" && !isSelectingSheep
+                            ? "opacity-60 hover:opacity-80 cursor-pointer transition-opacity"
+                            : "opacity-100 transition-opacity"
+                    }
                 >
-                    Next Step
-                </button>
+                    <div
+                        onFocus={() => setIsSelectingSheep(true)}
+                        onMouseDown={() => setIsSelectingSheep(true)}
+                        onBlur={() => setIsSelectingSheep(false)}
+                    >
+                        <SheepCombobox
+                            inputLabel={"Choose Target Sheep"}
+                            sheep={sheep}
+                            fieldName={"targetSheep"}
+                            selectedId={targetSheepId}
+                            onSelect={(id) => {
+                                setTargetSheepId(id);
+                                setRunSource("USER"); // 🔥 key behavior
+                                setIsSelectingSheep(false);
+                            }}
+                        />
+                    </div>
+                </div>
+                <div className="flex gap-3">
+                    <select
+                        value={selectedCategory}
+                        onChange={(e) => setSelectedCategory(e.target.value as Category)}
+                        className="rounded border border-gray-500 px-3 py-2 text-white"
+                    >
+                        {CATEGORIES.map((c) => (
+                            <option key={c} value={c}>
+                                {c}
+                            </option>
+                        ))}
+                    </select>
+
+                    <button
+                        onClick={startRun}
+                        disabled={!isConnected || targetSheepId == null}
+                        className="rounded bg-blue-600 px-4 py-2 disabled:opacity-50"
+                    >
+                        Start Run
+                    </button>
+
+                    <button
+                        onClick={startDemo}
+                        disabled={!isConnected}
+                        className="rounded bg-amber-600 px-4 py-2 disabled:opacity-50"
+                    >
+                        Start Demo
+                    </button>
+
+                    <button
+                        onClick={nextStep}
+                        disabled={!isConnected || !runId || isCompleted}
+                        className="rounded bg-green-600 px-4 py-2 disabled:opacity-50"
+                    >
+                        Next Step
+                    </button>
+                </div>
             </div>
 
-            <div className="rounded border border-gray-600 p-4">
-                <h3 className="mb-3 font-semibold">Event Log</h3>
-                <div className="space-y-2">
-                    {graph && (
-                        <div className="rounded border border-gray-600 p-4">
-                            <h3 className="mb-3 font-semibold">Graph Preview</h3>
-                            <div className="overflow-auto max-w-full max-h-[80vh]">
+            <div className="space-y-4">
+                {graph && (
+                    <div className="rounded border border-gray-600 p-4">
+                        <h3 className="mb-1 font-semibold">
+                            Graph Preview {runSource === "DEMO" ? "(Demo)" : ""}
+                        </h3>
+
+                        {runSource === "DEMO" && (
+                            <div className="mb-3 text-sm text-amber-300">
+                                Currently stepping through a predefined demo graph.
+                            </div>
+                        )}
+
+                        <div className="flex gap-4">
+                            <Legend stage={stage} />
+                            {/* graph */}
+                            <div className="overflow-auto max-w-full max-h-[80vh] flex-1">
                                 {(() => {
                                     const nodeSize = (type: "sheep" | "relationship") =>
                                         type === "relationship"
@@ -518,6 +655,18 @@ export default function LoopyBeliefVisualizer() {
                                                 </marker>
 
                                                 <marker
+                                                    id="arrowhead-blue"
+                                                    markerWidth="8"
+                                                    markerHeight="8"
+                                                    refX="6"
+                                                    refY="4"
+                                                    orient="auto-start-reverse"
+                                                    markerUnits="userSpaceOnUse"
+                                                >
+                                                    <path d="M0,0 L0,8 L8,4 z" fill="#60a5fa" />
+                                                </marker>
+
+                                                <marker
                                                     id="arrowhead-gold"
                                                     markerWidth="8"
                                                     markerHeight="8"
@@ -528,6 +677,78 @@ export default function LoopyBeliefVisualizer() {
                                                 >
                                                     <path d="M0,0 L0,8 L8,4 z" fill="#facc15" />
                                                 </marker>
+
+                                                <marker
+                                                    id="arrowhead-pink"
+                                                    markerWidth="8"
+                                                    markerHeight="8"
+                                                    refX="6"
+                                                    refY="4"
+                                                    orient="auto-start-reverse"
+                                                    markerUnits="userSpaceOnUse"
+                                                >
+                                                    <path d="M0,0 L0,8 L8,4 z" fill="#f472b6" />
+                                                </marker>
+
+                                                <marker
+                                                    id="arrowhead-lime"
+                                                    markerWidth="8"
+                                                    markerHeight="8"
+                                                    refX="6"
+                                                    refY="4"
+                                                    orient="auto-start-reverse"
+                                                    markerUnits="userSpaceOnUse"
+                                                >
+                                                    <path d="M0,0 L0,8 L8,4 z" fill="#84cc16" />
+                                                </marker>
+
+                                                <marker
+                                                    id="arrowhead-green"
+                                                    markerWidth="8"
+                                                    markerHeight="8"
+                                                    refX="6"
+                                                    refY="4"
+                                                    orient="auto-start-reverse"
+                                                    markerUnits="userSpaceOnUse"
+                                                >
+                                                    <path d="M0,0 L0,8 L8,4 z" fill="#22c55e" />
+                                                </marker>
+
+                                                <marker
+                                                    id="arrowhead-purple"
+                                                    markerWidth="8"
+                                                    markerHeight="8"
+                                                    refX="6"
+                                                    refY="4"
+                                                    orient="auto-start-reverse"
+                                                    markerUnits="userSpaceOnUse"
+                                                >
+                                                    <path d="M0,0 L0,8 L8,4 z" fill="#a78bfa" />
+                                                </marker>
+
+                                                <marker
+                                                    id="arrowhead-red"
+                                                    markerWidth="8"
+                                                    markerHeight="8"
+                                                    refX="6"
+                                                    refY="4"
+                                                    orient="auto-start-reverse"
+                                                    markerUnits="userSpaceOnUse"
+                                                >
+                                                    <path d="M0,0 L0,8 L8,4 z" fill="#fb7185" />
+                                                </marker>
+
+                                                <marker
+                                                    id="arrowhead-teal"
+                                                    markerWidth="8"
+                                                    markerHeight="8"
+                                                    refX="6"
+                                                    refY="4"
+                                                    orient="auto-start-reverse"
+                                                    markerUnits="userSpaceOnUse"
+                                                >
+                                                    <path d="M0,0 L0,8 L8,4 z" fill="#14b8a6" />
+                                                </marker>
                                             </defs>
 
                                             <>
@@ -535,11 +756,11 @@ export default function LoopyBeliefVisualizer() {
                                                 {graph.edges.map((edge) => {
                                                     const source = nodeMap.get(edge.sourceId);
                                                     const target = nodeMap.get(edge.targetId);
-                                                    const highlightColor = activeEdgeColor(currentWaveType);
+                                                    const highlightColor = activeEdgeColor(stage, currentWaveType, edge.relationshipRole);
+                                                    console.log(edge.id, edge.relationshipRole);
 
                                                     if (!source) return null;
 
-                                                    // ---------- FULL EDGES ----------
                                                     if (edge.type === "full") {
                                                         if (!target) return null;
 
@@ -556,8 +777,6 @@ export default function LoopyBeliefVisualizer() {
                                                             (source.type === "relationship" && target.type === "sheep" && !target.center) ||
                                                             (source.type === "sheep" && !source.center && target.type === "relationship");
 
-                                                        // Stable geometry orientation:
-                                                        // always relationship -> sheep for mixed sheep/relationship full edges
                                                         let geomFrom = source;
                                                         let geomTo = target;
 
@@ -578,7 +797,6 @@ export default function LoopyBeliefVisualizer() {
                                                         let ux = dx / len;
                                                         let uy = dy / len;
 
-                                                        // subtle fan-out for sibling outer full edges
                                                         if (isOuterFullEdge && edge.stubIndex != null && edge.stubCount != null) {
                                                             const offset = fanAngleOffset(edge.stubIndex, edge.stubCount, 0.35);
                                                             const rotated = rotateVector(ux, uy, offset);
@@ -607,15 +825,14 @@ export default function LoopyBeliefVisualizer() {
                                                         let x2 = geomTo.cx + toExit.dx;
                                                         let y2 = geomTo.cy + toExit.dy;
 
-                                                        // Active arrow direction depends on wave, but geometry does not
                                                         let markerStart: string | undefined = undefined;
                                                         let markerEnd: string | undefined = undefined;
 
                                                         if (isActive && currentWaveType) {
                                                             if (currentWaveType === "RELATIONSHIP_TO_SHEEP") {
-                                                                markerEnd = activeArrowMarker(currentWaveType);
+                                                                markerEnd = activeArrowMarker(stage, currentWaveType, edge.relationshipRole)
                                                             } else if (currentWaveType === "SHEEP_TO_RELATIONSHIP") {
-                                                                markerStart = activeArrowMarker(currentWaveType);
+                                                                markerStart = activeArrowMarker(stage, currentWaveType, edge.relationshipRole)
                                                             }
                                                         }
 
@@ -649,14 +866,12 @@ export default function LoopyBeliefVisualizer() {
                                                             const mx = (x1 + x2) / 2;
                                                             const my = (y1 + y2) / 2;
 
-// choose the perpendicular direction that bends farther away from the graph center
                                                             const candidate1X = mx + px * bendMagnitude;
                                                             const candidate1Y = my + py * bendMagnitude;
 
                                                             const candidate2X = mx - px * bendMagnitude;
                                                             const candidate2Y = my - py * bendMagnitude;
 
-// graph center in the current translated SVG space
                                                             const centerNode = Array.from(nodeMap.values()).find((n) => n.center);
                                                             const graphCenterX = centerNode ? centerNode.cx : 0;
                                                             const graphCenterY = centerNode ? centerNode.cy : 0;
@@ -669,7 +884,6 @@ export default function LoopyBeliefVisualizer() {
                                                                 (candidate2X - graphCenterX) * (candidate2X - graphCenterX) +
                                                                 (candidate2Y - graphCenterY) * (candidate2Y - graphCenterY);
 
-// pick the side that is farther from the graph center
                                                             const outwardSign = dist1 >= dist2 ? 1 : -1;
 
                                                             const cx = mx + px * (laneOffset + outwardSign * bendMagnitude);
@@ -707,23 +921,18 @@ export default function LoopyBeliefVisualizer() {
                                                         );
                                                     }
 
-                                                    // ---------- STUB EDGES ----------
                                                     const angle = edge.stubAngleRadians ?? 0;
-
-                                                    // outward from displayed node toward hidden node
                                                     const outwardUx = Math.cos(angle);
                                                     const outwardUy = Math.sin(angle);
 
                                                     const isActive = activeStubEdgeIds.includes(edge.id);
 
-                                                    // Message goes outward if it originates at the displayed node.
                                                     const isOutwardMessage =
                                                         !isActive ||
                                                         (source.type === "relationship"
                                                             ? currentWaveType === "RELATIONSHIP_TO_SHEEP"
                                                             : currentWaveType === "SHEEP_TO_RELATIONSHIP");
 
-                                                    // boundary point on the outward-facing side of the displayed node
                                                     const outwardExit = rectExitOffset(
                                                         outwardUx,
                                                         outwardUy,
@@ -740,13 +949,11 @@ export default function LoopyBeliefVisualizer() {
                                                     let x1: number, y1: number, x2: number, y2: number;
 
                                                     if (isOutwardMessage) {
-                                                        // displayed node -> hidden node
                                                         x1 = boundaryX;
                                                         y1 = boundaryY;
                                                         x2 = boundaryX + outwardUx * stubLength;
                                                         y2 = boundaryY + outwardUy * stubLength;
                                                     } else {
-                                                        // hidden node -> displayed node
                                                         x1 = boundaryX + outwardUx * stubLength;
                                                         y1 = boundaryY + outwardUy * stubLength;
                                                         x2 = boundaryX;
@@ -765,7 +972,7 @@ export default function LoopyBeliefVisualizer() {
                                                                 strokeDasharray="8 6"
                                                                 strokeLinecap="round"
                                                                 opacity={isActive ? 1 : 0.8}
-                                                                markerEnd={isActive ? activeArrowMarker(currentWaveType) : undefined}
+                                                                markerEnd={isActive ? activeArrowMarker(stage, currentWaveType, edge.relationshipRole) : undefined}
                                                             />
 
                                                             {(!isActive || !isOutwardMessage) && (
@@ -831,7 +1038,25 @@ export default function LoopyBeliefVisualizer() {
                                 })()}
                             </div>
                         </div>
-                    )}
+                    </div>
+                )}
+
+                <div className="rounded border border-gray-600 p-4">
+                    <h3 className="mb-3 font-semibold">Event Log</h3>
+                    <div className="space-y-2">
+                        {log.length === 0 ? (
+                            <div className="text-sm text-gray-400">No events yet.</div>
+                        ) : (
+                            log.map((entry, index) => (
+                                <div
+                                    key={index}
+                                    className="rounded border border-gray-700 px-3 py-2 text-sm text-gray-200"
+                                >
+                                    {entry.text}
+                                </div>
+                            ))
+                        )}
+                    </div>
                 </div>
             </div>
         </div>
