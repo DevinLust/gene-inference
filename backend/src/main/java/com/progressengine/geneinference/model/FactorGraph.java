@@ -14,15 +14,16 @@ import java.util.*;
 
 public class FactorGraph {
 
-
     private final Map<Node<?>, List<Node<?>>> adjacencyMatrix;
     private final Map<NodePair, Message> messageMap;
+    private final Map<NodePair, RelationshipEdgeRole> relationshipEdgeRoles;
     private final Map<Sheep, Node<Sheep>> sheepToNode;
     private final Map<Relationship, Node<Relationship>> relationshipToNode;
 
     public FactorGraph(List<Sheep> allSheep, List<Relationship> allRelationships) {
         adjacencyMatrix = new HashMap<>();
         messageMap = new HashMap<>();
+        relationshipEdgeRoles = new HashMap<>();
 
         this.sheepToNode = new HashMap<>();
         for (Sheep sheep : allSheep) {
@@ -40,17 +41,25 @@ public class FactorGraph {
             Node<Sheep> parent1 = sheepToNode.get(relationship.getParent1());
             Node<Sheep> parent2 = sheepToNode.get(relationship.getParent2());
 
-            adjacencyMatrix.get(relationshipNode).add(parent1);
-            messageMap.put(new NodePair(relationshipNode, parent1), new RelationshipMessage(relationshipNode, parent1));
+            if (parent1 != null) {
+                adjacencyMatrix.get(relationshipNode).add(parent1);
+                messageMap.put(new NodePair(relationshipNode, parent1), new RelationshipMessage(relationshipNode, parent1));
+                relationshipEdgeRoles.put(new NodePair(relationshipNode, parent1), RelationshipEdgeRole.PARENT);
 
-            adjacencyMatrix.get(relationshipNode).add(parent2);
-            messageMap.put(new NodePair(relationshipNode, parent2), new RelationshipMessage(relationshipNode, parent2));
+                adjacencyMatrix.get(parent1).add(relationshipNode);
+                messageMap.put(new NodePair(parent1, relationshipNode), new SheepMessage(parent1, relationshipNode));
+                relationshipEdgeRoles.put(new NodePair(parent1, relationshipNode), RelationshipEdgeRole.PARENT);
+            }
 
-            adjacencyMatrix.get(parent1).add(relationshipNode);
-            messageMap.put(new NodePair(parent1, relationshipNode), new SheepMessage(parent1, relationshipNode));
+            if (parent2 != null) {
+                adjacencyMatrix.get(relationshipNode).add(parent2);
+                messageMap.put(new NodePair(relationshipNode, parent2), new RelationshipMessage(relationshipNode, parent2));
+                relationshipEdgeRoles.put(new NodePair(relationshipNode, parent2), RelationshipEdgeRole.PARENT);
 
-            adjacencyMatrix.get(parent2).add(relationshipNode);
-            messageMap.put(new NodePair(parent2, relationshipNode), new SheepMessage(parent2, relationshipNode));
+                adjacencyMatrix.get(parent2).add(relationshipNode);
+                messageMap.put(new NodePair(parent2, relationshipNode), new SheepMessage(parent2, relationshipNode));
+                relationshipEdgeRoles.put(new NodePair(parent2, relationshipNode), RelationshipEdgeRole.PARENT);
+            }
         }
 
         for (Sheep sheep : allSheep) {
@@ -59,11 +68,17 @@ public class FactorGraph {
             Node<Sheep> sheepNode = sheepToNode.get(sheep);
             Node<Relationship> relationshipNode = relationshipToNode.get(sheep.getParentRelationship());
 
+            if (sheepNode == null || relationshipNode == null) {
+                continue;
+            }
+
             adjacencyMatrix.get(sheepNode).add(relationshipNode);
             messageMap.put(new NodePair(sheepNode, relationshipNode), new SheepMessage(sheepNode, relationshipNode));
+            relationshipEdgeRoles.put(new NodePair(sheepNode, relationshipNode), RelationshipEdgeRole.CHILD);
 
             adjacencyMatrix.get(relationshipNode).add(sheepNode);
             messageMap.put(new NodePair(relationshipNode, sheepNode), new ChildMessage(relationshipNode, sheepNode));
+            relationshipEdgeRoles.put(new NodePair(relationshipNode, sheepNode), RelationshipEdgeRole.CHILD);
         }
     }
 
@@ -111,7 +126,6 @@ public class FactorGraph {
         Set<String> addedNodeIds = new HashSet<>();
         Set<String> addedEdgeIds = new HashSet<>();
 
-        // ---- Center sheep ----
         positions.put(centerNode, new double[]{0.0, 0.0});
         nodes.add(new VisualNodeDTO(
                 centerNodeId,
@@ -123,7 +137,6 @@ public class FactorGraph {
         ));
         addedNodeIds.add(centerNodeId);
 
-        // ---- Relationship nodes on inner ring ----
         List<RelationshipNode> relationshipNodes = adjacencyMatrix.getOrDefault(centerNode, List.of())
                 .stream()
                 .filter(n -> n instanceof RelationshipNode)
@@ -171,7 +184,6 @@ public class FactorGraph {
             }
         }
 
-        // ---- Relative sheep on outer ring, sector centered on relationship angle ----
         double sheepRadius = 460.0;
 
         for (int i = 0; i < relationshipNodes.size(); i++) {
@@ -180,11 +192,10 @@ public class FactorGraph {
 
             double centerAngle = relationshipAngles.get(relationshipNode);
 
-            // reserve some gap between sectors
             double maxSpreadFromNeighbors;
 
             if (relationshipNodes.size() == 1) {
-                maxSpreadFromNeighbors = Math.PI; // allow up to 180°
+                maxSpreadFromNeighbors = Math.PI;
             } else {
                 double prevAngle = relationshipAngles.get(
                         relationshipNodes.get((i - 1 + relationshipNodes.size()) % relationshipNodes.size())
@@ -215,7 +226,6 @@ public class FactorGraph {
                 }
             }
 
-            // place visible relatives
             double desiredSpread = relationshipSectorSpread(visibleSheepNeighbors.size());
             double actualSpread = Math.min(desiredSpread, maxSpreadFromNeighbors);
 
@@ -258,7 +268,6 @@ public class FactorGraph {
                 }
             }
 
-            // hidden neighbors become stubs, fanned in the same sector
             double stubSpread = Math.min(
                     relationshipSectorSpread(hiddenNeighbors.size()),
                     maxSpreadFromNeighbors
@@ -270,13 +279,13 @@ public class FactorGraph {
                 String hiddenNeighborId = nodeId(hiddenNeighbor);
                 double stubAngle = stubAngles.get(j);
 
+                RelationshipEdgeRole role = null;
+                if (hiddenNeighbor instanceof SheepNode hiddenSheepNode) {
+                    role = relationshipRole(relationshipNode, hiddenSheepNode);
+                }
+
                 String edgeId = relationshipNodeId + "--" + hiddenNeighborId;
                 if (addedEdgeIds.add(edgeId)) {
-                    RelationshipEdgeRole role = null;
-                    if (hiddenNeighbor instanceof SheepNode hiddenSheepNode) {
-                        role = relationshipRole(relationshipNode, hiddenSheepNode);
-                    }
-
                     edges.add(new VisualEdgeDTO(
                             edgeId,
                             relationshipNodeId,
@@ -292,7 +301,6 @@ public class FactorGraph {
             }
         }
 
-        // ---- Boundary stubs from any displayed sheep to hidden relationship neighbors ----
         for (Node<?> displayedNode : displayedNodes) {
             if (!(displayedNode instanceof SheepNode sheepNode)) {
                 continue;
@@ -330,13 +338,13 @@ public class FactorGraph {
                 String hiddenNeighborId = nodeId(hiddenNeighbor);
                 double stubAngle = stubAngles.get(j);
 
+                RelationshipEdgeRole role = null;
+                if (hiddenNeighbor instanceof RelationshipNode hiddenRelationshipNode) {
+                    role = relationshipRole(hiddenRelationshipNode, sheepNode);
+                }
+
                 String edgeId = displayedNodeId + "--" + hiddenNeighborId;
                 if (addedEdgeIds.add(edgeId)) {
-                    RelationshipEdgeRole role = null;
-                    if (hiddenNeighbor instanceof RelationshipNode hiddenRelationshipNode) {
-                        role = relationshipRole(hiddenRelationshipNode, sheepNode);
-                    }
-
                     edges.add(new VisualEdgeDTO(
                             edgeId,
                             displayedNodeId,
@@ -353,24 +361,6 @@ public class FactorGraph {
         }
 
         return new VisualGraphSnapshot(centerNodeId, nodes, edges);
-    }
-
-    private RelationshipEdgeRole relationshipRole(RelationshipNode relationshipNode, SheepNode sheepNode) {
-        Relationship relationship = relationshipNode.getValue();
-        Sheep sheep = sheepNode.getValue();
-
-        if (sheep.equals(relationship.getParent1()) || sheep.equals(relationship.getParent2())) {
-            return RelationshipEdgeRole.PARENT;
-        }
-
-        if (relationship.equals(sheep.getParentRelationship())) {
-            return RelationshipEdgeRole.CHILD;
-        }
-
-        throw new IllegalStateException(
-                "Could not determine relationship role for relationship " +
-                        relationship.getId() + " and sheep " + sheep.getId()
-        );
     }
 
     private double normalizeAngle(double angle) {
@@ -413,13 +403,13 @@ public class FactorGraph {
         return angles;
     }
 
-    private double nodeX(Node<?> node, Node<Sheep> centerNode, java.util.Map<Node<?>, double[]> positions) {
+    private double nodeX(Node<?> node, Node<Sheep> centerNode, Map<Node<?>, double[]> positions) {
         if (node.equals(centerNode)) return 0.0;
         double[] pos = positions.get(node);
         return pos == null ? 0.0 : pos[0];
     }
 
-    private double nodeY(Node<?> node, Node<Sheep> centerNode, java.util.Map<Node<?>, double[]> positions) {
+    private double nodeY(Node<?> node, Node<Sheep> centerNode, Map<Node<?>, double[]> positions) {
         if (node.equals(centerNode)) return 0.0;
         double[] pos = positions.get(node);
         return pos == null ? 0.0 : pos[1];
@@ -466,7 +456,7 @@ public class FactorGraph {
             return baseAngle;
         }
 
-        double spread = Math.PI / 3.0; // 60 degrees total spread
+        double spread = Math.PI / 3.0;
         double step = spread / (count - 1);
         double start = baseAngle - spread / 2.0;
 
@@ -483,6 +473,15 @@ public class FactorGraph {
         throw new IllegalStateException("Unknown node type");
     }
 
+    private RelationshipEdgeRole relationshipRole(RelationshipNode relationshipNode, SheepNode sheepNode) {
+        RelationshipEdgeRole role = relationshipEdgeRoles.get(new NodePair(relationshipNode, sheepNode));
+        if (role != null) {
+            return role;
+        }
+
+        return relationshipEdgeRoles.get(new NodePair(sheepNode, relationshipNode));
+    }
+
     public List<MessageCategoryTask> initialFrontierTasks() {
         List<MessageCategoryTask> tasks = new ArrayList<>();
 
@@ -497,11 +496,9 @@ public class FactorGraph {
         return tasks;
     }
 
-
     public int estimatedMaxIterations() {
         return messageMap.size() * Category.values().length * 20;
     }
-
 
     public List<Message> dependentsOf(Message message) {
         List<Message> dependents = new ArrayList<>();
@@ -605,7 +602,6 @@ public class FactorGraph {
         for (Node<?> node : adjacencyMatrix.keySet()) {
             if (node instanceof SheepNode) {
                 Sheep sheep = ((SheepNode) node).getValue();
-                // changed priors to start with uniform
                 Map<Category, Map<Grade, Double>> belief = newBelief();
                 for (Node<?> neighbor : adjacencyMatrix.get(node)) {
                     NodePair nodePair = new NodePair(neighbor, node);
@@ -640,6 +636,8 @@ public class FactorGraph {
                 );
             }
         }
+
+        sheep.setDistributionByType(belief, DistributionType.INFERRED);
         return belief;
     }
 
@@ -699,7 +697,7 @@ public class FactorGraph {
             distance += diff * diff;
         }
 
-        return distance <= threshold * threshold;
+        return distance <= threshold;
     }
 
     private Map<Category, Map<Grade, Double>> newBelief() {
