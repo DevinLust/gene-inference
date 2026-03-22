@@ -103,6 +103,10 @@ export default function LoopyBeliefVisualizer() {
     const [currentWaveType, setCurrentWaveType] = useState<string | null>(null);
     const [currentCategory, setCurrentCategory] = useState<string | null>(null);
 
+    const [isStartingRun, setIsStartingRun] = useState(false);
+    const [isStartingDemo, setIsStartingDemo] = useState(false);
+    const [isAdvancingStep, setIsAdvancingStep] = useState(false);
+
     useEffect(() => {
         const supabase = createSupabaseClient();
 
@@ -151,18 +155,30 @@ export default function LoopyBeliefVisualizer() {
 
         client.onDisconnect = () => {
             setIsConnected(false);
+            setIsStartingRun(false);
+            setIsStartingDemo(false);
+            setIsAdvancingStep(false);
         };
 
         client.onWebSocketClose = () => {
             setIsConnected(false);
+            setIsStartingRun(false);
+            setIsStartingDemo(false);
+            setIsAdvancingStep(false);
         };
 
         client.onWebSocketError = (event) => {
             console.error("WebSocket error:", event);
+            setIsStartingRun(false);
+            setIsStartingDemo(false);
+            setIsAdvancingStep(false);
         };
 
         client.onStompError = (frame) => {
             console.error("STOMP broker error:", frame.headers["message"], frame.body);
+            setIsStartingRun(false);
+            setIsStartingDemo(false);
+            setIsAdvancingStep(false);
         };
 
         client.activate();
@@ -173,6 +189,15 @@ export default function LoopyBeliefVisualizer() {
             client.deactivate();
         };
     }, [accessToken]);
+
+    function ButtonSpinner() {
+        return (
+            <span
+                className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"
+                aria-hidden="true"
+            />
+        );
+    }
 
     function handleRunEvent(event: RunEvent) {
         switch (event.type) {
@@ -185,6 +210,8 @@ export default function LoopyBeliefVisualizer() {
                 setStage(payload.stage);
                 setIsCompleted(false);
                 setGraph(payload.graph);
+                setIsStartingRun(false);
+                setIsStartingDemo(false);
 
                 setLog([
                     {
@@ -203,6 +230,7 @@ export default function LoopyBeliefVisualizer() {
                 setCurrentStep(payload.stepIndex);
                 setTotalSteps(payload.totalSteps);
                 setStage(payload.stage);
+                setIsAdvancingStep(false);
 
                 if (payload.delta) {
                     setActiveFullEdgeIds(payload.delta.activeFullEdgeIds);
@@ -233,6 +261,9 @@ export default function LoopyBeliefVisualizer() {
                 setActiveStubEdgeIds([]);
                 setCurrentWaveType(null);
                 setCurrentCategory(null);
+                setIsAdvancingStep(false);
+                setIsStartingRun(false);
+                setIsStartingDemo(false);
 
                 setStage("COMPLETED");
                 setIsCompleted(true);
@@ -264,6 +295,9 @@ export default function LoopyBeliefVisualizer() {
         setCurrentWaveType(null);
         setCurrentCategory(null);
         setLog([]);
+        setIsStartingRun(false);
+        setIsStartingDemo(false);
+        setIsAdvancingStep(false);
     }
 
     function startRun() {
@@ -273,6 +307,7 @@ export default function LoopyBeliefVisualizer() {
         if (!client || !client.connected || targetSheepId == null) return;
 
         setRunSource("USER");
+        setIsStartingRun(true);
         sessionStorage.removeItem("activeRunId");
 
         client.publish({
@@ -291,6 +326,7 @@ export default function LoopyBeliefVisualizer() {
         if (!client || !client.connected) return;
 
         setRunSource("DEMO");
+        setIsStartingDemo(true);
         sessionStorage.removeItem("activeRunId");
 
         client.publish({
@@ -304,6 +340,8 @@ export default function LoopyBeliefVisualizer() {
     function nextStep() {
         const client = stompRef.current;
         if (!client || !client.connected || !runId || isCompleted) return;
+
+        setIsAdvancingStep(true);
 
         client.publish({
             destination: "/app/run.nextStep",
@@ -551,26 +589,35 @@ export default function LoopyBeliefVisualizer() {
 
                     <button
                         onClick={startRun}
-                        disabled={!isConnected || targetSheepId == null}
+                        disabled={!isConnected || targetSheepId == null || isStartingRun || isStartingDemo}
                         className="rounded bg-blue-600 px-4 py-2 disabled:opacity-50"
                     >
-                        Start Run
+                        <span className="inline-flex items-center gap-2">
+                            {isStartingRun && <ButtonSpinner />}
+                            {isStartingRun ? "Starting..." : "Start Run"}
+                        </span>
                     </button>
 
                     <button
                         onClick={startDemo}
-                        disabled={!isConnected}
+                        disabled={!isConnected || isStartingRun || isStartingDemo}
                         className="rounded bg-amber-600 px-4 py-2 disabled:opacity-50"
                     >
-                        Start Demo
+                        <span className="inline-flex items-center gap-2">
+                            {isStartingDemo && <ButtonSpinner />}
+                            {isStartingDemo ? "Starting Demo..." : "Start Demo"}
+                        </span>
                     </button>
 
                     <button
                         onClick={nextStep}
-                        disabled={!isConnected || !runId || isCompleted}
+                        disabled={!isConnected || !runId || isCompleted || isAdvancingStep}
                         className="rounded bg-green-600 px-4 py-2 disabled:opacity-50"
                     >
-                        Next Step
+                        <span className="inline-flex items-center gap-2">
+                            {isAdvancingStep && <ButtonSpinner />}
+                            {isAdvancingStep ? "Advancing..." : "Next Step"}
+                        </span>
                     </button>
                 </div>
             </div>
@@ -865,15 +912,16 @@ export default function LoopyBeliefVisualizer() {
                                                             const mx = (x1 + x2) / 2;
                                                             const my = (y1 + y2) / 2;
 
-                                                            const candidate1X = mx + px * bendMagnitude;
-                                                            const candidate1Y = my + py * bendMagnitude;
-
-                                                            const candidate2X = mx - px * bendMagnitude;
-                                                            const candidate2Y = my - py * bendMagnitude;
-
                                                             const centerNode = Array.from(nodeMap.values()).find((n) => n.center);
                                                             const graphCenterX = centerNode ? centerNode.cx : 0;
                                                             const graphCenterY = centerNode ? centerNode.cy : 0;
+
+// evaluate both possible bend directions AFTER lane offset is applied
+                                                            const candidate1X = mx + px * (laneOffset + bendMagnitude);
+                                                            const candidate1Y = my + py * (laneOffset + bendMagnitude);
+
+                                                            const candidate2X = mx + px * (laneOffset - bendMagnitude);
+                                                            const candidate2Y = my + py * (laneOffset - bendMagnitude);
 
                                                             const dist1 =
                                                                 (candidate1X - graphCenterX) * (candidate1X - graphCenterX) +
@@ -883,10 +931,8 @@ export default function LoopyBeliefVisualizer() {
                                                                 (candidate2X - graphCenterX) * (candidate2X - graphCenterX) +
                                                                 (candidate2Y - graphCenterY) * (candidate2Y - graphCenterY);
 
-                                                            const outwardSign = dist1 >= dist2 ? 1 : -1;
-
-                                                            const cx = mx + px * (laneOffset + outwardSign * bendMagnitude);
-                                                            const cy = my + py * (laneOffset + outwardSign * bendMagnitude);
+                                                            const cx = dist1 >= dist2 ? candidate1X : candidate2X;
+                                                            const cy = dist1 >= dist2 ? candidate1Y : candidate2Y;
 
                                                             const pathD = quadraticPathWithControl(x1, y1, x2, y2, cx, cy);
 
