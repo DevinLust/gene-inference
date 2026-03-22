@@ -132,7 +132,7 @@ export default function LoopyBeliefVisualizer() {
         if (!accessToken) return;
 
         const client = new Client({
-            brokerURL: "ws://localhost:8080/ws",
+            brokerURL: process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:8080/ws",
             reconnectDelay: 5000,
             connectHeaders: {
                 Authorization: `Bearer ${accessToken}`,
@@ -757,7 +757,6 @@ export default function LoopyBeliefVisualizer() {
                                                     const source = nodeMap.get(edge.sourceId);
                                                     const target = nodeMap.get(edge.targetId);
                                                     const highlightColor = activeEdgeColor(stage, currentWaveType, edge.relationshipRole);
-                                                    console.log(edge.id, edge.relationshipRole);
 
                                                     if (!source) return null;
 

@@ -24,7 +24,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns("http://localhost:3000", "gene-inference.vercel.app");
+                .setAllowedOriginPatterns("http://localhost:3000", "https://gene-inference.vercel.app");
     }
 
     @Override
