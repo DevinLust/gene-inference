@@ -141,7 +141,13 @@ export default function LoopyBeliefVisualizer() {
             connectHeaders: {
                 Authorization: `Bearer ${accessToken}`,
             },
-            debug: (msg) => console.log("STOMP:", msg),
+            debug: (msg) => {
+                const redacted = msg.replace(
+                    /Authorization:Bearer\s+[^\n]+/g,
+                    "Authorization:Bearer [REDACTED]"
+                );
+                console.log("STOMP:", redacted);
+            },
         });
 
         client.onConnect = () => {

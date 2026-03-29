@@ -3,7 +3,6 @@ import { CreateSheep, LBPVisualizerLink } from "@/app/ui/buttons";
 import SheepList from "@/app/ui/sheep/sheep-list";
 import RecalculateBeliefsButton from "@/app/ui/sheep/recalculate-beliefs-button";
 import { Suspense } from 'react';
-import Link from 'next/link';
 
 const CATEGORIES: Category[] = ["SWIM", "FLY", "RUN", "POWER", "STAMINA"];
 
