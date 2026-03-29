@@ -175,8 +175,6 @@ public class FactorGraphRunner {
 
                 beliefIndex++;
                 stepIndex++;
-                System.out.println(activeFullEdgeIds);
-                System.out.println(activeStubEdgeIds);
 
                 return new LbpStepResult(
                         stepIndex,
