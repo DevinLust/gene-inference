@@ -26,10 +26,10 @@ export default async function RelationshipList() {
                                     ID
                                 </th>
                                 <th scope="col" className="front-medium pr-3">
-                                    Parent1
+                                    Parent 1
                                 </th>
                                 <th scope="col" className="front-medium pr-3">
-                                    Parent2
+                                    Parent 2
                                 </th>
                                 <th scope="col" className="px-4 py-5 font-medium sm:pl-6">
                                     <span className="sr-only">Details</span>
