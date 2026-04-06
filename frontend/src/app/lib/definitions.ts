@@ -211,3 +211,73 @@ export type GeneticConstraintViolation = {
     };
     suggestions?: string[];
 };
+
+
+// loopy belief visualization types
+export type LogEntry = {
+    kind: RunEventType;
+    text: string;
+};
+
+export type RunEventType = "RUN_STARTED" | "STEP_EVENT" | "COMPLETED";
+export type RunStage = "MESSAGE_PASSING" | "BELIEF_UPDATE" | "COMPLETED";
+export type RunSource = "USER" | "DEMO";
+
+export type VisualNode = {
+    id: string;
+    type: "sheep" | "relationship";
+    label: string;
+    x: number;
+    y: number;
+    center: boolean;
+};
+
+export type VisualEdge = {
+    id: string;
+    sourceId: string;
+    targetId: string;
+    type: "full" | "stub";
+    visibleTarget: boolean;
+    relationshipRole?: "PARENT" | "CHILD" | null;
+    stubAngleRadians?: number | null;
+    stubIndex?: number | null;
+    stubCount?: number | null;
+};
+
+export type VisualGraphSnapshot = {
+    centerSheepId: string;
+    nodes: VisualNode[];
+    edges: VisualEdge[];
+};
+
+export type MessageWaveDelta = {
+    waveType: "SHEEP_TO_RELATIONSHIP" | "RELATIONSHIP_TO_SHEEP";
+    category: string;
+    activeFullEdgeIds: string[];
+    activeStubEdgeIds: string[];
+};
+
+export type RunStartedPayload = {
+    totalSteps: number;
+    currentStep: number;
+    stage: "MESSAGE_PASSING" | "BELIEF_UPDATE" | "COMPLETED";
+    graph: VisualGraphSnapshot;
+};
+
+export type StepEventPayload = {
+    stepIndex: number;
+    totalSteps: number;
+    stage: RunStage;
+    message: string;
+    delta?: MessageWaveDelta | null;
+};
+
+export type CompletedPayload = {
+    message: string;
+};
+
+export type RunEvent = {
+    type: RunEventType;
+    runId: string;
+    payload: RunStartedPayload | StepEventPayload | CompletedPayload;
+};

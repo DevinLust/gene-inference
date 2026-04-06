@@ -3,77 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Client, IMessage } from "@stomp/stompjs";
 import { createClient as createSupabaseClient } from "@/app/lib/supabase/browser";
-import { Category, SheepSummary } from "@/app/lib/definitions";
+import { Category, SheepSummary, RunEventType, RunStage, RunSource, VisualGraphSnapshot, RunStartedPayload, StepEventPayload, CompletedPayload, RunEvent, LogEntry } from "@/app/lib/definitions";
+import { rectExitOffset, activeEdgeColor, activeArrowMarker, fanAngleOffset, rotateVector, centeredFanOffset, quadraticPathWithControl } from "@/app/lib/helpers";
 import { useBreedSheep } from "@/app/(main)/breed/breed-sheep-provider";
 import SheepCombobox from "@/app/ui/breed/sheep-combo-box";
-
-type RunEventType = "RUN_STARTED" | "STEP_EVENT" | "COMPLETED";
-type RunStage = "MESSAGE_PASSING" | "BELIEF_UPDATE" | "COMPLETED";
-type RunSource = "USER" | "DEMO";
-
-type VisualNode = {
-    id: string;
-    type: "sheep" | "relationship";
-    label: string;
-    x: number;
-    y: number;
-    center: boolean;
-};
-
-type VisualEdge = {
-    id: string;
-    sourceId: string;
-    targetId: string;
-    type: "full" | "stub";
-    visibleTarget: boolean;
-    relationshipRole?: "PARENT" | "CHILD" | null;
-    stubAngleRadians?: number | null;
-    stubIndex?: number | null;
-    stubCount?: number | null;
-};
-
-type VisualGraphSnapshot = {
-    centerSheepId: string;
-    nodes: VisualNode[];
-    edges: VisualEdge[];
-};
-
-type MessageWaveDelta = {
-    waveType: "SHEEP_TO_RELATIONSHIP" | "RELATIONSHIP_TO_SHEEP";
-    category: string;
-    activeFullEdgeIds: string[];
-    activeStubEdgeIds: string[];
-};
-
-type RunStartedPayload = {
-    totalSteps: number;
-    currentStep: number;
-    stage: "MESSAGE_PASSING" | "BELIEF_UPDATE" | "COMPLETED";
-    graph: VisualGraphSnapshot;
-};
-
-type StepEventPayload = {
-    stepIndex: number;
-    totalSteps: number;
-    stage: RunStage;
-    message: string;
-    delta?: MessageWaveDelta | null;
-};
-
-type CompletedPayload = {
-    message: string;
-};
-
-type RunEvent = {
-    type: RunEventType;
-    runId: string;
-    payload: RunStartedPayload | StepEventPayload | CompletedPayload;
-};
-
-type LogEntry = {
-    kind: RunEventType;
-    text: string;
-};
+import Legend from "@/app/ui/lbp-visualizer/legend";
+import LBPEventLog from "@/app/ui/lbp-visualizer/event-log";
 
 const CATEGORIES: Category[] = ["SWIM", "FLY", "RUN", "POWER", "STAMINA"];
 
@@ -101,7 +36,6 @@ export default function LoopyBeliefVisualizer() {
     const [activeFullEdgeIds, setActiveFullEdgeIds] = useState<string[]>([]);
     const [activeStubEdgeIds, setActiveStubEdgeIds] = useState<string[]>([]);
     const [currentWaveType, setCurrentWaveType] = useState<string | null>(null);
-    const [currentCategory, setCurrentCategory] = useState<string | null>(null);
 
     const [isStartingRun, setIsStartingRun] = useState(false);
     const [isStartingDemo, setIsStartingDemo] = useState(false);
@@ -242,12 +176,10 @@ export default function LoopyBeliefVisualizer() {
                     setActiveFullEdgeIds(payload.delta.activeFullEdgeIds);
                     setActiveStubEdgeIds(payload.delta.activeStubEdgeIds);
                     setCurrentWaveType(payload.delta.waveType);
-                    setCurrentCategory(payload.delta.category);
                 } else {
                     setActiveFullEdgeIds([]);
                     setActiveStubEdgeIds([]);
                     setCurrentWaveType(null);
-                    setCurrentCategory(null);
                 }
 
                 setLog((prev) => [
@@ -266,7 +198,6 @@ export default function LoopyBeliefVisualizer() {
                 setActiveFullEdgeIds([]);
                 setActiveStubEdgeIds([]);
                 setCurrentWaveType(null);
-                setCurrentCategory(null);
                 setIsAdvancingStep(false);
                 setIsStartingRun(false);
                 setIsStartingDemo(false);
@@ -299,7 +230,6 @@ export default function LoopyBeliefVisualizer() {
         setActiveFullEdgeIds([]);
         setActiveStubEdgeIds([]);
         setCurrentWaveType(null);
-        setCurrentCategory(null);
         setLog([]);
         setIsStartingRun(false);
         setIsStartingDemo(false);
@@ -358,19 +288,6 @@ export default function LoopyBeliefVisualizer() {
         });
     }
 
-    function rectExitOffset(
-        ux: number,
-        uy: number,
-        halfWidth: number,
-        halfHeight: number,
-        padding = 0
-    ) {
-        const tx = Math.abs(ux) > 1e-6 ? halfWidth / Math.abs(ux) : Number.POSITIVE_INFINITY;
-        const ty = Math.abs(uy) > 1e-6 ? halfHeight / Math.abs(uy) : Number.POSITIVE_INFINITY;
-        const t = Math.min(tx, ty) + padding;
-        return { dx: ux * t, dy: uy * t };
-    }
-
     const GRAPH_WIDTH = 700;
     const GRAPH_HEIGHT = 500;
     const CENTER_X = GRAPH_WIDTH / 2;
@@ -397,141 +314,6 @@ export default function LoopyBeliefVisualizer() {
     const SCALE = 0.6;
     const LAYOUT_X_SCALE = 1.15;
     const LAYOUT_Y_SCALE = 0.80;
-
-    function activeEdgeColor(
-        stage: RunStage | "IDLE",
-        waveType: string | null,
-        relationshipRole?: "PARENT" | "CHILD" | null
-    ) {
-        if (stage === "BELIEF_UPDATE") {
-            return relationshipRole === "CHILD" ? "#14b8a6" : "#84cc16";
-        }
-
-        if (waveType === "SHEEP_TO_RELATIONSHIP") {
-            return relationshipRole === "CHILD" ? "#a78bfa" : "#22d3ee";
-        }
-
-        if (waveType === "RELATIONSHIP_TO_SHEEP") {
-            return relationshipRole === "CHILD" ? "#fb7185" : "#facc15";
-        }
-
-        return "gold";
-    }
-
-    function activeArrowMarker(
-        stage: RunStage | "IDLE",
-        waveType: string | null,
-        relationshipRole?: "PARENT" | "CHILD" | null
-    ) {
-        if (stage === "BELIEF_UPDATE") {
-            return relationshipRole === "CHILD"
-                ? "url(#arrowhead-teal)"
-                : "url(#arrowhead-lime)";
-        }
-
-        if (waveType === "SHEEP_TO_RELATIONSHIP") {
-            return relationshipRole === "CHILD"
-                ? "url(#arrowhead-purple)"
-                : "url(#arrowhead-cyan)";
-        }
-
-        if (waveType === "RELATIONSHIP_TO_SHEEP") {
-            return relationshipRole === "CHILD"
-                ? "url(#arrowhead-red)"
-                : "url(#arrowhead-gold)";
-        }
-
-        return undefined;
-    }
-
-    function fanAngleOffset(index: number, count: number, maxSpreadRadians: number) {
-        if (count <= 1) return 0;
-
-        const start = -maxSpreadRadians / 2;
-        const step = maxSpreadRadians / (count - 1);
-        return start + index * step;
-    }
-
-    function rotateVector(x: number, y: number, angle: number) {
-        const cos = Math.cos(angle);
-        const sin = Math.sin(angle);
-        return {
-            x: x * cos - y * sin,
-            y: x * sin + y * cos,
-        };
-    }
-
-    function centeredFanOffset(index: number, count: number, maxOffset: number) {
-        if (count <= 1) return 0;
-        const midpoint = (count - 1) / 2;
-        if (midpoint === 0) return 0;
-        return ((index - midpoint) / midpoint) * maxOffset;
-    }
-
-    function quadraticPathWithControl(
-        x1: number,
-        y1: number,
-        x2: number,
-        y2: number,
-        cx: number,
-        cy: number
-    ) {
-        return `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`;
-    }
-
-    function LegendRow({
-                           color,
-                           label,
-                       }: {
-        color: string;
-        label: string;
-    }) {
-        return (
-            <div className="flex items-center gap-2">
-                <div
-                    className="w-4 h-4 rounded"
-                    style={{ backgroundColor: color }}
-                />
-                <span>{label}</span>
-            </div>
-        );
-    }
-
-    function Legend({
-                        stage,
-                    }: {
-        stage: RunStage | "IDLE";
-    }) {
-        return (
-            <div className="rounded border border-gray-600 p-3 text-sm space-y-2 max-w-sm">
-                <div className="font-semibold">Legend</div>
-
-                {stage === "MESSAGE_PASSING" && (
-                    <>
-                        <div>
-                            <div className="text-gray-300 mb-1">Sheep → Relationship</div>
-                            <LegendRow color="#22d3ee" label="Parent edge" />
-                            <LegendRow color="#a78bfa" label="Child edge" />
-                        </div>
-
-                        <div>
-                            <div className="text-gray-300 mb-1">Relationship → Sheep</div>
-                            <LegendRow color="#facc15" label="Parent edge" />
-                            <LegendRow color="#fb7185" label="Child edge" />
-                        </div>
-                    </>
-                )}
-
-                {stage === "BELIEF_UPDATE" && (
-                    <div>
-                        <div className="text-gray-300 mb-1">Belief Update</div>
-                        <LegendRow color="#84cc16" label="Parent edge" />
-                        <LegendRow color="#14b8a6" label="Child edge" />
-                    </div>
-                )}
-            </div>
-        );
-    }
 
     return (
         <div className="p-6 space-y-4 text-white">
@@ -574,7 +356,7 @@ export default function LoopyBeliefVisualizer() {
                             selectedId={targetSheepId}
                             onSelect={(id) => {
                                 setTargetSheepId(id);
-                                setRunSource("USER"); // 🔥 key behavior
+                                setRunSource("USER");
                                 setIsSelectingSheep(false);
                             }}
                         />
@@ -1091,24 +873,7 @@ export default function LoopyBeliefVisualizer() {
                         </div>
                     </div>
                 )}
-
-                <div className="rounded border border-gray-600 p-4">
-                    <h3 className="mb-3 font-semibold">Event Log</h3>
-                    <div className="space-y-2">
-                        {log.length === 0 ? (
-                            <div className="text-sm text-gray-400">No events yet.</div>
-                        ) : (
-                            log.map((entry, index) => (
-                                <div
-                                    key={index}
-                                    className="rounded border border-gray-700 px-3 py-2 text-sm text-gray-200"
-                                >
-                                    {entry.text}
-                                </div>
-                            ))
-                        )}
-                    </div>
-                </div>
+                <LBPEventLog log={log} />
             </div>
         </div>
     );
