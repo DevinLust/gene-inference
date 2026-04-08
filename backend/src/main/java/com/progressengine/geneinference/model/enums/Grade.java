@@ -1,11 +1,16 @@
 package com.progressengine.geneinference.model.enums;
 
-public enum Grade {
+public enum Grade implements Allele {
     S(5), A(4), B(3), C(2), D(1), E(0);
 
     private final int rank;
 
     Grade(int rank) { this.rank = rank; }
+
+    @Override
+    public String code() {
+        return name();
+    }
 
     public int rank() { return rank; }
 

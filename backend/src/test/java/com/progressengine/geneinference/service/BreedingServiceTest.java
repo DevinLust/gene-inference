@@ -1,11 +1,9 @@
 package com.progressengine.geneinference.service;
 
 import com.progressengine.geneinference.dto.SheepGenotypeDTO;
-import com.progressengine.geneinference.model.Relationship;
 import com.progressengine.geneinference.model.Sheep;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.Grade;
-import com.progressengine.geneinference.testutil.DomainFixtures;
 import org.junit.jupiter.api.Test;
 
 import java.util.EnumSet;
@@ -14,7 +12,6 @@ import java.util.Random;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class BreedingServiceTest {
@@ -75,13 +72,6 @@ public class BreedingServiceTest {
         sheep.setGenotypes(genotypes);
         sheep.createDefaultDistributions();
         return sheep;
-    }
-
-    private Relationship createTestRelationship(Sheep parent1, Sheep parent2) {
-        Relationship relationship = new Relationship();
-        relationship.setParent1(parent1);
-        relationship.setParent2(parent2);
-        return relationship;
     }
 
     private Grade randomGrade() {

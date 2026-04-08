@@ -25,7 +25,7 @@ public class EnsembleInference extends BaseInferenceEngine {
         for (Grade grade1 : Grade.values()) {
             for (Grade grade2 : Grade.values()) {
                 GradePair gradePair = new GradePair(grade1, grade2);
-                double multiScore = multinomialScore(gradePair, phenotype1, phenotype2, phenotypeFrequency);
+                double multiScore = InferenceMath.multinomialScore(gradePair, phenotype1, phenotype2, phenotypeFrequency);
                 multinomialDistribution.put(gradePair, multiScore);
             }
         }

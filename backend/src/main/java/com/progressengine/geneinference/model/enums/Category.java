@@ -1,7 +1,7 @@
 package com.progressengine.geneinference.model.enums;
 
 public enum Category {
-    SWIM(0), FLY(1), RUN(2), POWER(3), STAMINA(4);
+    SWIM(0), FLY(1), RUN(2), POWER(3), STAMINA(4), TONE(-1);
 
     private final int order;
 

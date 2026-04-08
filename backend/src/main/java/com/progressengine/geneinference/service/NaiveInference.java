@@ -28,7 +28,7 @@ public class NaiveInference extends BaseInferenceEngine {
             for (Grade grade1 : Grade.values()) {
                 for (Grade grade2 : Grade.values()) {
                     GradePair gradePair = new GradePair(grade1, grade2);
-                    double multiScore = multinomialScore(gradePair, phenotype1, phenotype2, phenotypeFrequency);
+                    double multiScore = InferenceMath.multinomialScore(gradePair, phenotype1, phenotype2, phenotypeFrequency);
                     intermediateScores.put(gradePair, multiScore * parent1.getDistribution(category, DistributionType.INFERRED).get(grade1) * parent2.getDistribution(category, DistributionType.INFERRED).get(grade2));
                 }
             }

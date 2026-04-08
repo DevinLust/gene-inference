@@ -1,6 +1,5 @@
 package com.progressengine.geneinference.service;
 
-import com.progressengine.geneinference.dto.SheepGenotypeDTO;
 import com.progressengine.geneinference.model.*;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.Grade;

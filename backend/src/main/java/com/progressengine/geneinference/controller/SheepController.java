@@ -69,7 +69,7 @@ public class SheepController {
     public SheepResponseDTO getSheep(@Positive @PathVariable Integer sheepId,
                                      @AuthenticationPrincipal Jwt jwt
     ) {
-        UUID userId = UUID.fromString(jwt.getSubject()); // TODO - change findById to be user scoped
+        UUID userId = UUID.fromString(jwt.getSubject());
         Sheep sheep = sheepService.findByIdAndUserId(sheepId, userId);
         return DomainMapper.toResponseDTO(sheep);
     }

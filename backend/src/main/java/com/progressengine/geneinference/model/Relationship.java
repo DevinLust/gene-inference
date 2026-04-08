@@ -391,56 +391,6 @@ public class Relationship {
     }
 
 
-    // throws ExcessAlleleDiversityException if adding this child would result in more potential alleles than possible
-    private void checkForExcessAlleles(Sheep child) {
-        for (Category category : Category.values()) {
-            Grade newAllele = child.getPhenotype(category);
-            Map<Grade, Integer> phenotypeFrequency = getCurrentPhenotypeFrequencies(category);
-            // add each parent phenotype to the map so they get counted
-            phenotypeFrequency.merge(this.getParent1().getPhenotype(category), 1, Integer::sum);
-            phenotypeFrequency.merge(this.getParent2().getPhenotype(category), 1, Integer::sum);
-            phenotypeFrequency.merge(newAllele, 1, Integer::sum);
-
-            validatePhenotypeFrequency(category, phenotypeFrequency, newAllele);
-        }
-    }
-
-
-    // throws ExcessAlleleDiversityException if changing these phenotypes would result in excessive alleles
-    private void checkForExcessAlleles(Map<Category, GradePair> phenotypeDeltas) {
-        for (Map.Entry<Category, GradePair> entry : phenotypeDeltas.entrySet()) {
-            Category category = entry.getKey();
-            Grade oldAllele = entry.getValue().getFirst();
-            Grade newAllele = entry.getValue().getSecond();
-
-            Map<Grade, Integer> phenotypeFrequency = getCurrentPhenotypeFrequencies(category);
-            phenotypeFrequency.merge(oldAllele, -1, Integer::sum);
-            phenotypeFrequency.merge(newAllele, 1, Integer::sum);
-
-            validatePhenotypeFrequency(category, phenotypeFrequency, newAllele);
-        }
-
-    }
-
-
-    private void validatePhenotypeFrequency(Category category, Map<Grade, Integer> phenotypeFrequency, Grade newAllele) {
-        Set<Grade> nonZeroCounts = EnumSet.noneOf(Grade.class);
-        for (Map.Entry<Grade, Integer> entry : phenotypeFrequency.entrySet()) {
-            if (entry.getValue() > 0) {
-                nonZeroCounts.add(entry.getKey());
-            }
-            if (entry.getValue() < 0) {
-                throw new IllegalStateException("Phenotype frequency for grade " + entry.getKey() + " would be negative in " + category);
-            }
-        }
-        int maxDistinct = this.getParent1().getPhenotype(category).equals(this.getParent2().getPhenotype(category)) ? 3 : 4;
-        if (nonZeroCounts.size() > maxDistinct) {
-            nonZeroCounts.remove(newAllele);
-            throw new ExcessAlleleDiversityException("This operation would result in " + (maxDistinct + 1) + " distinct alleles when only " + maxDistinct + " are possible", nonZeroCounts, newAllele, category);
-        }
-    }
-
-
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

@@ -206,7 +206,7 @@ public class RelationshipTest {
                 Category.POWER, Grade.B,
                 Category.STAMINA, Grade.C
         ));
-        BirthRecord birthRecord = relationship.addChildToRelationship(child);
+        relationship.addChildToRelationship(child);
 
         // Act/Assert
         assertThrows(IllegalStateException.class, () -> relationship.addChildInformationToRelationship(child));
