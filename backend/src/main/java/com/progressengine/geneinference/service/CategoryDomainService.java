@@ -9,6 +9,10 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Sets up the mapping of Categories to AlleleDomains from the supported
+ * Categories set up in each AlleleDomain
+ */
 @Service
 public class CategoryDomainService {
 

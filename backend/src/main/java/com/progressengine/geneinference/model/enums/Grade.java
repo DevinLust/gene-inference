@@ -1,15 +1,19 @@
 package com.progressengine.geneinference.model.enums;
 
 public enum Grade implements Allele {
-    S(5), A(4), B(3), C(2), D(1), E(0);
+    S("S", 5), A("A", 4), B("B", 3), C("C", 2), D("D", 1), E("E", 0);
 
+    private final String code;
     private final int rank;
 
-    Grade(int rank) { this.rank = rank; }
+    Grade(String code, int rank) { 
+        this.code = code;
+        this.rank = rank; 
+    }
 
     @Override
     public String code() {
-        return name();
+        return this.code;
     }
 
     public int rank() { return rank; }
@@ -38,5 +42,12 @@ public enum Grade implements Allele {
 
     public static Grade fromString(String str) {
         return Grade.valueOf(str);
+    }
+
+    public static Grade fromCode(String code) {
+        for (Grade a : values()) {
+            if (a.code.equals(code)) return a;
+        }
+        throw new IllegalArgumentException("Invalid code: " + code);
     }
 }
