@@ -1,6 +1,10 @@
 package com.progressengine.geneinference.service;
 
 import com.progressengine.geneinference.model.GradePair;
+import com.progressengine.geneinference.model.AllelePair;
+import com.progressengine.geneinference.service.AlleleDomains.AlleleDomain;
+import com.progressengine.geneinference.service.AlleleDomains.CategoryDomains;
+import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.Grade;
 import com.progressengine.geneinference.testutil.ProbabilityAssertions;
 import org.junit.jupiter.api.Test;
@@ -174,35 +178,39 @@ public class InferenceMathTest {
                 ));
         Grade parent1Phenotype = Grade.S;
         Grade parent2Phenotype = Grade.C;
+        AlleleDomain<Grade> domain = gradeDomain();
 
         // Act
-        Map<GradePair, Double> jointDist = InferenceMath.multinomialJointScores(parent1Phenotype, parent2Phenotype, phenotypeFrequencies);
+        Map<AllelePair<Grade>, Double> jointDist = InferenceMath.multinomialJointScores(parent1Phenotype, parent2Phenotype, phenotypeFrequencies, domain);
 
         // Assert
         ProbabilityAssertions.assertValidDistribution(jointDist);
-        assertEquals(0.5803566632647579, jointDist.get(new GradePair(Grade.B, Grade.E)), 1e-6);
-        assertEquals(0.4196433367352421, jointDist.get(new GradePair(Grade.E, Grade.B)), 1e-6);
+        assertEquals(0.5803566632647579, jointDist.get(new AllelePair<>(Grade.B, Grade.E)), 1e-6);
+        assertEquals(0.4196433367352421, jointDist.get(new AllelePair<>(Grade.E, Grade.B)), 1e-6);
     }
 
     @Test
     void multinomialScore_shouldGiveSameScoreFor_BE_and_EB_whenPhenotypesAreSAndB() {
+        AlleleDomain<Grade> domain = gradeDomain();
         Map<Grade, Integer> phenotypeFrequency = new EnumMap<>(Grade.class);
         phenotypeFrequency.put(Grade.S, 5);
         phenotypeFrequency.put(Grade.B, 8);
         phenotypeFrequency.put(Grade.E, 2);
 
         double scoreBE = InferenceMath.multinomialScore(
-                new GradePair(Grade.B, Grade.E),
+                new AllelePair<>(Grade.B, Grade.E),
                 Grade.S,
                 Grade.B,
-                phenotypeFrequency
+                phenotypeFrequency,
+                domain
         );
 
         double scoreEB = InferenceMath.multinomialScore(
-                new GradePair(Grade.E, Grade.B),
+                new AllelePair<>(Grade.E, Grade.B),
                 Grade.S,
                 Grade.B,
-                phenotypeFrequency
+                phenotypeFrequency,
+                domain
         );
 
         double expected =
@@ -217,11 +225,13 @@ public class InferenceMathTest {
 
     @Test
     void childHiddenDistribution_givenPhenotypeS_returnsA50E50() {
+        AlleleDomain<Grade> domain = gradeDomain();
         Map<Grade, Double> dist = InferenceMath.childHiddenDistributionGivenParents(
-                new GradePair(Grade.B, Grade.E),
+                new AllelePair<>(Grade.B, Grade.E),
                 Grade.S,
                 Grade.A,
-                Grade.S
+                Grade.S,
+                domain
         );
 
         assertEquals(0.5, dist.get(Grade.A), 1e-12);
@@ -236,11 +246,13 @@ public class InferenceMathTest {
 
     @Test
     void childHiddenDistribution_givenPhenotypeB_forSB_BE_returnsExpectedDistribution() {
+        AlleleDomain<Grade> domain = gradeDomain();
         Map<Grade, Double> dist = InferenceMath.childHiddenDistributionGivenParents(
-                new GradePair(Grade.B, Grade.E),
+                new AllelePair<>(Grade.B, Grade.E),
                 Grade.S,
                 Grade.B,
-                Grade.B
+                Grade.B,
+                domain
         );
 
         assertEquals(0.15, dist.get(Grade.S), 1e-12);
@@ -255,11 +267,13 @@ public class InferenceMathTest {
 
     @Test
     void childHiddenDistribution_givenPhenotypeB_forSB_EB_returnsExpectedDistribution() {
+        AlleleDomain<Grade> domain = gradeDomain();
         Map<Grade, Double> dist = InferenceMath.childHiddenDistributionGivenParents(
-                new GradePair(Grade.E, Grade.B),
+                new AllelePair<>(Grade.E, Grade.B),
                 Grade.S,
                 Grade.B,
-                Grade.B
+                Grade.B,
+                domain
         );
 
         assertEquals(0.30, dist.get(Grade.S), 1e-12);
@@ -274,11 +288,13 @@ public class InferenceMathTest {
 
     @Test
     void childHiddenDistribution_givenPhenotypeE_forSB_BE_returnsS50B50() {
+        AlleleDomain<Grade> domain = gradeDomain();
         Map<Grade, Double> dist = InferenceMath.childHiddenDistributionGivenParents(
-                new GradePair(Grade.B, Grade.E),
+                new AllelePair<>(Grade.B, Grade.E),
                 Grade.S,
                 Grade.B,
-                Grade.E
+                Grade.E,
+                domain
         );
 
         assertEquals(0.5, dist.get(Grade.S), 1e-12);
@@ -291,11 +307,13 @@ public class InferenceMathTest {
 
     @Test
     void childHiddenDistribution_givenImpossiblePhenotype_returnsAllZero() {
+        AlleleDomain<Grade> domain = gradeDomain();
         Map<Grade, Double> dist = InferenceMath.childHiddenDistributionGivenParents(
-                new GradePair(Grade.B, Grade.E),
+                new AllelePair<>(Grade.B, Grade.E),
                 Grade.S,
                 Grade.A,
-                Grade.D
+                Grade.D,
+                domain
         );
 
         for (Grade grade : Grade.values()) {
@@ -305,11 +323,13 @@ public class InferenceMathTest {
 
     @Test
     void childHiddenDistributionGivenParents_homozygousHiddenPair_returnsExpectedDistribution() {
+        AlleleDomain<Grade> domain = gradeDomain();
         Map<Grade, Double> dist = InferenceMath.childHiddenDistributionGivenParents(
-                new GradePair(Grade.C, Grade.C),
+                new AllelePair<>(Grade.C, Grade.C),
                 Grade.B,
                 Grade.A,
-                Grade.C
+                Grade.C,
+                domain
         );
 
         assertEquals(3.0 / 16.0, dist.get(Grade.A), 1e-12);
@@ -320,5 +340,9 @@ public class InferenceMathTest {
         assertEquals(0.0, dist.get(Grade.E), 1e-12);
 
         ProbabilityAssertions.assertValidDistribution(dist);
+    }
+
+    private AlleleDomain<Grade> gradeDomain() {
+        return CategoryDomains.typedDomainFor(Category.SWIM);
     }
 }

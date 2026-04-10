@@ -68,7 +68,7 @@ public class RelationshipServiceTest {
         assertEquals(parent2Id, savedRelationship.getParent2().getId());
     }
 
-    private Grade randomGrade() {
-        return Grade.values()[random.nextInt(Grade.values().length)];
+    private String randomGrade() {
+        return Grade.values()[random.nextInt(Grade.values().length)].code();
     }
 }

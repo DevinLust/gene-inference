@@ -38,7 +38,7 @@ public class BreedingServiceTest {
         ));
 
         Sheep parent2 = createTestSheep(Map.of(
-                Category.SWIM, new SheepGenotypeDTO(parent2Phenotype, parent2HiddenAllele),
+                Category.SWIM, new SheepGenotypeDTO(parent2Phenotype.code(), parent2HiddenAllele.code()),
                 Category.FLY, new SheepGenotypeDTO(randomGrade(), randomGrade()),
                 Category.RUN, new SheepGenotypeDTO(randomGrade(), randomGrade()),
                 Category.POWER, new SheepGenotypeDTO(randomGrade(), randomGrade()),
@@ -74,7 +74,7 @@ public class BreedingServiceTest {
         return sheep;
     }
 
-    private Grade randomGrade() {
-        return Grade.values()[random.nextInt(Grade.values().length)];
+    private String randomGrade() {
+        return Grade.values()[random.nextInt(Grade.values().length)].code();
     }
 }
