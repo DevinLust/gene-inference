@@ -2,13 +2,17 @@ package com.progressengine.geneinference.model;
 
 import com.progressengine.geneinference.dto.SheepGenotypeDTO;
 import com.progressengine.geneinference.exception.ExcessAlleleDiversityException;
+import com.progressengine.geneinference.model.enums.Allele;
 import com.progressengine.geneinference.model.enums.Category;
-import com.progressengine.geneinference.model.enums.Grade;
 import com.progressengine.geneinference.service.InferenceMath;
+import com.progressengine.geneinference.service.AlleleDomains.AlleleDomain;
+import com.progressengine.geneinference.service.AlleleDomains.CategoryDomains;
+
 import jakarta.persistence.*;
 import jakarta.transaction.Transactional;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Entity
 public class Relationship {
@@ -25,14 +29,14 @@ public class Relationship {
     private Sheep parent2; // foreign key to Sheep
 
     @Transient
-    private Map<Category, Map<GradePair, Double>> jointDistributionCache;
+    private Map<Category, Map<AlleleCodePair, Double>> jointDistributionCache;
 
     @Transient
     private boolean jointCacheDirty = true;
 
     @Transient
     // Stores by category, then parent phenotypes at time of birth, and then phenotype frequency
-    private Map<Category, Map<GradePair, Map<Grade, Integer>>> phenotypeFrequencyCache;
+    private Map<Category, Map<AlleleCodePair, Map<String, Integer>>> phenotypeFrequencyCache;
 
     @Transient
     private boolean frequencyCacheDirty = true;
@@ -98,7 +102,7 @@ public class Relationship {
     }
 
 
-    public Map<Category, Map<GradePair, Double>> getJointDistributions() {
+    public Map<Category, Map<AlleleCodePair, Double>> getJointDistributions() {
         checkDirtyJointCache();
 
         return copyJointCache();
@@ -113,46 +117,87 @@ public class Relationship {
     }
 
 
-    private Map<Category, Map<GradePair, Double>> computeJointCache() {
-        Map<Category, Map<GradePair, Double>> result = new EnumMap<>(Category.class);
-        Map<Category, Map<GradePair, Map<Grade, Integer>>> phenotypeRecordFrequencies = copyFrequencyCache();
+    private Map<Category, Map<AlleleCodePair, Double>> computeJointCache() {
+        Map<Category, Map<AlleleCodePair, Double>> result = new EnumMap<>(Category.class);
+        Map<Category, Map<AlleleCodePair, Map<String, Integer>>> phenotypeRecordFrequencies = copyFrequencyCache();
 
         for (Category category : Category.values()) {
-            Map<GradePair, Double> jointEpoch = uniformJointDistribution();
-            Map<GradePair, Map<Grade, Integer>> epochFrequencies = phenotypeRecordFrequencies.get(category);
-            if (epochFrequencies == null) { throw new IllegalStateException("phenotype frequencies for Category " + category + " not found"); }
+            Map<AlleleCodePair, Double> jointEpoch = uniformJointDistribution(category);
+            Map<AlleleCodePair, Map<String, Integer>> epochFrequencies = phenotypeRecordFrequencies.get(category);
 
-            for (Map.Entry<GradePair, Map<Grade, Integer>> entry : epochFrequencies.entrySet()) {
-                GradePair pair = entry.getKey();
-                Map<Grade, Integer> phenotypeFreq = entry.getValue();
-                Map<GradePair, Double> currentJoint = InferenceMath.multinomialJointScores(pair.getFirst(), pair.getSecond(), phenotypeFreq);
-                InferenceMath.productOfExperts(jointEpoch, currentJoint);
+            if (epochFrequencies == null) {
+                throw new IllegalStateException("phenotype frequencies for Category " + category + " not found");
             }
+
+            computeJointCacheForCategory(category, jointEpoch, epochFrequencies);
             result.put(category, jointEpoch);
         }
+
         return result;
     }
 
+    private <A extends Enum<A> & Allele> void computeJointCacheForCategory(
+        Category category,
+        Map<AlleleCodePair, Double> jointEpoch,
+        Map<AlleleCodePair, Map<String, Integer>> epochFrequencies
+    ) {
+        AlleleDomain<A> domain = CategoryDomains.typedDomainFor(category);
 
-    private Map<GradePair, Double> uniformJointDistribution() {
-        Map<GradePair, Double> result = new HashMap<>();
-        for (Grade g1 : Grade.values()) {
-            for (Grade g2 : Grade.values()) {
-                result.put(new GradePair(g1, g2), 1.0);
+        for (Map.Entry<AlleleCodePair, Map<String, Integer>> entry : epochFrequencies.entrySet()) {
+            AlleleCodePair pair = entry.getKey();
+            Map<String, Integer> phenotypeFreq = entry.getValue();
+
+            A parent1 = domain.parse(pair.first());
+            A parent2 = domain.parse(pair.second());
+
+            Map<A, Integer> typedPhenotypeFreq = new EnumMap<>(domain.getAlleleType());
+            for (Map.Entry<String, Integer> freqEntry : phenotypeFreq.entrySet()) {
+                A phenotype = domain.parse(freqEntry.getKey());
+                typedPhenotypeFreq.put(phenotype, freqEntry.getValue());
+            }
+
+            Map<AllelePair<A>, Double> currentJoint =
+                    InferenceMath.multinomialJointScores(parent1, parent2, typedPhenotypeFreq, domain);
+
+            Map<AlleleCodePair, Double> currentJointCodes = new HashMap<>();
+            for (Map.Entry<AllelePair<A>, Double> jointEntry : currentJoint.entrySet()) {
+                currentJointCodes.put(
+                        AlleleCodePair.fromAllelePair(jointEntry.getKey()),
+                        jointEntry.getValue()
+                );
+            }
+
+            InferenceMath.productOfExperts(jointEpoch, currentJointCodes);
+        }
+    }
+
+
+    private Map<AlleleCodePair, Double> uniformJointDistribution(Category category) {
+        AlleleDomain<?> domain = CategoryDomains.domainFor(category);
+
+        Map<AlleleCodePair, Double> result = new HashMap<>();
+
+        for (Allele a1 : domain.getAlleles()) {
+            for (Allele a2 : domain.getAlleles()) {
+                result.put(
+                        new AlleleCodePair(a1.code(), a2.code()),
+                        1.0
+                );
             }
         }
+
         InferenceMath.normalizeScores(result);
         return result;
     }
 
 
-    private Map<Category, Map<GradePair, Double>> copyJointCache() {
+    private Map<Category, Map<AlleleCodePair, Double>> copyJointCache() {
         checkDirtyJointCache();
 
-        Map<Category, Map<GradePair, Double>> result = new EnumMap<>(Category.class);
+        Map<Category, Map<AlleleCodePair, Double>> result = new EnumMap<>(Category.class);
         for (Category category : Category.values()) {
-            Map<GradePair, Double> joint = jointDistributionCache.get(category);
-            for (Map.Entry<GradePair, Double> entry : joint.entrySet()) {
+            Map<AlleleCodePair, Double> joint = jointDistributionCache.get(category);
+            for (Map.Entry<AlleleCodePair, Double> entry : joint.entrySet()) {
                 result.computeIfAbsent(category, k -> new HashMap<>())
                         .put(entry.getKey(), entry.getValue());
             }
@@ -161,10 +206,34 @@ public class Relationship {
     }
 
 
-    public Map<Category, Map<GradePair, Map<Grade, Integer>>> getPhenotypeFrequencies() {
+    public Map<Category, Map<AlleleCodePair, Map<String, Integer>>> getPhenotypeFrequencies() {
         checkDirtyFrequencyCache();
 
         return copyFrequencyCache();
+    }
+
+
+    public <A extends Enum<A> & Allele> Map<AllelePair<A>, Map<A, Integer>> getPhenotypeFrequencies(Category category) {
+        checkDirtyFrequencyCache();
+
+        AlleleDomain<A> domain = CategoryDomains.typedDomainFor(category);
+        Map<AlleleCodePair, Map<String, Integer>> raw =
+                phenotypeFrequencyCache.getOrDefault(category, Map.of());
+
+        Map<AllelePair<A>, Map<A, Integer>> result = new HashMap<>();
+
+        for (Map.Entry<AlleleCodePair, Map<String, Integer>> outer : raw.entrySet()) {
+            AllelePair<A> parentPair = outer.getKey().toAllelePair(domain);
+
+            Map<A, Integer> childCounts = new EnumMap<>(domain.getAlleleType());
+            for (Map.Entry<String, Integer> inner : outer.getValue().entrySet()) {
+                childCounts.put(domain.parse(inner.getKey()), inner.getValue());
+            }
+
+            result.put(parentPair, childCounts);
+        }
+
+        return result;
     }
 
 
@@ -176,35 +245,41 @@ public class Relationship {
     }
 
 
-    private Map<Category, Map<GradePair, Map<Grade, Integer>>> aggregateFrequenciesFromBirthRecords() {
-        Map<Category, Map<GradePair, Map<Grade, Integer>>> result = new EnumMap<>(Category.class);
+    private Map<Category, Map<AlleleCodePair, Map<String, Integer>>> aggregateFrequenciesFromBirthRecords() {
+        Map<Category, Map<AlleleCodePair, Map<String, Integer>>> result = new EnumMap<>(Category.class);
 
         for (BirthRecord br : birthRecords) {
-            for (BirthRecordPhenotype p : br.getPhenotypesAtBirth()) { // entity list
-                Category cat = p.getCategory();
-                GradePair parents = new GradePair(p.getParent1Phenotype(), p.getParent2Phenotype());
-                Grade child = p.getChildPhenotype();
+            for (BirthRecordPhenotype p : br.getPhenotypesAtBirth()) {
+                Category category = p.getCategory();
 
-                result.computeIfAbsent(cat, c -> new HashMap<>())
-                        .computeIfAbsent(parents, gp -> new EnumMap<>(Grade.class))
-                        .merge(child, 1, Integer::sum);
+                AlleleCodePair parents = new AlleleCodePair(
+                        p.getParent1PhenotypeCode(),
+                        p.getParent2PhenotypeCode()
+                );
+
+                String childPhenotypeCode = p.getChildPhenotypeCode();
+
+                result.computeIfAbsent(category, c -> new HashMap<>())
+                        .computeIfAbsent(parents, k -> new HashMap<>())
+                        .merge(childPhenotypeCode, 1, Integer::sum);
             }
         }
+
         return result;
     }
 
 
-    private Map<Category, Map<GradePair, Map<Grade, Integer>>> copyFrequencyCache() {
+    private Map<Category, Map<AlleleCodePair, Map<String, Integer>>> copyFrequencyCache() {
         checkDirtyFrequencyCache();
 
-        Map<Category, Map<GradePair, Map<Grade, Integer>>> result = new EnumMap<>(Category.class);
+        Map<Category, Map<AlleleCodePair, Map<String, Integer>>> result = new EnumMap<>(Category.class);
         for (Category category : Category.values()) {
             result.put(category, new HashMap<>());
-            Map<GradePair, Map<Grade, Integer>> categoryFreq = phenotypeFrequencyCache.getOrDefault(category, new HashMap<>());
-            for (Map.Entry<GradePair, Map<Grade, Integer>> epoch : categoryFreq.entrySet()) {
-                for (Map.Entry<Grade, Integer> phenotypeFreq : epoch.getValue().entrySet()) {
+            Map<AlleleCodePair, Map<String, Integer>> categoryFreq = phenotypeFrequencyCache.getOrDefault(category, new HashMap<>());
+            for (Map.Entry<AlleleCodePair, Map<String, Integer>> epoch : categoryFreq.entrySet()) {
+                for (Map.Entry<String, Integer> phenotypeFreq : epoch.getValue().entrySet()) {
                     result.computeIfAbsent(category, k -> new HashMap<>())
-                            .computeIfAbsent(epoch.getKey(), g -> new EnumMap<>(Grade.class))
+                            .computeIfAbsent(epoch.getKey(), g -> new HashMap<>())
                             .put(phenotypeFreq.getKey(), phenotypeFreq.getValue());
                 }
             }
@@ -233,8 +308,26 @@ public class Relationship {
     }
 
 
-    public Map<GradePair, Double> getJointDistribution(Category category) {
-        return copyJointCache().get(category);
+    public <A extends Enum<A> & Allele> Map<AllelePair<A>, Double> getJointDistribution(Category category) {
+        checkDirtyJointCache();
+
+        AlleleDomain<A> domain = CategoryDomains.typedDomainFor(category);
+        Map<AlleleCodePair, Double> raw = jointDistributionCache.getOrDefault(category, Map.of());
+
+        Map<AllelePair<A>, Double> result = new HashMap<>();
+        for (Map.Entry<AlleleCodePair, Double> entry : raw.entrySet()) {
+            AlleleCodePair codePair = entry.getKey();
+            Double probability = entry.getValue();
+
+            AllelePair<A> allelePair = new AllelePair<>(
+                    domain.parse(codePair.first()),
+                    domain.parse(codePair.second())
+            );
+
+            result.put(allelePair, probability);
+        }
+
+        return result;
     }
 
 
@@ -245,21 +338,40 @@ public class Relationship {
 
 
     // return the phenotype frequencies of the current epoch
-    public Map<Grade, Integer> getCurrentPhenotypeFrequencies(Category category) {
-        Map<GradePair, Map<Grade, Integer>> epochFreq = copyFrequencyCache().get(category);
-        GradePair parents = new GradePair(parent1.getPhenotype(category), parent2.getPhenotype(category));
+    public <A extends Enum<A> & Allele> Map<A, Integer> getCurrentPhenotypeFrequencies(Category category) {
+        checkDirtyFrequencyCache();
 
-        return epochFreq.get(parents);
+        AlleleDomain<A> domain = CategoryDomains.typedDomainFor(category);
+
+        Map<AlleleCodePair, Map<String, Integer>> epochFreq =
+                phenotypeFrequencyCache.getOrDefault(category, Map.of());
+
+        AlleleCodePair parents = new AlleleCodePair(
+                parent1.getPhenotype(category).code(),
+                parent2.getPhenotype(category).code()
+        );
+
+        Map<String, Integer> raw = epochFreq.getOrDefault(parents, Map.of());
+
+        Map<A, Integer> result = new EnumMap<>(domain.getAlleleType());
+        for (Map.Entry<String, Integer> entry : raw.entrySet()) {
+            result.put(domain.parse(entry.getKey()), entry.getValue());
+        }
+
+        return result;
     }
 
 
-    public Map<Category, Map<Grade, Integer>> getAllCurrentPhenotypeFrequencies() {
-        Map<Category, Map<Grade, Integer>> result = new EnumMap<>(Category.class);
-        Map<Category, Map<GradePair, Map<Grade, Integer>>> cache = copyFrequencyCache();
+    public Map<Category, Map<String, Integer>> getAllCurrentPhenotypeFrequencies() {
+        Map<Category, Map<String, Integer>> result = new EnumMap<>(Category.class);
+        Map<Category, Map<AlleleCodePair, Map<String, Integer>>> cache = copyFrequencyCache();
         for (Category category : Category.values()) {
-            GradePair currentPair = new GradePair(parent1.getPhenotype(category), parent2.getPhenotype(category));
-            Map<GradePair, Map<Grade, Integer>> epochFreq = cache.get(category);
-            result.put(category, epochFreq.getOrDefault(currentPair, new EnumMap<>(Grade.class)));
+            AlleleCodePair currentPair = new AlleleCodePair(
+                parent1.getPhenotype(category).code(),
+                parent2.getPhenotype(category).code()
+        );
+            Map<AlleleCodePair, Map<String, Integer>> epochFreq = cache.get(category);
+            result.put(category, epochFreq.getOrDefault(currentPair, new HashMap<>()));
         }
         return result;
     }
@@ -338,29 +450,10 @@ public class Relationship {
 
 
     private void checkForExcessAllelesExperimental(Map<Category, SheepGenotypeDTO> childGenotypes) {
-        Map<Category, Map<GradePair, Map<Grade, Integer>>> frequencyCacheCopy = copyFrequencyCache();
-
         List<ExcessAlleleViolation> violations = new ArrayList<>();
 
         for (Category category : Category.values()) {
-            Grade newAllele = childGenotypes.get(category).phenotype();
-            GradePair currentParentPhenotypes = new GradePair(parent1.getPhenotype(category), parent2.getPhenotype(category));
-
-            // If matches either parent phenotypes, always ok
-            if (newAllele == currentParentPhenotypes.getFirst() || newAllele == currentParentPhenotypes.getSecond()) {
-                continue;
-            }
-
-            // check all epochs of the current category
-            Map<GradePair, Map<Grade, Integer>> epochMap = frequencyCacheCopy.get(category);
-            Set<Grade> previousHidden = hiddenAlleleDiversity(epochMap);
-
-            // violation condition
-            if (previousHidden.size() == 2 && !previousHidden.contains(newAllele)) {
-                Set<Grade> validAlleles = EnumSet.of(currentParentPhenotypes.getFirst(), currentParentPhenotypes.getSecond());
-                validAlleles.addAll(previousHidden);
-                violations.add(new ExcessAlleleViolation(category, newAllele, validAlleles));
-            }
+            checkForExcessAllelesForCategory(category, childGenotypes, violations);
         }
 
         if (!violations.isEmpty()) {
@@ -372,21 +465,80 @@ public class Relationship {
     }
 
 
-    private Set<Grade> hiddenAlleleDiversity(Map<GradePair, Map<Grade, Integer>> epochMap) {
-        if (epochMap == null || epochMap.isEmpty()) return Collections.emptySet();
+    private <A extends Enum<A> & Allele> void checkForExcessAllelesForCategory(
+        Category category,
+        Map<Category, SheepGenotypeDTO> childGenotypes,
+        List<ExcessAlleleViolation> violations
+    ) {
+        SheepGenotypeDTO childGenotype = childGenotypes.get(category);
+        if (childGenotype == null || childGenotype.phenotype() == null) {
+            return;
+        }
 
-        Set<Grade> definitiveHiddenAlleles = EnumSet.noneOf(Grade.class);
-        for (Map.Entry<GradePair, Map<Grade, Integer>> entry : epochMap.entrySet()) {
-            GradePair parentPhenotypes = entry.getKey();
-            Map<Grade, Integer> phenotypesSeen = entry.getValue();
-            for (Map.Entry<Grade, Integer> freqPair : phenotypesSeen.entrySet()) {
-                Grade phenotype = freqPair.getKey();
+        AlleleDomain<A> domain = CategoryDomains.typedDomainFor(category);
+
+        A newAllele = domain.parse(childGenotype.phenotype());
+        A parent1Phenotype = parent1.getPhenotype(category);
+        A parent2Phenotype = parent2.getPhenotype(category);
+
+        AllelePair<A> currentParentPhenotypes = new AllelePair<>(parent1Phenotype, parent2Phenotype);
+
+        if (newAllele == currentParentPhenotypes.getFirst() || newAllele == currentParentPhenotypes.getSecond()) {
+            return;
+        }
+
+        Map<AllelePair<A>, Map<A, Integer>> epochMap = getPhenotypeFrequencies(category);
+        Set<A> previousHidden = hiddenAlleleDiversity(epochMap, domain);
+
+        if (previousHidden.size() == 2 && !previousHidden.contains(newAllele)) {
+            Set<A> validAlleles = EnumSet.of(
+                    currentParentPhenotypes.getFirst(),
+                    currentParentPhenotypes.getSecond()
+            );
+            validAlleles.addAll(previousHidden);
+
+            Set<String> validAlleleCodes = validAlleles.stream()
+                .map(Allele::code)
+                .collect(Collectors.toSet());
+
+            violations.add(
+                new ExcessAlleleViolation(
+                        category,
+                        newAllele.code(),
+                        validAlleleCodes
+                )
+            );
+        }
+    }
+
+
+    private <A extends Enum<A> & Allele> Set<A> hiddenAlleleDiversity(
+        Map<AllelePair<A>, Map<A, Integer>> epochMap,
+        AlleleDomain<A> domain
+    ) {
+        if (epochMap == null || epochMap.isEmpty()) {
+            return EnumSet.noneOf(domain.getAlleleType());
+        }
+
+        Set<A> definitiveHiddenAlleles = EnumSet.noneOf(domain.getAlleleType());
+
+        for (Map.Entry<AllelePair<A>, Map<A, Integer>> entry : epochMap.entrySet()) {
+            AllelePair<A> parentPhenotypes = entry.getKey();
+            Map<A, Integer> phenotypesSeen = entry.getValue();
+
+            for (Map.Entry<A, Integer> freqPair : phenotypesSeen.entrySet()) {
+                A phenotype = freqPair.getKey();
                 Integer freq = freqPair.getValue();
-                if (phenotype != parentPhenotypes.getFirst() && phenotype != parentPhenotypes.getSecond() && freq != null && freq > 0) {
+
+                if (phenotype != parentPhenotypes.getFirst()
+                        && phenotype != parentPhenotypes.getSecond()
+                        && freq != null
+                        && freq > 0) {
                     definitiveHiddenAlleles.add(phenotype);
                 }
             }
         }
+
         return definitiveHiddenAlleles;
     }
 

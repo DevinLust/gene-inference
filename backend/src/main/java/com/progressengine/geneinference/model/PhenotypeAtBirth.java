@@ -1,20 +1,11 @@
 package com.progressengine.geneinference.model;
 
-import com.progressengine.geneinference.model.enums.Grade;
-
-public record PhenotypeAtBirth(Grade parent1, Grade parent2, Grade child) {
-
-    public PhenotypeAtBirth(Grade parent1, Grade parent2, Grade child) {
-        this.parent1 = parent1;
-        this.parent2 = parent2;
-        this.child = child;
-    }
-
+public record PhenotypeAtBirth(String parent1Code, String parent2Code, String childCode) {
     public PhenotypeAtBirth(BirthRecordPhenotype birthRecordPhenotype) {
         this(
-                birthRecordPhenotype.getParent1Phenotype(),
-                birthRecordPhenotype.getParent2Phenotype(),
-                birthRecordPhenotype.getChildPhenotype()
+                birthRecordPhenotype.getParent1PhenotypeCode(),
+                birthRecordPhenotype.getParent2PhenotypeCode(),
+                birthRecordPhenotype.getChildPhenotypeCode()
         );
     }
 }

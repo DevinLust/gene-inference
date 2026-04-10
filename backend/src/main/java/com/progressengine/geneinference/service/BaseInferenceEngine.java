@@ -4,9 +4,13 @@ import com.progressengine.geneinference.model.GradeExpressionRules;
 import com.progressengine.geneinference.model.GradePair;
 import com.progressengine.geneinference.model.Relationship;
 import com.progressengine.geneinference.model.Sheep;
+import com.progressengine.geneinference.model.enums.Allele;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.DistributionType;
 import com.progressengine.geneinference.model.enums.Grade;
+import com.progressengine.geneinference.model.AlleleCodePair;
+import com.progressengine.geneinference.service.AlleleDomains.AlleleDomain;
+import com.progressengine.geneinference.service.AlleleDomains.CategoryDomains;
 
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -85,10 +89,11 @@ public abstract class BaseInferenceEngine implements InferenceEngine {
     }
 
     // check the hidden distributions of a sheep and if an allele is certain, set the hidden allele to it
-    protected void checkCertainty(Sheep sheep, Category category) {
+    protected <A extends Enum<A> & Allele> void checkCertainty(Sheep sheep, Category category) {
         if (sheep.getHiddenAllele(category) != null) { return; }
 
-        for (Map.Entry<Grade, Double> entry : sheep.getDistribution(category, DistributionType.INFERRED).entrySet()) {
+        Map<A, Double> distMap = sheep.getDistribution(category, DistributionType.INFERRED);
+        for (Map.Entry<A, Double> entry : distMap.entrySet()) {
             if (entry.getValue() == 1.0) { // could make this a certainty threshold
                 sheep.setHiddenAllele(category, entry.getKey());
             }
@@ -99,7 +104,7 @@ public abstract class BaseInferenceEngine implements InferenceEngine {
     protected Map<GradePair, Map<Grade, Double>> findConditionalDistributions(Relationship relationship, Grade childPhenotype, Category category) {
         Grade phenotype1 = relationship.getParent1().getPhenotype(category);
         Grade phenotype2 = relationship.getParent2().getPhenotype(category);
-        Map<GradePair, Double> jointDistribution = relationship.getJointDistributions().get(category);
+        Map<GradePair, Double> jointDistribution = convertAlleleCodePairToGradePair(relationship.getJointDistributions().get(category));
 
         // find the probability distribution of the hidden allele given both genotypes
         Map<GradePair, Map<Grade, Double>> conditionalDistributions = new HashMap<>();
@@ -119,6 +124,15 @@ public abstract class BaseInferenceEngine implements InferenceEngine {
 
         return conditionalDistributions;
     }
+    private Map<GradePair, Double> convertAlleleCodePairToGradePair(Map<AlleleCodePair, Double> map) {
+        Map<GradePair, Double> result = new HashMap<>();
+        for (Map.Entry<AlleleCodePair, Double> entry : map.entrySet()) {
+            GradePair pair = new GradePair(Grade.fromCode(entry.getKey().first()), Grade.fromCode(entry.getKey().second()));
+            result.put(pair, entry.getValue());
+        }
+        return result;
+    }
+
 
     @Deprecated
     // Returns a relative multinomial score based on the given hidden alleles, phenotypes, and phenotype frequency seen in the relationship

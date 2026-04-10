@@ -151,7 +151,7 @@ public class FactorGraphRunner {
             if (beliefIndex < scopedBeliefSheep.size()) {
                 Sheep sheep = scopedBeliefSheep.get(beliefIndex);
 
-                Map<Category, Map<Grade, Double>> belief = graph.computeBeliefForSheep(sheep);
+                Map<Category, Map<String, Double>> belief = graph.computeBeliefForSheep(sheep);
 
                 List<String> activeFullEdgeIds = new ArrayList<>();
                 List<String> activeStubEdgeIds = new ArrayList<>();

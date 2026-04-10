@@ -27,4 +27,10 @@ public interface AlleleDomain<A extends Enum<A> & Allele> {
         }
         return result;
     }
+
+    default A evolvePhenotype(A phenotype) {
+        throw new UnsupportedOperationException(
+                "Phenotype evolution is not supported for domain " + this.getClass().getSimpleName()
+        );
+    }
 }

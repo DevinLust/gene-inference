@@ -4,14 +4,11 @@ import com.progressengine.geneinference.model.enums.Tone;
 import com.progressengine.geneinference.model.AllelePair;
 import com.progressengine.geneinference.model.enums.Category;
 
-import org.springframework.stereotype.Component;
-
 import java.util.EnumSet;
 import java.util.Set;
 import java.util.List;
 import java.util.Random;
 
-@Component
 public class ToneAlleleDomain implements AlleleDomain<Tone> {
 
     private static final double DOMINANT_EXPRESSION_PROBABILITY = 0.5;

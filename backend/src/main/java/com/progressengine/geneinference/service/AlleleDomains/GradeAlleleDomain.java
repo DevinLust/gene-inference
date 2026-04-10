@@ -4,14 +4,11 @@ import com.progressengine.geneinference.model.enums.Grade;
 import com.progressengine.geneinference.model.AllelePair;
 import com.progressengine.geneinference.model.enums.Category;
 
-import org.springframework.stereotype.Component;
-
 import java.util.EnumSet;
 import java.util.Set;
 import java.util.List;
 import java.util.Random;
 
-@Component
 public class GradeAlleleDomain implements AlleleDomain<Grade> {
 
     private static final double DOMINANT_EXPRESSION_PROBABILITY = 0.7;
@@ -63,5 +60,10 @@ public class GradeAlleleDomain implements AlleleDomain<Grade> {
         return random.nextDouble() < DOMINANT_EXPRESSION_PROBABILITY
                 ? new AllelePair<>(better, worse)
                 : new AllelePair<>(worse, better);
+    }
+
+    @Override
+    public Grade evolvePhenotype(Grade phenotype) {
+        return phenotype.promoteOnce();
     }
 }

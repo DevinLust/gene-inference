@@ -1,15 +1,100 @@
 package com.progressengine.geneinference.service;
 
+import com.progressengine.geneinference.model.Sheep;
 import com.progressengine.geneinference.model.GradeExpressionRules;
 import com.progressengine.geneinference.model.GradePair;
 import com.progressengine.geneinference.model.AllelePair;
+import com.progressengine.geneinference.model.enums.Category;
+import com.progressengine.geneinference.model.enums.DistributionType;
 import com.progressengine.geneinference.model.enums.Grade;
 import com.progressengine.geneinference.model.enums.Allele;
 import com.progressengine.geneinference.service.AlleleDomains.AlleleDomain;
+import com.progressengine.geneinference.service.AlleleDomains.CategoryDomains;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public final class InferenceMath {
+
+    /**
+     * Predicts the probabilities of the phenotype for each category of the two parents' children.
+     * The two parents don't need to be in a Relationship. The two parents can be the same
+     * Sheep.
+     *
+     * @param parent1 - the first parent Sheep to base the prediction on
+     * @param parent2 - the second parent Sheep to base the prediction on
+     * @return a Map of distributions that predict the probability of phenotypes for the children
+     * of these two parents by category
+     */
+    public static Map<Category, Map<String, Double>> predictChildrenDistributions(Sheep parent1, Sheep parent2) {
+        Map<Category, Map<String, Double>> predictedDistributions = new EnumMap<>(Category.class);
+
+        for (Category category : Category.values()) {
+            Map<String, Double> childPhenotypeDistribution = predictedChildDistributionByCategory(parent1, parent2, category);
+
+            predictedDistributions.put(category, childPhenotypeDistribution);
+        }
+
+        return predictedDistributions;
+    }
+
+    private static <A extends Enum<A> & Allele> Map<String, Double> predictedChildDistributionByCategory(Sheep parent1, Sheep parent2, Category category) {
+        AlleleDomain<A> domain = CategoryDomains.typedDomainFor(category);
+        Map<A, Double> parent1AlleleDistribution = inheritedAlleleDistribution(parent1, category);
+        Map<A, Double> parent2AlleleDistribution = inheritedAlleleDistribution(parent2, category);
+
+        Map<A, Double> childPhenotypeDistribution = new EnumMap<>(domain.getAlleleType());
+        for (A expressed : domain.getAlleles()) {
+            childPhenotypeDistribution.put(expressed, 0.0);
+        }
+
+        for (Map.Entry<A, Double> p1Entry : parent1AlleleDistribution.entrySet()) {
+            A allele1 = p1Entry.getKey();
+            double pAllele1 = p1Entry.getValue();
+
+            for (Map.Entry<A, Double> p2Entry : parent2AlleleDistribution.entrySet()) {
+                A allele2 = p2Entry.getKey();
+                double pAllele2 = p2Entry.getValue();
+
+                double genotypeProbability = pAllele1 * pAllele2;
+                double[] expressionProbability = domain.expressionBias(allele1, allele2);
+
+                childPhenotypeDistribution.merge(
+                        allele1,
+                        genotypeProbability * expressionProbability[0],
+                        Double::sum
+                );
+                childPhenotypeDistribution.merge(
+                        allele2,
+                        genotypeProbability * expressionProbability[1],
+                        Double::sum
+                );
+            }
+        }
+
+        return childPhenotypeDistribution.entrySet().stream()
+            .collect(Collectors.toMap(
+                entry -> entry.getKey().code(), 
+                Map.Entry::getValue
+            ));
+    }
+
+    private static <A extends Enum<A> & Allele> Map<A, Double> inheritedAlleleDistribution(Sheep parent, Category category) {
+        AlleleDomain<A> domain = CategoryDomains.typedDomainFor(category);
+        Map<A, Double> result = new EnumMap<>(domain.getAlleleType());
+
+        // 50% chance to pass the visible allele
+        A phenotype = parent.getPhenotype(category);
+        result.merge(phenotype, 0.5, Double::sum);
+
+        // 50% chance to pass the hidden allele, distributed by the inferred hidden distribution
+        Map<A, Double> hiddenDistribution = parent.getDistribution(category, DistributionType.INFERRED);
+        for (Map.Entry<A, Double> entry : hiddenDistribution.entrySet()) {
+            result.merge(entry.getKey(), 0.5 * entry.getValue(), Double::sum);
+        }
+
+        return result;
+    }
 
     public static <A> void validateDistribution(Map<A, Double> distribution) {
         // Validate sum ≈ 1.0
@@ -204,7 +289,7 @@ public final class InferenceMath {
         return entropy;
     }
 
-    private static <A extends Enum<A> & Allele> Map<A, Double> childPhenotypeDistribution(
+    public static <A extends Enum<A> & Allele> Map<A, Double> childPhenotypeDistribution(
             AllelePair<A> hiddenPair,
             A phenotype1,
             A phenotype2,

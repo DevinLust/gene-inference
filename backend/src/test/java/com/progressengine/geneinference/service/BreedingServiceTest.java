@@ -30,7 +30,7 @@ public class BreedingServiceTest {
         Set<Grade> allAlleles = EnumSet.of(parent1Phenotype, parent1HiddenAllele, parent2Phenotype, parent2HiddenAllele);
 
         Sheep parent1 = createTestSheep(Map.of(
-                Category.SWIM, new SheepGenotypeDTO(parent1Phenotype, parent1HiddenAllele),
+                Category.SWIM, new SheepGenotypeDTO(parent1Phenotype.code(), parent1HiddenAllele.code()),
                 Category.FLY, new SheepGenotypeDTO(randomGrade(), randomGrade()),
                 Category.RUN, new SheepGenotypeDTO(randomGrade(), randomGrade()),
                 Category.POWER, new SheepGenotypeDTO(randomGrade(), randomGrade()),

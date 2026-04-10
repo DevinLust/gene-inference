@@ -2,7 +2,6 @@ package com.progressengine.geneinference.model;
 
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.DistributionType;
-import com.progressengine.geneinference.model.enums.Grade;
 
 import java.io.Serializable;
 import java.util.Objects;
@@ -12,16 +11,16 @@ public class SheepDistributionKey implements Serializable {
     private Integer sheep;
     private Category category;
     private DistributionType distributionType;
-    private Grade grade;
+    private String alleleCode;
 
     // Required: default constructor
     public SheepDistributionKey() {}
 
-    public SheepDistributionKey(Integer sheepId, Category category, DistributionType distributionType, Grade grade) {
+    public SheepDistributionKey(Integer sheepId, Category category, DistributionType distributionType, String alleleCode) {
         this.sheep = sheepId;
         this.category = category;
         this.distributionType = distributionType;
-        this.grade = grade;
+        this.alleleCode = alleleCode;
     }
 
     // Getters and Setters
@@ -49,12 +48,12 @@ public class SheepDistributionKey implements Serializable {
         this.distributionType = distributionType;
     }
 
-    public Grade getGrade() {
-        return grade;
+    public String getAlleleCode() {
+        return alleleCode;
     }
 
-    public void setGrade(Grade grade) {
-        this.grade = grade;
+    public void setAlleleCode(String alleleCode) {
+        this.alleleCode = alleleCode;
     }
 
     // equals() and hashCode() are required for composite key
@@ -66,11 +65,11 @@ public class SheepDistributionKey implements Serializable {
         return Objects.equals(sheep, that.sheep)
                 && Objects.equals(category, that.category)
                 && distributionType == that.distributionType
-                && grade == that.grade;
+                && Objects.equals(alleleCode, that.alleleCode);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(sheep, category, distributionType, grade);
+        return Objects.hash(sheep, category, distributionType, alleleCode);
     }
 }

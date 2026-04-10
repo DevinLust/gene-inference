@@ -337,7 +337,7 @@ public class RelationshipTest {
         Relationship relationship = DomainFixtures.createPopulatedRelationship(parent1, parent2, expectedPhenotypeFrequencies);
 
         // Act
-        Map<Category, Map<GradePair, Map<Grade, Integer>>> phenotypeCache = relationship.getPhenotypeFrequencies();
+        Map<Category, Map<AlleleCodePair, Map<String, Integer>>> phenotypeCache = relationship.getPhenotypeFrequencies();
 
         // Assert
         assertEquals(expectedPhenotypeFrequencies, phenotypeCache, "Cache should equal phenotype frequencies");

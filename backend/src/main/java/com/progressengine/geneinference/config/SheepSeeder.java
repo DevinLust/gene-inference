@@ -1,15 +1,18 @@
 package com.progressengine.geneinference.config;
 
-import com.progressengine.geneinference.model.GradePair;
+import com.progressengine.geneinference.model.AllelePair;
 import com.progressengine.geneinference.model.Sheep;
+import com.progressengine.geneinference.model.enums.Allele;
 import com.progressengine.geneinference.model.enums.Category;
-import com.progressengine.geneinference.model.enums.Grade;
+import com.progressengine.geneinference.service.AlleleDomains.AlleleDomain;
+import com.progressengine.geneinference.service.AlleleDomains.CategoryDomains;
 import com.progressengine.geneinference.repository.SheepRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
 import java.util.Random;
+import java.util.List;
 
 @Component
 public class SheepSeeder implements CommandLineRunner {
@@ -50,14 +53,20 @@ public class SheepSeeder implements CommandLineRunner {
             sheep.setName(name);
 
             for (Category category : Category.values()) {
-                Grade phenotype = Grade.values()[random.nextInt(Grade.values().length)];
-                Grade hidden = Grade.values()[random.nextInt(Grade.values().length)];
-                sheep.setGenotype(category, new GradePair(phenotype, hidden));
+                setRandomAlleles(sheep, category, random);
             }
 
             sheep.createDefaultDistributions();
             sheepRepository.save(sheep);
         }
+    }
+
+    private <A extends Enum<A> & Allele> void setRandomAlleles(Sheep sheep, Category category, Random random) {
+        AlleleDomain<A> domain = CategoryDomains.typedDomainFor(category);
+        List<A> alleles = domain.getAlleles();
+        A phenotype = alleles.get(random.nextInt(alleles.size()));
+        A hidden = alleles.get(random.nextInt(alleles.size()));
+        sheep.setGenotype(category, new AllelePair<>(phenotype, hidden));
     }
 }
 

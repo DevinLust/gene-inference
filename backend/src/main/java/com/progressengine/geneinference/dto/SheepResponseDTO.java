@@ -2,7 +2,6 @@ package com.progressengine.geneinference.dto;
 
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.DistributionType;
-import com.progressengine.geneinference.model.enums.Grade;
 
 import java.util.Map;
 
@@ -10,7 +9,7 @@ public class SheepResponseDTO {
     private Integer id;
     private String name;
     private Map<Category, SheepGenotypeDTO> genotypes;
-    private Map<Category, Map<DistributionType, Map<Grade, Double>>> distributions;
+    private Map<Category, Map<DistributionType, Map<String, Double>>> distributions;
     private Integer parentRelationshipId;
 
     public Integer getId() {
@@ -37,11 +36,11 @@ public class SheepResponseDTO {
         this.genotypes = genotypes;
     }
 
-    public Map<Category, Map<DistributionType, Map<Grade, Double>>> getDistributions() {
+    public Map<Category, Map<DistributionType, Map<String, Double>>> getDistributions() {
         return distributions;
     }
 
-    public void setDistributions(Map<Category, Map<DistributionType, Map<Grade, Double>>> distributions) {
+    public void setDistributions(Map<Category, Map<DistributionType, Map<String, Double>>> distributions) {
         this.distributions = distributions;
     }
 

@@ -179,24 +179,6 @@ public class ApplicationExceptionHandler {
     }
 
 
-    private String buildPath(InvalidFormatException ife) {
-        StringBuilder path = new StringBuilder();
-
-        for (var ref : ife.getPath()) {
-            if (ref.getFieldName() != null) {
-                if (!path.isEmpty()) path.append(".");
-                path.append(ref.getFieldName());
-            } else if (ref.getDescription() != null) {
-                if (!path.isEmpty()) path.append(".");
-                path.append(ref.getDescription());
-            } else if (ref.getIndex() >= 0) {
-                path.append("[").append(ref.getIndex()).append("]");
-            }
-        }
-
-        return path.isEmpty() ? "unknown" : path.toString();
-    }
-
     private List<String> extractPath(InvalidFormatException ex) {
         return ex.getPath().stream()
                 .map(ref -> ref.getFieldName() != null

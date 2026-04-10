@@ -1,7 +1,8 @@
 package com.progressengine.geneinference.model;
 
+import com.progressengine.geneinference.model.enums.Allele;
 import com.progressengine.geneinference.model.enums.Category;
-import com.progressengine.geneinference.model.enums.Grade;
+import com.progressengine.geneinference.service.AlleleDomains.AlleleDomain;
 import jakarta.persistence.*;
 
 import java.util.Objects;
@@ -10,6 +11,7 @@ import java.util.Objects;
 @IdClass(BirthRecordPhenotypeKey.class)
 @Table(name = "birth_record_phenotype")
 public class BirthRecordPhenotype {
+
     @Id
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "birth_record_id", nullable = false)
@@ -20,17 +22,14 @@ public class BirthRecordPhenotype {
     @Column(name = "category", nullable = false)
     private Category category;
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "parent1_phenotype", nullable = false)
-    private Grade parent1Phenotype;
+    private String parent1PhenotypeCode;
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "parent2_phenotype", nullable = false)
-    private Grade parent2Phenotype;
+    private String parent2PhenotypeCode;
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "child_phenotype", nullable = false)
-    private Grade childPhenotype;
+    private String childPhenotypeCode;
 
     public BirthRecordPhenotype() {}
 
@@ -55,39 +54,90 @@ public class BirthRecordPhenotype {
         this.category = category;
     }
 
-    public Grade getParent1Phenotype() {
-        return parent1Phenotype;
+    public String getParent1PhenotypeCode() {
+        return parent1PhenotypeCode;
     }
 
-    public void setParent1Phenotype(Grade parent1Phenotype) {
-        this.parent1Phenotype = parent1Phenotype;
+    public void setParent1PhenotypeCode(String parent1PhenotypeCode) {
+        this.parent1PhenotypeCode = parent1PhenotypeCode;
     }
 
-    public Grade getParent2Phenotype() {
-        return parent2Phenotype;
+    public String getParent2PhenotypeCode() {
+        return parent2PhenotypeCode;
     }
 
-    public void setParent2Phenotype(Grade parent2Phenotype) {
-        this.parent2Phenotype = parent2Phenotype;
+    public void setParent2PhenotypeCode(String parent2PhenotypeCode) {
+        this.parent2PhenotypeCode = parent2PhenotypeCode;
     }
 
-    public Grade getChildPhenotype() {
-        return childPhenotype;
+    public String getChildPhenotypeCode() {
+        return childPhenotypeCode;
     }
 
-    public void setChildPhenotype(Grade childPhenotype) {
-        this.childPhenotype = childPhenotype;
+    public void setChildPhenotypeCode(String childPhenotypeCode) {
+        this.childPhenotypeCode = childPhenotypeCode;
     }
 
-    public void setAllPhenotypes(Grade parent1Phenotype, Grade parent2Phenotype, Grade childPhenotype) {
-        this.parent1Phenotype = parent1Phenotype;
-        this.parent2Phenotype = parent2Phenotype;
-        this.childPhenotype = childPhenotype;
+    public <A extends Enum<A> & Allele> A getParent1Phenotype(AlleleDomain<A> domain) {
+        return domain.parse(parent1PhenotypeCode);
     }
 
-    public void setAllPhenotypes(GradePair parentPhenotypes, Grade childPhenotype) {
-        this.parent1Phenotype = parentPhenotypes.getFirst();
-        this.parent2Phenotype = parentPhenotypes.getSecond();
-        this.childPhenotype = childPhenotype;
+    public <A extends Enum<A> & Allele> void setParent1Phenotype(A parent1Phenotype) {
+        if (parent1Phenotype == null) {
+            throw new IllegalArgumentException("Parent 1 phenotype cannot be null");
+        }
+        this.parent1PhenotypeCode = parent1Phenotype.code();
+    }
+
+    public <A extends Enum<A> & Allele> A getParent2Phenotype(AlleleDomain<A> domain) {
+        return domain.parse(parent2PhenotypeCode);
+    }
+
+    public <A extends Enum<A> & Allele> void setParent2Phenotype(A parent2Phenotype) {
+        if (parent2Phenotype == null) {
+            throw new IllegalArgumentException("Parent 2 phenotype cannot be null");
+        }
+        this.parent2PhenotypeCode = parent2Phenotype.code();
+    }
+
+    public <A extends Enum<A> & Allele> A getChildPhenotype(AlleleDomain<A> domain) {
+        return domain.parse(childPhenotypeCode);
+    }
+
+    public <A extends Enum<A> & Allele> void setChildPhenotype(A childPhenotype) {
+        if (childPhenotype == null) {
+            throw new IllegalArgumentException("Child phenotype cannot be null");
+        }
+        this.childPhenotypeCode = childPhenotype.code();
+    }
+
+    public <A extends Enum<A> & Allele> void setAllPhenotypes(A parent1Phenotype, A parent2Phenotype, A childPhenotype) {
+        if (parent1Phenotype == null || parent2Phenotype == null || childPhenotype == null) {
+            throw new IllegalArgumentException("Phenotypes cannot be null");
+        }
+
+        this.parent1PhenotypeCode = parent1Phenotype.code();
+        this.parent2PhenotypeCode = parent2Phenotype.code();
+        this.childPhenotypeCode = childPhenotype.code();
+    }
+
+    public <A extends Enum<A> & Allele> void setAllPhenotypes(AllelePair<A> parentPhenotypes, A childPhenotype) {
+        if (parentPhenotypes == null) {
+            throw new IllegalArgumentException("Parent phenotypes cannot be null");
+        }
+        setAllPhenotypes(parentPhenotypes.getFirst(), parentPhenotypes.getSecond(), childPhenotype);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof BirthRecordPhenotype that)) return false;
+        return Objects.equals(birthRecord != null ? birthRecord.getId() : null, that.birthRecord != null ? that.birthRecord.getId() : null)
+                && category == that.category;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(birthRecord != null ? birthRecord.getId() : null, category);
     }
 }

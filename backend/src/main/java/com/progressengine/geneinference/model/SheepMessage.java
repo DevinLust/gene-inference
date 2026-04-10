@@ -1,7 +1,7 @@
 package com.progressengine.geneinference.model;
 
 import com.progressengine.geneinference.model.enums.Category;
-import com.progressengine.geneinference.model.enums.Grade;
+import com.progressengine.geneinference.model.enums.Allele;
 import com.progressengine.geneinference.service.InferenceMath;
 import com.progressengine.geneinference.service.SheepService;
 
@@ -18,7 +18,7 @@ public class SheepMessage extends Message {
         this.target = target;
         this.distribution = new EnumMap<>(Category.class);
         for (Category category : Category.values()) {
-            this.distribution.put(category, SheepService.createUniformDistribution());
+            initializeUniform(category);
         }
     }
 
@@ -33,14 +33,14 @@ public class SheepMessage extends Message {
     }
 
     @Override
-    public Map<Category, Map<Grade, Double>> computeMessage(List<Message> messages) {
-        Map<Category, Map<Grade, Double>> distribution = new EnumMap<>(Category.class);
+    public Map<Category, Map<String, Double>> computeMessage(List<Message> messages) {
+        Map<Category, Map<String, Double>> distribution = new EnumMap<>(Category.class);
         for (Category category : Category.values()) {
-            distribution.put(category, SheepService.createUniformDistribution());
+            initializeUniform(category);
         }
 
         for (Message message : messages) {
-            Map<Category, Map<Grade, Double>> messageDist = message.getDistribution();
+            Map<Category, Map<String, Double>> messageDist = message.getDistribution();
             for (Category category : Category.values()) {
                 InferenceMath.productOfExperts(distribution.get(category), messageDist.get(category));
             }
@@ -50,11 +50,11 @@ public class SheepMessage extends Message {
     }
 
     @Override
-    public Map<Grade, Double> computeMessageForCategory(Category category, List<Message> messages) {
-        Map<Grade, Double> distribution = SheepService.createUniformDistribution();
+    public <A extends Enum<A> & Allele> Map<A, Double> computeMessageForCategory(Category category, List<Message> messages) {
+        Map<A, Double> distribution = SheepService.createUniformDistribution(category);
 
         for (Message message : messages) {
-            InferenceMath.productOfExperts(distribution, message.getDistribution().get(category));
+            InferenceMath.productOfExperts(distribution, message.getDistributionByCategory(category));
         }
 
         return distribution;

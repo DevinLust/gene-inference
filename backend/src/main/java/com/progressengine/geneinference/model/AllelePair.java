@@ -6,7 +6,7 @@ import com.progressengine.geneinference.service.AlleleDomains.AlleleDomain;
 import java.io.Serializable;
 import java.util.Objects;
 
-public class AllelePair<A extends Allele> implements Serializable {
+public class AllelePair<A extends Enum<A> & Allele> implements Serializable {
 
     private A allele1;
     private A allele2;
@@ -16,7 +16,7 @@ public class AllelePair<A extends Allele> implements Serializable {
         this.allele2 = second;
     }
 
-    public static <A extends Allele> AllelePair<A> fromStrings(
+    public static <A extends Enum<A> & Allele> AllelePair<A> fromStrings(
         String first,
         String second,
         AlleleDomain<A> domain

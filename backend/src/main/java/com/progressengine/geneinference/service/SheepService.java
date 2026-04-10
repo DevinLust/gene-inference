@@ -6,10 +6,14 @@ import com.progressengine.geneinference.mapper.DomainMapper;
 import com.progressengine.geneinference.model.BirthRecord;
 import com.progressengine.geneinference.model.Relationship;
 import com.progressengine.geneinference.model.Sheep;
+import com.progressengine.geneinference.model.enums.Allele;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.DistributionType;
 import com.progressengine.geneinference.model.enums.Grade;
 import com.progressengine.geneinference.repository.SheepRepository;
+import com.progressengine.geneinference.service.AlleleDomains.AlleleDomain;
+import com.progressengine.geneinference.service.AlleleDomains.CategoryDomains;
+
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
@@ -31,6 +35,25 @@ public class SheepService {
         }
 
         return uniformDistribution;
+    }
+
+    public static <A extends Enum<A> & Allele> Map<A, Double> createUniformDistribution(Category category) {
+        AlleleDomain<A> domain = CategoryDomains.typedDomainFor(category);
+
+        if (domain.getAlleles().isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Cannot create uniform distribution for category " + category + " with no alleles"
+            );
+        }
+
+        Map<A, Double> distribution = new EnumMap<>(domain.getAlleleType());
+        double probability = 1.0 / domain.getAlleles().size();
+
+        for (A allele : domain.getAlleles()) {
+            distribution.put(allele, probability);
+        }
+
+        return distribution;
     }
 
     public SheepService(SheepRepository sheepRepository, RelationshipService relationshipService) {
@@ -99,15 +122,15 @@ public class SheepService {
         List<SheepDistributionRow> rows = sheepRepository
                 .listDistributionRowsByCategoryAndType(userId, category, distributionType, sheepIds == null || sheepIds.isEmpty() ? null : sheepIds);
 
-        Map<Integer, Map<Grade, Double>> result = new HashMap<>();
+        Map<Integer, Map<String, Double>> result = new HashMap<>();
 
         for (SheepDistributionRow r : rows) {
-            Map<Grade, Double> m = result.computeIfAbsent(r.sheepId(), k -> new EnumMap<>(Grade.class));
-            Double prev = m.putIfAbsent(r.grade(), r.probability());
+            Map<String, Double> m = result.computeIfAbsent(r.sheepId(), k -> new HashMap<>());
+            Double prev = m.putIfAbsent(r.allele(), r.probability());
             if (prev != null) {
                 throw new IllegalStateException(
                         "Duplicate distribution row: sheepId=" + r.sheepId()
-                                + ", grade=" + r.grade()
+                                + ", allele=" + r.allele()
                                 + ", prev=" + prev
                                 + ", next=" + r.probability()
                 );
@@ -211,10 +234,10 @@ public class SheepService {
 //        Map<Category, SheepGenotypeDTO> updatedGenotypes = updateSheepModel.getGenotypes();
 //        sheep.updateGenotypes(updatedGenotypes);
 
-        Map<Category, Map<Grade, Double>> updatedPriors = updateSheepModel.getDistributions();
+        Map<Category, Map<String, Double>> updatedPriors = updateSheepModel.getDistributions();
         if (updatedPriors != null) {
-            for (Map.Entry<Category, Map<Grade, Double>> entry : updatedPriors.entrySet()) {
-                sheep.setDistribution(entry.getKey(), DistributionType.PRIOR, entry.getValue());
+            for (Map.Entry<Category, Map<String, Double>> entry : updatedPriors.entrySet()) {
+                sheep.setDistributionFromCodes(entry.getKey(), DistributionType.PRIOR, entry.getValue());
             }
         }
 

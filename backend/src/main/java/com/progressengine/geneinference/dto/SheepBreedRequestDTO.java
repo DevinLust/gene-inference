@@ -1,7 +1,6 @@
 package com.progressengine.geneinference.dto;
 
 import com.progressengine.geneinference.model.enums.Category;
-import com.progressengine.geneinference.model.enums.Grade;
 import com.progressengine.geneinference.validation.ValidDistribution;
 import com.progressengine.geneinference.validation.ValidGenotypes;
 import com.progressengine.geneinference.validation.ValidParents;
@@ -19,7 +18,7 @@ public class SheepBreedRequestDTO {
     private Map<Category, SheepGenotypeDTO> genotypes;
 
     @ValidDistribution
-    private Map<Category, Map<Grade, Double>> distributions;
+    private Map<Category, Map<String, Double>> distributions;
 
     @NotNull
     @Positive(message = "parent1Id must be positive")
@@ -46,11 +45,11 @@ public class SheepBreedRequestDTO {
         this.genotypes = genotypes;
     }
 
-    public Map<Category, Map<Grade, Double>> getDistributions() {
+    public Map<Category, Map<String, Double>> getDistributions() {
         return distributions;
     }
 
-    public void setDistributions(Map<Category, Map<Grade, Double>> distributions) {
+    public void setDistributions(Map<Category, Map<String, Double>> distributions) {
         this.distributions = distributions;
     }
 
