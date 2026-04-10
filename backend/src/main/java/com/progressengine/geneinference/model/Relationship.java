@@ -3,6 +3,7 @@ package com.progressengine.geneinference.model;
 import com.progressengine.geneinference.dto.SheepGenotypeDTO;
 import com.progressengine.geneinference.exception.ExcessAlleleDiversityException;
 import com.progressengine.geneinference.model.enums.Allele;
+import com.progressengine.geneinference.model.enums.Grade;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.service.InferenceMath;
 import com.progressengine.geneinference.service.AlleleDomains.AlleleDomain;
@@ -332,7 +333,7 @@ public class Relationship {
 
 
     @Transactional
-    public void setJointDistribution(Category category, Map<GradePair, Double> jointDistribution) {
+    public void setJointDistribution(Category category, Map<AllelePair<Grade>, Double> jointDistribution) {
         // no op
     }
 

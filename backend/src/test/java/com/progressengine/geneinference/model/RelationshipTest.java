@@ -3,6 +3,7 @@ package com.progressengine.geneinference.model;
 import com.progressengine.geneinference.exception.ExcessAlleleDiversityException;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.Grade;
+import com.progressengine.geneinference.model.enums.Tone;
 import com.progressengine.geneinference.testutil.DomainFixtures;
 import org.junit.jupiter.api.Test;
 
@@ -15,28 +16,31 @@ public class RelationshipTest {
     public void testAddChildToRelationship() {
         // Arrange
         Sheep parent1 = DomainFixtures.createTestSheep(Map.of(
-                Category.SWIM, Grade.B,
-                Category.FLY, Grade.C,
-                Category.RUN, Grade.D,
-                Category.POWER, Grade.S,
-                Category.STAMINA, Grade.E
+                Category.SWIM, Grade.B.code(),
+                Category.FLY, Grade.C.code(),
+                Category.RUN, Grade.D.code(),
+                Category.POWER, Grade.S.code(),
+                Category.STAMINA, Grade.E.code(),
+                Category.TONE, Tone.TWO_TONE.code()
         ));
 
         Sheep parent2 = DomainFixtures.createTestSheep(Map.of(
-                Category.SWIM, Grade.B,
-                Category.FLY, Grade.A,
-                Category.RUN, Grade.A,
-                Category.POWER, Grade.C,
-                Category.STAMINA, Grade.S
+                Category.SWIM, Grade.B.code(),
+                Category.FLY, Grade.A.code(),
+                Category.RUN, Grade.A.code(),
+                Category.POWER, Grade.C.code(),
+                Category.STAMINA, Grade.S.code(),
+                Category.TONE, Tone.MONOTONE.code()
         ));
         Relationship relationship = DomainFixtures.createEmptyRelationship(parent1, parent2);
 
         Sheep child = DomainFixtures.createTestSheep(Map.of(
-                Category.SWIM, Grade.C,
-                Category.FLY, Grade.A,
-                Category.RUN, Grade.D,
-                Category.POWER, Grade.B,
-                Category.STAMINA, Grade.C
+                Category.SWIM, Grade.C.code(),
+                Category.FLY, Grade.A.code(),
+                Category.RUN, Grade.D.code(),
+                Category.POWER, Grade.B.code(),
+                Category.STAMINA, Grade.C.code(),
+                Category.TONE, Tone.TWO_TONE.code()
         ));
 
         // Act
@@ -54,28 +58,31 @@ public class RelationshipTest {
     public void testAddChildToRelationshipAlreadyAChild() {
         // Arrange
         Sheep parent1 = DomainFixtures.createTestSheep(Map.of(
-                Category.SWIM, Grade.B,
-                Category.FLY, Grade.C,
-                Category.RUN, Grade.D,
-                Category.POWER, Grade.S,
-                Category.STAMINA, Grade.E
+                Category.SWIM, Grade.B.code(),
+                Category.FLY, Grade.C.code(),
+                Category.RUN, Grade.D.code(),
+                Category.POWER, Grade.S.code(),
+                Category.STAMINA, Grade.E.code(),
+                Category.TONE, Tone.TWO_TONE.code()
         ));
 
         Sheep parent2 = DomainFixtures.createTestSheep(Map.of(
-                Category.SWIM, Grade.B,
-                Category.FLY, Grade.A,
-                Category.RUN, Grade.A,
-                Category.POWER, Grade.C,
-                Category.STAMINA, Grade.S
+                Category.SWIM, Grade.B.code(),
+                Category.FLY, Grade.A.code(),
+                Category.RUN, Grade.A.code(),
+                Category.POWER, Grade.C.code(),
+                Category.STAMINA, Grade.S.code(),
+                Category.TONE, Tone.TWO_TONE.code()
         ));
         Relationship relationship = DomainFixtures.createEmptyRelationship(parent1, parent2);
 
         Sheep child = DomainFixtures.createTestSheep(Map.of(
-                Category.SWIM, Grade.C,
-                Category.FLY, Grade.A,
-                Category.RUN, Grade.D,
-                Category.POWER, Grade.B,
-                Category.STAMINA, Grade.C
+                Category.SWIM, Grade.C.code(),
+                Category.FLY, Grade.A.code(),
+                Category.RUN, Grade.D.code(),
+                Category.POWER, Grade.B.code(),
+                Category.STAMINA, Grade.C.code(),
+                Category.TONE, Tone.TWO_TONE.code()
         ));
         BirthRecord birthRecord = relationship.addChildToRelationship(child);
 
@@ -91,46 +98,51 @@ public class RelationshipTest {
     public void testAddChildToRelationshipChildOfDifferentRelationship() {
         // Arrange
         Sheep parent1 = DomainFixtures.createTestSheep(Map.of(
-                Category.SWIM, Grade.B,
-                Category.FLY, Grade.C,
-                Category.RUN, Grade.D,
-                Category.POWER, Grade.S,
-                Category.STAMINA, Grade.E
+                Category.SWIM, Grade.B.code(),
+                Category.FLY, Grade.C.code(),
+                Category.RUN, Grade.D.code(),
+                Category.POWER, Grade.S.code(),
+                Category.STAMINA, Grade.E.code(),
+                Category.TONE, Tone.TWO_TONE.code()
         ));
 
         Sheep parent2 = DomainFixtures.createTestSheep(Map.of(
-                Category.SWIM, Grade.B,
-                Category.FLY, Grade.A,
-                Category.RUN, Grade.A,
-                Category.POWER, Grade.C,
-                Category.STAMINA, Grade.S
+                Category.SWIM, Grade.B.code(),
+                Category.FLY, Grade.A.code(),
+                Category.RUN, Grade.A.code(),
+                Category.POWER, Grade.C.code(),
+                Category.STAMINA, Grade.S.code(),
+                Category.TONE, Tone.TWO_TONE.code()
         ));
         Relationship rel1 = DomainFixtures.createEmptyRelationship(parent1, parent2);
 
         // Arrange
         Sheep parent3 = DomainFixtures.createTestSheep(Map.of(
-                Category.SWIM, Grade.B,
-                Category.FLY, Grade.C,
-                Category.RUN, Grade.D,
-                Category.POWER, Grade.S,
-                Category.STAMINA, Grade.E
+                Category.SWIM, Grade.B.code(),
+                Category.FLY, Grade.C.code(),
+                Category.RUN, Grade.D.code(),
+                Category.POWER, Grade.S.code(),
+                Category.STAMINA, Grade.E.code(),
+                Category.TONE, Tone.MONOTONE.code()
         ));
 
         Sheep parent4 = DomainFixtures.createTestSheep(Map.of(
-                Category.SWIM, Grade.B,
-                Category.FLY, Grade.A,
-                Category.RUN, Grade.A,
-                Category.POWER, Grade.C,
-                Category.STAMINA, Grade.S
+                Category.SWIM, Grade.B.code(),
+                Category.FLY, Grade.A.code(),
+                Category.RUN, Grade.A.code(),
+                Category.POWER, Grade.C.code(),
+                Category.STAMINA, Grade.S.code(),
+                Category.TONE, Tone.TWO_TONE.code()
         ));
         Relationship rel2 = DomainFixtures.createEmptyRelationship(parent3, parent4);
 
         Sheep child = DomainFixtures.createTestSheep(Map.of(
-                Category.SWIM, Grade.C,
-                Category.FLY, Grade.A,
-                Category.RUN, Grade.D,
-                Category.POWER, Grade.B,
-                Category.STAMINA, Grade.C
+                Category.SWIM, Grade.C.code(),
+                Category.FLY, Grade.A.code(),
+                Category.RUN, Grade.D.code(),
+                Category.POWER, Grade.B.code(),
+                Category.STAMINA, Grade.C.code(),
+                Category.TONE, Tone.TWO_TONE.code()
         ));
 
         // Act
@@ -144,28 +156,31 @@ public class RelationshipTest {
     public void testAddChildInformationToRelationship() {
         // Arrange
         Sheep parent1 = DomainFixtures.createTestSheep(Map.of(
-                Category.SWIM, Grade.B,
-                Category.FLY, Grade.C,
-                Category.RUN, Grade.D,
-                Category.POWER, Grade.S,
-                Category.STAMINA, Grade.E
+                Category.SWIM, Grade.B.code(),
+                Category.FLY, Grade.C.code(),
+                Category.RUN, Grade.D.code(),
+                Category.POWER, Grade.S.code(),
+                Category.STAMINA, Grade.E.code(),
+                Category.TONE, Tone.TWO_TONE.code()
         ));
 
         Sheep parent2 = DomainFixtures.createTestSheep(Map.of(
-                Category.SWIM, Grade.B,
-                Category.FLY, Grade.A,
-                Category.RUN, Grade.A,
-                Category.POWER, Grade.C,
-                Category.STAMINA, Grade.S
+                Category.SWIM, Grade.B.code(),
+                Category.FLY, Grade.A.code(),
+                Category.RUN, Grade.A.code(),
+                Category.POWER, Grade.C.code(),
+                Category.STAMINA, Grade.S.code(),
+                Category.TONE, Tone.TWO_TONE.code()
         ));
         Relationship relationship = DomainFixtures.createEmptyRelationship(parent1, parent2);
 
         Sheep child = DomainFixtures.createTestSheep(Map.of(
-                Category.SWIM, Grade.C,
-                Category.FLY, Grade.A,
-                Category.RUN, Grade.D,
-                Category.POWER, Grade.B,
-                Category.STAMINA, Grade.C
+                Category.SWIM, Grade.C.code(),
+                Category.FLY, Grade.A.code(),
+                Category.RUN, Grade.D.code(),
+                Category.POWER, Grade.B.code(),
+                Category.STAMINA, Grade.C.code(),
+                Category.TONE, Tone.MONOTONE.code()
         ));
 
         // Act
@@ -183,28 +198,31 @@ public class RelationshipTest {
     public void testAddChildInformationToRelationshipAlreadyAChild() {
         // Arrange
         Sheep parent1 = DomainFixtures.createTestSheep(Map.of(
-                Category.SWIM, Grade.B,
-                Category.FLY, Grade.C,
-                Category.RUN, Grade.D,
-                Category.POWER, Grade.S,
-                Category.STAMINA, Grade.E
+                Category.SWIM, Grade.B.code(),
+                Category.FLY, Grade.C.code(),
+                Category.RUN, Grade.D.code(),
+                Category.POWER, Grade.S.code(),
+                Category.STAMINA, Grade.E.code(),
+                Category.TONE, Tone.TWO_TONE.code()
         ));
 
         Sheep parent2 = DomainFixtures.createTestSheep(Map.of(
-                Category.SWIM, Grade.B,
-                Category.FLY, Grade.A,
-                Category.RUN, Grade.A,
-                Category.POWER, Grade.C,
-                Category.STAMINA, Grade.S
+                Category.SWIM, Grade.B.code(),
+                Category.FLY, Grade.A.code(),
+                Category.RUN, Grade.A.code(),
+                Category.POWER, Grade.C.code(),
+                Category.STAMINA, Grade.S.code(),
+                Category.TONE, Tone.TWO_TONE.code()
         ));
         Relationship relationship = DomainFixtures.createEmptyRelationship(parent1, parent2);
 
         Sheep child = DomainFixtures.createTestSheep(Map.of(
-                Category.SWIM, Grade.C,
-                Category.FLY, Grade.A,
-                Category.RUN, Grade.D,
-                Category.POWER, Grade.B,
-                Category.STAMINA, Grade.C
+                Category.SWIM, Grade.C.code(),
+                Category.FLY, Grade.A.code(),
+                Category.RUN, Grade.D.code(),
+                Category.POWER, Grade.B.code(),
+                Category.STAMINA, Grade.C.code(),
+                Category.TONE, Tone.TWO_TONE.code()
         ));
         relationship.addChildToRelationship(child);
 
@@ -216,28 +234,31 @@ public class RelationshipTest {
     public void testRemoveChildFromRelationship() {
         // Arrange
         Sheep parent1 = DomainFixtures.createTestSheep(Map.of(
-                Category.SWIM, Grade.B,
-                Category.FLY, Grade.C,
-                Category.RUN, Grade.D,
-                Category.POWER, Grade.S,
-                Category.STAMINA, Grade.E
+                Category.SWIM, Grade.B.code(),
+                Category.FLY, Grade.C.code(),
+                Category.RUN, Grade.D.code(),
+                Category.POWER, Grade.S.code(),
+                Category.STAMINA, Grade.E.code(),
+                Category.TONE, Tone.TWO_TONE.code()
         ));
 
         Sheep parent2 = DomainFixtures.createTestSheep(Map.of(
-                Category.SWIM, Grade.B,
-                Category.FLY, Grade.A,
-                Category.RUN, Grade.A,
-                Category.POWER, Grade.C,
-                Category.STAMINA, Grade.S
+                Category.SWIM, Grade.B.code(),
+                Category.FLY, Grade.A.code(),
+                Category.RUN, Grade.A.code(),
+                Category.POWER, Grade.C.code(),
+                Category.STAMINA, Grade.S.code(),
+                Category.TONE, Tone.TWO_TONE.code()
         ));
         Relationship relationship = DomainFixtures.createEmptyRelationship(parent1, parent2);
 
         Sheep child = DomainFixtures.createTestSheep(Map.of(
-                Category.SWIM, Grade.C,
-                Category.FLY, Grade.A,
-                Category.RUN, Grade.D,
-                Category.POWER, Grade.B,
-                Category.STAMINA, Grade.C
+                Category.SWIM, Grade.C.code(),
+                Category.FLY, Grade.A.code(),
+                Category.RUN, Grade.D.code(),
+                Category.POWER, Grade.B.code(),
+                Category.STAMINA, Grade.C.code(),
+                Category.TONE, Tone.TWO_TONE.code()
         ));
         BirthRecord birthRecord = relationship.addChildToRelationship(child);
 
@@ -255,28 +276,31 @@ public class RelationshipTest {
     public void testRemoveChildFromRelationshipChildNotInRelationship() {
         // Arrange
         Sheep parent1 = DomainFixtures.createTestSheep(Map.of(
-                Category.SWIM, Grade.B,
-                Category.FLY, Grade.C,
-                Category.RUN, Grade.D,
-                Category.POWER, Grade.S,
-                Category.STAMINA, Grade.E
+                Category.SWIM, Grade.B.code(),
+                Category.FLY, Grade.C.code(),
+                Category.RUN, Grade.D.code(),
+                Category.POWER, Grade.S.code(),
+                Category.STAMINA, Grade.E.code(),
+                Category.TONE, Tone.TWO_TONE.code()
         ));
 
         Sheep parent2 = DomainFixtures.createTestSheep(Map.of(
-                Category.SWIM, Grade.B,
-                Category.FLY, Grade.A,
-                Category.RUN, Grade.A,
-                Category.POWER, Grade.C,
-                Category.STAMINA, Grade.S
+                Category.SWIM, Grade.B.code(),
+                Category.FLY, Grade.A.code(),
+                Category.RUN, Grade.A.code(),
+                Category.POWER, Grade.C.code(),
+                Category.STAMINA, Grade.S.code(),
+                Category.TONE, Tone.TWO_TONE.code()
         ));
         Relationship relationship = DomainFixtures.createEmptyRelationship(parent1, parent2);
 
         Sheep child = DomainFixtures.createTestSheep(Map.of(
-                Category.SWIM, Grade.C,
-                Category.FLY, Grade.A,
-                Category.RUN, Grade.D,
-                Category.POWER, Grade.B,
-                Category.STAMINA, Grade.C
+                Category.SWIM, Grade.C.code(),
+                Category.FLY, Grade.A.code(),
+                Category.RUN, Grade.D.code(),
+                Category.POWER, Grade.B.code(),
+                Category.STAMINA, Grade.C.code(),
+                Category.TONE, Tone.TWO_TONE.code()
         ));
 
         // Act/Assert
@@ -286,51 +310,59 @@ public class RelationshipTest {
     @Test
     public void testFrequencyCache() {
         Sheep parent1 = DomainFixtures.createTestSheep(Map.of(
-                Category.SWIM, Grade.B,
-                Category.FLY, Grade.A,
-                Category.RUN, Grade.C,
-                Category.POWER, Grade.S,
-                Category.STAMINA, Grade.E
+                Category.SWIM, Grade.B.code(),
+                Category.FLY, Grade.A.code(),
+                Category.RUN, Grade.C.code(),
+                Category.POWER, Grade.S.code(),
+                Category.STAMINA, Grade.E.code(),
+                Category.TONE, Tone.TWO_TONE.code()
         ));
         Sheep parent2 = DomainFixtures.createTestSheep(Map.of(
-                Category.SWIM, Grade.B,
-                Category.FLY, Grade.A,
-                Category.RUN, Grade.D,
-                Category.POWER, Grade.C,
-                Category.STAMINA, Grade.S
+                Category.SWIM, Grade.B.code(),
+                Category.FLY, Grade.A.code(),
+                Category.RUN, Grade.D.code(),
+                Category.POWER, Grade.C.code(),
+                Category.STAMINA, Grade.S.code(),
+                Category.TONE, Tone.TWO_TONE.code()
         ));
-        Map<Category, Map<GradePair, Map<Grade, Integer>>> expectedPhenotypeFrequencies = Map.ofEntries(
+        Map<Category, Map<AlleleCodePair, Map<String, Integer>>> expectedPhenotypeFrequencies = Map.ofEntries(
                 Map.entry(Category.SWIM, Map.of(
-                        new GradePair(Grade.B, Grade.B), Map.ofEntries(
-                                Map.entry(Grade.B, 53),
-                                Map.entry(Grade.C, 24),
-                                Map.entry(Grade.D, 23)
+                        new AlleleCodePair(Grade.B, Grade.B), Map.ofEntries(
+                                Map.entry(Grade.B.code(), 53),
+                                Map.entry(Grade.C.code(), 24),
+                                Map.entry(Grade.D.code(), 23)
                         )
                 )),
                 Map.entry(Category.FLY, Map.of(
-                        new GradePair(Grade.A, Grade.A), Map.ofEntries(
-                                Map.entry(Grade.A, 50),
-                                Map.entry(Grade.C, 50)
+                        new AlleleCodePair(Grade.A.code(), Grade.A.code()), Map.ofEntries(
+                                Map.entry(Grade.A.code(), 50),
+                                Map.entry(Grade.C.code(), 50)
                         )
                 )),
                 Map.entry(Category.RUN, Map.of(
-                        new GradePair(Grade.C, Grade.D), Map.ofEntries(
-                                Map.entry(Grade.S, 25),
-                                Map.entry(Grade.A, 25),
-                                Map.entry(Grade.C, 26),
-                                Map.entry(Grade.D, 24)
+                        new AlleleCodePair(Grade.C, Grade.D), Map.ofEntries(
+                                Map.entry(Grade.S.code(), 25),
+                                Map.entry(Grade.A.code(), 25),
+                                Map.entry(Grade.C.code(), 26),
+                                Map.entry(Grade.D.code(), 24)
                         )
                 )),
                 Map.entry(Category.POWER, Map.of(
-                        new GradePair(Grade.S, Grade.C), Map.ofEntries(
-                                Map.entry(Grade.S, 53),
-                                Map.entry(Grade.C, 47)
+                        new AlleleCodePair(Grade.S, Grade.C), Map.ofEntries(
+                                Map.entry(Grade.S.code(), 53),
+                                Map.entry(Grade.C.code(), 47)
                         )
                 )),
                 Map.entry(Category.STAMINA, Map.of(
-                        new GradePair(Grade.E, Grade.S), Map.ofEntries(
-                                Map.entry(Grade.S, 25),
-                                Map.entry(Grade.E, 75)
+                        new AlleleCodePair(Grade.E, Grade.S), Map.ofEntries(
+                                Map.entry(Grade.S.code(), 25),
+                                Map.entry(Grade.E.code(), 75)
+                        )
+                )),
+                Map.entry(Category.TONE, Map.of(
+                        new AlleleCodePair(Tone.TWO_TONE, Tone.TWO_TONE), Map.ofEntries(
+                                Map.entry(Tone.TWO_TONE.code(), 52),
+                                Map.entry(Tone.MONOTONE.code(), 48)
                         )
                 ))
         );
@@ -347,62 +379,71 @@ public class RelationshipTest {
     public void testAddChildToRelationshipExcessiveAlleles() {
         // Arrange
         Sheep parent1 = DomainFixtures.createTestSheep(Map.of(
-                Category.SWIM, Grade.B,
-                Category.FLY, Grade.A,
-                Category.RUN, Grade.C,
-                Category.POWER, Grade.S,
-                Category.STAMINA, Grade.E
+                Category.SWIM, Grade.B.code(),
+                Category.FLY, Grade.A.code(),
+                Category.RUN, Grade.C.code(),
+                Category.POWER, Grade.S.code(),
+                Category.STAMINA, Grade.E.code(),
+                Category.TONE, Tone.MONOTONE.code()
         ));
         Sheep parent2 = DomainFixtures.createTestSheep(Map.of(
-                Category.SWIM, Grade.B,
-                Category.FLY, Grade.A,
-                Category.RUN, Grade.D,
-                Category.POWER, Grade.C,
-                Category.STAMINA, Grade.S
+                Category.SWIM, Grade.B.code(),
+                Category.FLY, Grade.A.code(),
+                Category.RUN, Grade.D.code(),
+                Category.POWER, Grade.C.code(),
+                Category.STAMINA, Grade.S.code(),
+                Category.TONE, Tone.MONOTONE.code()
         ));
-        Map<Category, Map<GradePair, Map<Grade, Integer>>> phenotypeFrequencies = Map.ofEntries(
+        Map<Category, Map<AlleleCodePair, Map<String, Integer>>> phenotypeFrequencies = Map.ofEntries(
                 Map.entry(Category.SWIM, Map.of(
-                        new GradePair(Grade.B, Grade.B), Map.ofEntries(
-                                Map.entry(Grade.B, 53),
-                                Map.entry(Grade.C, 24),
-                                Map.entry(Grade.D, 23)
+                        new AlleleCodePair(Grade.B, Grade.B), Map.ofEntries(
+                                Map.entry(Grade.B.code(), 53),
+                                Map.entry(Grade.C.code(), 24),
+                                Map.entry(Grade.D.code(), 23)
                         )
                 )),
                 Map.entry(Category.FLY, Map.of(
-                        new GradePair(Grade.A, Grade.A), Map.ofEntries(
-                                Map.entry(Grade.A, 50),
-                                Map.entry(Grade.C, 50)
+                        new AlleleCodePair(Grade.A, Grade.A), Map.ofEntries(
+                                Map.entry(Grade.A.code(), 50),
+                                Map.entry(Grade.C.code(), 50)
                         )
                 )),
                 Map.entry(Category.RUN, Map.of(
-                        new GradePair(Grade.C, Grade.D), Map.ofEntries(
-                                Map.entry(Grade.S, 25),
-                                Map.entry(Grade.A, 25),
-                                Map.entry(Grade.C, 26),
-                                Map.entry(Grade.D, 24)
+                        new AlleleCodePair(Grade.C, Grade.D), Map.ofEntries(
+                                Map.entry(Grade.S.code(), 25),
+                                Map.entry(Grade.A.code(), 25),
+                                Map.entry(Grade.C.code(), 26),
+                                Map.entry(Grade.D.code(), 24)
                         )
                 )),
                 Map.entry(Category.POWER, Map.of(
-                        new GradePair(Grade.S, Grade.C), Map.ofEntries(
-                                Map.entry(Grade.S, 53),
-                                Map.entry(Grade.C, 47)
+                        new AlleleCodePair(Grade.S, Grade.C), Map.ofEntries(
+                                Map.entry(Grade.S.code(), 53),
+                                Map.entry(Grade.C.code(), 47)
                         )
                 )),
                 Map.entry(Category.STAMINA, Map.of(
-                        new GradePair(Grade.E, Grade.S), Map.ofEntries(
-                                Map.entry(Grade.S, 25),
-                                Map.entry(Grade.E, 75)
+                        new AlleleCodePair(Grade.E, Grade.S), Map.ofEntries(
+                                Map.entry(Grade.S.code(), 25),
+                                Map.entry(Grade.E.code(), 75)
+                        )
+                )),
+                Map.entry(Category.TONE, Map.of(
+                        new AlleleCodePair(Tone.MONOTONE, Tone.MONOTONE), Map.ofEntries(
+                                Map.entry(Tone.TWO_TONE.code(), 25),
+                                Map.entry(Tone.MONOTONE.code(), 75)
                         )
                 ))
         );
         Relationship relationship = DomainFixtures.createPopulatedRelationship(parent1, parent2, phenotypeFrequencies);
 
         Sheep child =  DomainFixtures.createTestSheep(Map.of(
-                Category.SWIM, Grade.S,
-                Category.FLY, Grade.A,
-                Category.RUN, Grade.D,
-                Category.POWER, Grade.C,
-                Category.STAMINA, Grade.S
+                Category.SWIM, Grade.S.code(),
+                Category.FLY, Grade.A.code(),
+                Category.RUN, Grade.D.code(),
+                Category.POWER, Grade.C.code(),
+                Category.STAMINA, Grade.S.code(),
+                Category.TONE, Tone.MONOTONE.code()
         ));
 
         // Act/Assert

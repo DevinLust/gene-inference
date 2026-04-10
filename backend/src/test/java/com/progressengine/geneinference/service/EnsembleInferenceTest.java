@@ -5,6 +5,8 @@ import com.progressengine.geneinference.model.Sheep;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.DistributionType;
 import com.progressengine.geneinference.model.enums.Grade;
+import com.progressengine.geneinference.service.AlleleDomains.CategoryDomains;
+import com.progressengine.geneinference.service.AlleleDomains.GradeAlleleDomain;
 import com.progressengine.geneinference.testutil.DomainFixtures;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,36 +36,36 @@ public class EnsembleInferenceTest extends InferenceEngineTest {
     void testUpdateMarginalDistribution() {
         // Arrange
         Sheep parent1 = DomainFixtures.createTestSheep(Map.of(
-                Category.SWIM, Grade.B,
-                Category.FLY, Grade.C,
-                Category.RUN, Grade.D,
-                Category.POWER, Grade.S,
-                Category.STAMINA, Grade.E
+                Category.SWIM, Grade.B.code(),
+                Category.FLY, Grade.C.code(),
+                Category.RUN, Grade.D.code(),
+                Category.POWER, Grade.S.code(),
+                Category.STAMINA, Grade.E.code()
         ), 1);
 
         Sheep parent2 = DomainFixtures.createTestSheep(Map.of(
-                Category.SWIM, Grade.B,
-                Category.FLY, Grade.A,
-                Category.RUN, Grade.A,
-                Category.POWER, Grade.C,
-                Category.STAMINA, Grade.S
+                Category.SWIM, Grade.B.code(),
+                Category.FLY, Grade.A.code(),
+                Category.RUN, Grade.A.code(),
+                Category.POWER, Grade.C.code(),
+                Category.STAMINA, Grade.S.code()
         ), 2);
 
         Relationship relationship = DomainFixtures.createTestRelationship(parent1, parent2, Map.ofEntries(
                 Map.entry(Category.SWIM, Map.ofEntries(
-                        Map.entry(Grade.C, 1)
+                        Map.entry(Grade.C.code(), 1)
                 )),
                 Map.entry(Category.FLY, Map.ofEntries(
-                        Map.entry(Grade.C, 1)
+                        Map.entry(Grade.C.code(), 1)
                 )),
                 Map.entry(Category.RUN, Map.ofEntries(
-                        Map.entry(Grade.D, 1)
+                        Map.entry(Grade.D.code(), 1)
                 )),
                 Map.entry(Category.POWER, Map.ofEntries(
-                        Map.entry(Grade.S, 1)
+                        Map.entry(Grade.S.code(), 1)
                 )),
                 Map.entry(Category.STAMINA, Map.ofEntries(
-                        Map.entry(Grade.E, 1)
+                        Map.entry(Grade.E.code(), 1)
                 ))
         ), 1);
 
@@ -76,6 +78,9 @@ public class EnsembleInferenceTest extends InferenceEngineTest {
 
         // Assert 1
         for (Category category : Category.values()) {
+            if (!(CategoryDomains.domainFor(category) instanceof GradeAlleleDomain)) {
+                continue;
+            }
             Map<Grade, Double> hiddenDistribution1 = parent1.getDistribution(category, DistributionType.INFERRED);
             assertNotNull(hiddenDistribution1, "Hidden distribution should not be null");
             assertEquals(6, hiddenDistribution1.size(), "Should have 6 key value pairs for each grade");
@@ -99,53 +104,53 @@ public class EnsembleInferenceTest extends InferenceEngineTest {
     void testInferChildDistributionChild1() {
         // Arrange
         Sheep parent1 = DomainFixtures.createTestSheep(Map.of(
-                Category.SWIM, Grade.B,
-                Category.FLY, Grade.C,
-                Category.RUN, Grade.D,
-                Category.POWER, Grade.S,
-                Category.STAMINA, Grade.E
+                Category.SWIM, Grade.B.code(),
+                Category.FLY, Grade.C.code(),
+                Category.RUN, Grade.D.code(),
+                Category.POWER, Grade.S.code(),
+                Category.STAMINA, Grade.E.code()
         ), 1);
 
         Sheep parent2 = DomainFixtures.createTestSheep(Map.of(
-                Category.SWIM, Grade.B,
-                Category.FLY, Grade.A,
-                Category.RUN, Grade.A,
-                Category.POWER, Grade.C,
-                Category.STAMINA, Grade.S
+                Category.SWIM, Grade.B.code(),
+                Category.FLY, Grade.A.code(),
+                Category.RUN, Grade.A.code(),
+                Category.POWER, Grade.C.code(),
+                Category.STAMINA, Grade.S.code()
         ), 2);
 
         Relationship relationship = DomainFixtures.createTestRelationship(parent1, parent2, Map.ofEntries(
                 Map.entry(Category.SWIM, Map.ofEntries(
-                        Map.entry(Grade.B, 53),
-                        Map.entry(Grade.C, 24),
-                        Map.entry(Grade.D, 23)
+                        Map.entry(Grade.B.code(), 53),
+                        Map.entry(Grade.C.code(), 24),
+                        Map.entry(Grade.D.code(), 23)
                 )),
                 Map.entry(Category.FLY, Map.ofEntries(
-                        Map.entry(Grade.A, 50),
-                        Map.entry(Grade.C, 50)
+                        Map.entry(Grade.A.code(), 50),
+                        Map.entry(Grade.C.code(), 50)
                 )),
                 Map.entry(Category.RUN, Map.ofEntries(
-                        Map.entry(Grade.S, 25),
-                        Map.entry(Grade.A, 25),
-                        Map.entry(Grade.C, 26),
-                        Map.entry(Grade.D, 24)
+                        Map.entry(Grade.S.code(), 25),
+                        Map.entry(Grade.A.code(), 25),
+                        Map.entry(Grade.C.code(), 26),
+                        Map.entry(Grade.D.code(), 24)
                 )),
                 Map.entry(Category.POWER, Map.ofEntries(
-                        Map.entry(Grade.S, 53),
-                        Map.entry(Grade.C, 47)
+                        Map.entry(Grade.S.code(), 53),
+                        Map.entry(Grade.C.code(), 47)
                 )),
                 Map.entry(Category.STAMINA, Map.ofEntries(
-                        Map.entry(Grade.S, 25),
-                        Map.entry(Grade.E, 75)
+                        Map.entry(Grade.S.code(), 25),
+                        Map.entry(Grade.E.code(), 75)
                 ))
         ), 1);
 
         Sheep child = DomainFixtures.createTestSheep(Map.of(
-                Category.SWIM, Grade.D,
-                Category.FLY, Grade.A,
-                Category.RUN, Grade.D,
-                Category.POWER, Grade.S,
-                Category.STAMINA, Grade.S
+                Category.SWIM, Grade.D.code(),
+                Category.FLY, Grade.A.code(),
+                Category.RUN, Grade.D.code(),
+                Category.POWER, Grade.S.code(),
+                Category.STAMINA, Grade.S.code()
         ));
 
         inferenceEngine.findJointDistribution(relationship);
@@ -158,6 +163,9 @@ public class EnsembleInferenceTest extends InferenceEngineTest {
 
         // Assert
         for (Category category : Category.values()) {
+            if (!(CategoryDomains.domainFor(category) instanceof GradeAlleleDomain)) {
+                continue;
+            }
             Map<Grade, Double> childDistribution = child.getDistribution(category, DistributionType.PRIOR);
             assertNotNull(childDistribution, "Child distribution should not be null");
             assertEquals(6, childDistribution.size(), "Should have 6 key value pairs for each grade");
@@ -172,45 +180,45 @@ public class EnsembleInferenceTest extends InferenceEngineTest {
     void testInferChildDistributionChild2() {
         // Arrange
         Sheep parent1 = DomainFixtures.createTestSheep(Map.of(
-                Category.SWIM, Grade.B,
-                Category.FLY, Grade.C,
-                Category.RUN, Grade.D,
-                Category.POWER, Grade.S,
-                Category.STAMINA, Grade.E
+                Category.SWIM, Grade.B.code(),
+                Category.FLY, Grade.C.code(),
+                Category.RUN, Grade.D.code(),
+                Category.POWER, Grade.S.code(),
+                Category.STAMINA, Grade.E.code()
         ), 1);
 
         Sheep parent2 = DomainFixtures.createTestSheep(Map.of(
-                Category.SWIM, Grade.B,
-                Category.FLY, Grade.A,
-                Category.RUN, Grade.A,
-                Category.POWER, Grade.C,
-                Category.STAMINA, Grade.S
+                Category.SWIM, Grade.B.code(),
+                Category.FLY, Grade.A.code(),
+                Category.RUN, Grade.A.code(),
+                Category.POWER, Grade.C.code(),
+                Category.STAMINA, Grade.S.code()
         ), 2);
 
         Relationship relationship = DomainFixtures.createTestRelationship(parent1, parent2, Map.ofEntries(
                 Map.entry(Category.SWIM, Map.ofEntries(
-                        Map.entry(Grade.C, 1)
+                        Map.entry(Grade.C.code(), 1)
                 )),
                 Map.entry(Category.FLY, Map.ofEntries(
-                        Map.entry(Grade.C, 1)
+                        Map.entry(Grade.C.code(), 1)
                 )),
                 Map.entry(Category.RUN, Map.ofEntries(
-                        Map.entry(Grade.D, 1)
+                        Map.entry(Grade.D.code(), 1)
                 )),
                 Map.entry(Category.POWER, Map.ofEntries(
-                        Map.entry(Grade.S, 1)
+                        Map.entry(Grade.S.code(), 1)
                 )),
                 Map.entry(Category.STAMINA, Map.ofEntries(
-                        Map.entry(Grade.E, 1)
+                        Map.entry(Grade.E.code(), 1)
                 ))
         ), 1);
 
         Sheep child = DomainFixtures.createTestSheep(Map.of(
-                Category.SWIM, Grade.C,
-                Category.FLY, Grade.C,
-                Category.RUN, Grade.D,
-                Category.POWER, Grade.S,
-                Category.STAMINA, Grade.E
+                Category.SWIM, Grade.C.code(),
+                Category.FLY, Grade.C.code(),
+                Category.RUN, Grade.D.code(),
+                Category.POWER, Grade.S.code(),
+                Category.STAMINA, Grade.E.code()
         ));
 
         inferenceEngine.findJointDistribution(relationship);
@@ -223,6 +231,9 @@ public class EnsembleInferenceTest extends InferenceEngineTest {
 
         // Assert
         for (Category category : Category.values()) {
+            if (!(CategoryDomains.domainFor(category) instanceof GradeAlleleDomain)) {
+                continue;
+            }
             Map<Grade, Double> childDistribution = child.getDistribution(category, DistributionType.PRIOR);
             assertNotNull(childDistribution, "Child distribution should not be null");
             assertEquals(6, childDistribution.size(), "Should have 6 key value pairs for each grade");

@@ -38,7 +38,7 @@ public class DomainFixtures {
 
     public static Relationship createTestRelationship(Sheep parent1, Sheep parent2, Map<Category, Map<String, Integer>> offspringPhenotypeFrequency) {
         Map<Category, Map<AlleleCodePair, Map<String, Integer>>> modifiedFreq = new EnumMap<>(Category.class);
-        for (Category category : Category.values()) {
+        for (Category category : offspringPhenotypeFrequency.keySet()) {
             AlleleCodePair pair = new AlleleCodePair(parent1.getPhenotype(category), parent2.getPhenotype(category));
             modifiedFreq.computeIfAbsent(category, k -> new HashMap<>())
                     .put(pair, offspringPhenotypeFrequency.get(category));
@@ -59,7 +59,7 @@ public class DomainFixtures {
 
         // validate totals per category are equal
         Integer expectedTotal = null;
-        for (Category cat : Category.values()) {
+        for (Category cat : offspringPhenotypeFrequency.keySet()) {
             int total = sumCategory(offspringPhenotypeFrequency.get(cat));
             if (expectedTotal == null) expectedTotal = total;
             else if (total != expectedTotal) {
@@ -85,7 +85,7 @@ public class DomainFixtures {
             br.setParentRelationship(relationship);
             br.setChild(null);
 
-            for (Category cat : Category.values()) {
+            for (Category cat : work.keySet()) {
                 Choice choice = pickAndDecrement(work, cat);
 
                 BirthRecordPhenotype brp = new BirthRecordPhenotype(br, cat);
@@ -112,7 +112,7 @@ public class DomainFixtures {
 
     private static Map<Category, Map<AlleleCodePair, Map<String, Integer>>> deepCopyMap(Map<Category, Map<AlleleCodePair, Map<String, Integer>>> map) {
         Map<Category, Map<AlleleCodePair, Map<String, Integer>>> result = new EnumMap<>(Category.class);
-        for (Category category : Category.values()) {
+        for (Category category : map.keySet()) {
             result.put(category, new HashMap<>());
             Map<AlleleCodePair, Map<String, Integer>> categoryFreq = map.getOrDefault(category, new HashMap<>());
             for (Map.Entry<AlleleCodePair, Map<String, Integer>> epoch : categoryFreq.entrySet()) {

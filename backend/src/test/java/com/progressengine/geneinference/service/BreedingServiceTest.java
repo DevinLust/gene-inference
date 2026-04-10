@@ -4,6 +4,7 @@ import com.progressengine.geneinference.dto.SheepGenotypeDTO;
 import com.progressengine.geneinference.model.Sheep;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.Grade;
+import com.progressengine.geneinference.model.enums.Tone;
 import org.junit.jupiter.api.Test;
 
 import java.util.EnumSet;
@@ -12,7 +13,6 @@ import java.util.Random;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class BreedingServiceTest {
 
@@ -34,7 +34,8 @@ public class BreedingServiceTest {
                 Category.FLY, new SheepGenotypeDTO(randomGrade(), randomGrade()),
                 Category.RUN, new SheepGenotypeDTO(randomGrade(), randomGrade()),
                 Category.POWER, new SheepGenotypeDTO(randomGrade(), randomGrade()),
-                Category.STAMINA, new SheepGenotypeDTO(randomGrade(), randomGrade())
+                Category.STAMINA, new SheepGenotypeDTO(randomGrade(), randomGrade()),
+                Category.TONE, new SheepGenotypeDTO(randomTone(), randomTone())
         ));
 
         Sheep parent2 = createTestSheep(Map.of(
@@ -42,7 +43,8 @@ public class BreedingServiceTest {
                 Category.FLY, new SheepGenotypeDTO(randomGrade(), randomGrade()),
                 Category.RUN, new SheepGenotypeDTO(randomGrade(), randomGrade()),
                 Category.POWER, new SheepGenotypeDTO(randomGrade(), randomGrade()),
-                Category.STAMINA, new SheepGenotypeDTO(randomGrade(), randomGrade())
+                Category.STAMINA, new SheepGenotypeDTO(randomGrade(), randomGrade()),
+                Category.TONE, new SheepGenotypeDTO(randomTone(), randomTone())
         ));
 
         // Act
@@ -76,5 +78,9 @@ public class BreedingServiceTest {
 
     private String randomGrade() {
         return Grade.values()[random.nextInt(Grade.values().length)].code();
+    }
+
+    private String randomTone() {
+        return Tone.values()[random.nextInt(Tone.values().length)].code();
     }
 }

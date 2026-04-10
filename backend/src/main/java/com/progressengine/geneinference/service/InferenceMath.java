@@ -2,7 +2,6 @@ package com.progressengine.geneinference.service;
 
 import com.progressengine.geneinference.model.Sheep;
 import com.progressengine.geneinference.model.GradeExpressionRules;
-import com.progressengine.geneinference.model.GradePair;
 import com.progressengine.geneinference.model.AllelePair;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.DistributionType;
@@ -124,7 +123,7 @@ public final class InferenceMath {
     // Returns the probability the given allele came from each parent given the assumed hidden alleles
     @Deprecated
     public static double[] probabilityAlleleFromParents( // TODO - update for generic alleles
-            GradePair hiddenAlleles,
+            AllelePair<Grade> hiddenAlleles,
             Grade phenotype1,
             Grade phenotype2,
             Grade observedPhenotype

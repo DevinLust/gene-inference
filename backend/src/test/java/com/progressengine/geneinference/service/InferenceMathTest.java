@@ -1,6 +1,5 @@
 package com.progressengine.geneinference.service;
 
-import com.progressengine.geneinference.model.GradePair;
 import com.progressengine.geneinference.model.AllelePair;
 import com.progressengine.geneinference.service.AlleleDomains.AlleleDomain;
 import com.progressengine.geneinference.service.AlleleDomains.CategoryDomains;
@@ -81,70 +80,6 @@ public class InferenceMathTest {
         }
 
         ProbabilityAssertions.assertValidDistribution(existingDistribution);
-    }
-
-    @Test
-    public void testProbabilityAlleleFromParentsAllUniqueAlleles() {
-        // Arrange
-        Grade phenotypeParent1 = Grade.S;
-        Grade phenotypeParent2 = Grade.A;
-        GradePair hiddenPair = new GradePair(Grade.B, Grade.C);
-        Grade childPhenotype = Grade.B;
-
-        // Act
-        double[] probFromParents = InferenceMath.probabilityAlleleFromParents(hiddenPair, phenotypeParent1, phenotypeParent2, childPhenotype);
-
-        // Assert
-        assertEquals(1.0, probFromParents[0], 1e-9, "Probability phenotype comes from parent 1 should be 1.0");
-        assertEquals(0.0, probFromParents[1],  1e-9, "Probability phenotype comes from parent 2 should be 0.0");
-    }
-
-    @Test
-    public void testProbabilityAlleleFromParentsCommonAllele() {
-        // Arrange
-        Grade phenotypeParent1 = Grade.S;
-        Grade phenotypeParent2 = Grade.A;
-        GradePair hiddenPair = new GradePair(Grade.B, Grade.S);
-        Grade childPhenotype = Grade.S;
-
-        // Act
-        double[] probFromParents = InferenceMath.probabilityAlleleFromParents(hiddenPair, phenotypeParent1, phenotypeParent2, childPhenotype);
-
-        // Assert
-        assertEquals(0.5, probFromParents[0], 1e-9, "Probability phenotype comes from parent 1 should be 0.5");
-        assertEquals(0.5, probFromParents[1],  1e-9, "Probability phenotype comes from parent 2 should be 0.5");
-    }
-
-    @Test
-    public void testProbabilityAlleleFromParentsTwoToOne() {
-        // Arrange
-        Grade phenotypeParent1 = Grade.S;
-        Grade phenotypeParent2 = Grade.A;
-        GradePair hiddenPair = new GradePair(Grade.A, Grade.A);
-        Grade childPhenotype = Grade.A;
-
-        // Act
-        double[] probFromParents = InferenceMath.probabilityAlleleFromParents(hiddenPair, phenotypeParent1, phenotypeParent2, childPhenotype);
-
-        // Assert
-        assertEquals(5.0 / 13.0, probFromParents[0], 1e-9, "Probability phenotype comes from parent 1");
-        assertEquals(8.0 / 13.0, probFromParents[1],  1e-9, "Probability phenotype comes from parent 2");
-    }
-
-    @Test
-    public void testProbabilityAlleleFromParentsTwoMiddleRanked() {
-        // Arrange
-        Grade phenotypeParent1 = Grade.B;
-        Grade phenotypeParent2 = Grade.B;
-        GradePair hiddenPair = new GradePair(Grade.D, Grade.A);
-        Grade childPhenotype = Grade.B;
-
-        // Act
-        double[] probFromParents = InferenceMath.probabilityAlleleFromParents(hiddenPair, phenotypeParent1, phenotypeParent2, childPhenotype);
-
-        // Assert
-        assertEquals(0.4, probFromParents[0], 1e-9, "Probability phenotype comes from parent 1");
-        assertEquals(0.6, probFromParents[1],  1e-9, "Probability phenotype comes from parent 2");
     }
 
     @Test

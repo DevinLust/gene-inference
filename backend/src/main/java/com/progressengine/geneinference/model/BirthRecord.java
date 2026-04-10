@@ -36,7 +36,7 @@ public class BirthRecord {
 
         for (Category category : Category.values()) {
             BirthRecordPhenotype phenotypeRecord = new BirthRecordPhenotype(record, category);
-            phenotypeRecord.setAllPhenotypes(parent1.getPhenotype(category), parent2.getPhenotype(category), childGenotypes.get(category).toAllelePair(category).getFirst());
+            phenotypeRecord.setAllPhenotypeCodes(parent1.getPhenotype(category).code(), parent2.getPhenotype(category).code(), childGenotypes.get(category).phenotype());
             record.phenotypesAtBirth.add(phenotypeRecord);
         }
 
