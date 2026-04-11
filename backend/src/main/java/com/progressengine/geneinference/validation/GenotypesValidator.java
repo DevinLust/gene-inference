@@ -2,6 +2,8 @@ package com.progressengine.geneinference.validation;
 
 import com.progressengine.geneinference.dto.SheepGenotypeDTO;
 import com.progressengine.geneinference.model.enums.Category;
+import com.progressengine.geneinference.service.AlleleDomains.AlleleDomain;
+import com.progressengine.geneinference.service.AlleleDomains.CategoryDomains;
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 import org.hibernate.validator.constraintvalidation.HibernateConstraintValidatorContext;
@@ -13,7 +15,9 @@ public class GenotypesValidator implements ConstraintValidator<ValidGenotypes, M
 
     @Override
     public boolean isValid(Map<Category, SheepGenotypeDTO> genotypes, ConstraintValidatorContext ctx) {
-        if (genotypes == null) return false;
+        if (genotypes == null) {
+            return false;
+        }
 
         boolean valid = true;
         ctx.disableDefaultConstraintViolation();
@@ -21,7 +25,6 @@ public class GenotypesValidator implements ConstraintValidator<ValidGenotypes, M
         HibernateConstraintValidatorContext hctx =
                 ctx.unwrap(HibernateConstraintValidatorContext.class);
 
-        // Missing categories => genotypes[CAT]
         EnumSet<Category> missing = EnumSet.allOf(Category.class);
         missing.removeAll(genotypes.keySet());
         for (Category cat : missing) {
@@ -36,6 +39,14 @@ public class GenotypesValidator implements ConstraintValidator<ValidGenotypes, M
             Category cat = e.getKey();
             SheepGenotypeDTO dto = e.getValue();
 
+            if (cat == null) {
+                hctx.buildConstraintViolationWithTemplate("Category cannot be null")
+                        .addBeanNode()
+                        .addConstraintViolation();
+                valid = false;
+                continue;
+            }
+
             if (dto == null) {
                 hctx.buildConstraintViolationWithTemplate("Null genotype value")
                         .addBeanNode()
@@ -46,16 +57,39 @@ public class GenotypesValidator implements ConstraintValidator<ValidGenotypes, M
             }
 
             if (dto.phenotype() == null) {
-                // Attach error to the category key (genotypes[CAT])
                 hctx.buildConstraintViolationWithTemplate("Phenotype is required")
                         .addBeanNode()
                         .inIterable().atKey(cat)
                         .addConstraintViolation();
                 valid = false;
+            } else {
+                valid = validateCode(cat, dto.phenotype(), "Invalid phenotype code", hctx) && valid;
+            }
+
+            if (dto.hiddenAllele() != null) {
+                valid = validateCode(cat, dto.hiddenAllele(), "Invalid hidden allele code", hctx) && valid;
             }
         }
 
         return valid;
     }
-}
 
+    private boolean validateCode(
+            Category category,
+            String code,
+            String messagePrefix,
+            HibernateConstraintValidatorContext hctx
+    ) {
+        try {
+            AlleleDomain<?> domain = CategoryDomains.domainFor(category);
+            domain.parse(code);
+            return true;
+        } catch (IllegalArgumentException ex) {
+            hctx.buildConstraintViolationWithTemplate(messagePrefix + " for category " + category + ": " + code)
+                    .addBeanNode()
+                    .inIterable().atKey(category)
+                    .addConstraintViolation();
+            return false;
+        }
+    }
+}

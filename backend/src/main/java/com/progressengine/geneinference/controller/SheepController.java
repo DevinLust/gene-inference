@@ -51,7 +51,7 @@ public class SheepController {
         // convert list to set to remove duplicates
         Set<Grade> gradeSet = grades == null ? Collections.emptySet() : new HashSet<>(grades);
 
-        return sheepService.filterSheep(userId, name, gradeSet);
+        return sheepService.filterSheepByNameAndGrade(userId, name, gradeSet);
     }
 
     @GetMapping("/distributions")

@@ -14,6 +14,7 @@ import com.progressengine.geneinference.repository.SheepRepository;
 import com.progressengine.geneinference.service.AlleleDomains.AlleleDomain;
 import com.progressengine.geneinference.service.AlleleDomains.CategoryDomains;
 
+import com.progressengine.geneinference.service.AlleleDomains.GradeAlleleDomain;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
@@ -104,12 +105,25 @@ public class SheepService {
      * @param grades - Set of whitelisted grades
      * @return a List of Sheep that matches the filter criteria
      */
-    public List<SheepSummaryResponseDTO> filterSheep(UUID userId, String name, Set<Grade> grades) {
+    public List<SheepSummaryResponseDTO> filterSheepByNameAndGrade(UUID userId, String name, Set<Grade> grades) {
         if (grades == null || grades.isEmpty()) {
             grades = EnumSet.allOf(Grade.class);
         }
 
-        return sheepRepository.listSheepHavingAnyGradeAndName(userId, grades, name);
+        List<String> alleleCodes = grades.stream()
+                .map(Grade::code)
+                .toList();
+
+        List<Category> gradeCategories = Arrays.stream(Category.values())
+                .filter(category -> CategoryDomains.domainFor(category) instanceof GradeAlleleDomain)
+                .toList();
+
+        return sheepRepository.listSheepHavingAnyGradeAndName(
+                userId,
+                gradeCategories,
+                alleleCodes,
+                name
+        );
     }
 
 

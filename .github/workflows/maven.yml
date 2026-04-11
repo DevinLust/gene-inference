@@ -35,9 +35,34 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
+      - name: Install psql client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Apply database migrations
+        working-directory: ./backend
+        env:
+          PGPASSWORD: postgres
+        run: |
+          shopt -s nullglob
+          files=(supabase/migrations/*.sql)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No migration files found"
+            exit 1
+          fi
+
+          for file in "${files[@]}"; do
+            echo "Applying $file"
+            psql \
+              -h localhost \
+              -U postgres \
+              -d gene_inference_ci \
+              -v ON_ERROR_STOP=1 \
+              -f "$file"
+          done
+
       - name: Build with Maven
         working-directory: ./backend
-        run: mvn -B clean install --file pom.xml
+        run: mvn -B clean test --file pom.xml
         env:
           SPRING_PROFILES_ACTIVE: ci
           DB_URL: jdbc:postgresql://localhost:5432/gene_inference_ci

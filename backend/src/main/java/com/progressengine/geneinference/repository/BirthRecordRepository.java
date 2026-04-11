@@ -131,8 +131,8 @@ public interface BirthRecordRepository extends JpaRepository<BirthRecord, Intege
         from BirthRecordPhenotype pab
         where pab.birthRecord = br
           and pab.category = :category
-          and pab.parent1Phenotype = :p1ph
-          and pab.parent2Phenotype = :p2ph
+          and pab.parent1PhenotypeCode = :p1ph
+          and pab.parent2PhenotypeCode = :p2ph
       )
   """,
             countQuery = """
@@ -149,8 +149,8 @@ public interface BirthRecordRepository extends JpaRepository<BirthRecord, Intege
         from BirthRecordPhenotype pab
         where pab.birthRecord = br
           and pab.category = :category
-          and pab.parent1Phenotype = :p1ph
-          and pab.parent2Phenotype = :p2ph
+          and pab.parent1PhenotypeCode = :p1ph
+          and pab.parent2PhenotypeCode = :p2ph
       )
   """
     )

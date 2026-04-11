@@ -6,22 +6,14 @@ import com.progressengine.geneinference.service.AlleleDomains.AlleleDomain;
 import java.io.Serializable;
 import java.util.Objects;
 
-public class AllelePair<A extends Enum<A> & Allele> implements Serializable {
-
-    private A allele1;
-    private A allele2;
-
-    public AllelePair(A first, A second) {
-        this.allele1 = first;
-        this.allele2 = second;
-    }
+public record AllelePair<A extends Enum<A> & Allele>(A allele1, A allele2) implements Serializable {
 
     public static <A extends Enum<A> & Allele> AllelePair<A> fromStrings(
-        String first,
-        String second,
-        AlleleDomain<A> domain
+            String first,
+            String second,
+            AlleleDomain<A> domain
     ) {
-        return new AllelePair<>(domain.parse(first), domain.parse(second));
+        return new AllelePair<>(first == null ? null : domain.parse(first), second == null ? null : domain.parse(second));
     }
 
     public A getFirst() {
@@ -35,8 +27,9 @@ public class AllelePair<A extends Enum<A> & Allele> implements Serializable {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof AllelePair other)) return false;
-        return allele1 == other.allele1 && allele2 == other.allele2;
+        if (!(o instanceof AllelePair<?>(Object allele3, Object allele4))) return false;
+        return java.util.Objects.equals(allele1, allele3)
+                && java.util.Objects.equals(allele2, allele4);
     }
 
     @Override
