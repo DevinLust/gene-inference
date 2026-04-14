@@ -614,7 +614,7 @@ public class FactorGraph {
         for (Node<?> node : adjacencyMatrix.keySet()) {
             if (node instanceof SheepNode) {
                 Sheep sheep = ((SheepNode) node).getValue();
-                Map<Category, Map<String, Double>> belief = newBelief();
+                Map<Category, Map<String, Double>> belief = sheep.getAllDistributionsByType(DistributionType.PRIOR);;
                 for (Node<?> neighbor : adjacencyMatrix.get(node)) {
                     NodePair nodePair = new NodePair(neighbor, node);
                     Message message = messageMap.get(nodePair);
@@ -635,7 +635,7 @@ public class FactorGraph {
             throw new IllegalArgumentException("Sheep is not in factor graph");
         }
 
-        Map<Category, Map<String, Double>> belief = newBelief();
+        Map<Category, Map<String, Double>> belief = sheep.getAllDistributionsByType(DistributionType.PRIOR);
 
         for (Node<?> neighbor : adjacencyMatrix.get(node)) {
             NodePair nodePair = new NodePair(neighbor, node);

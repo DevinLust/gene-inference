@@ -1,6 +1,7 @@
 package com.progressengine.geneinference.validation;
 
 import com.progressengine.geneinference.dto.SheepGenotypeDTO;
+import com.progressengine.geneinference.model.enums.Allele;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.service.AlleleDomains.AlleleDomain;
 import com.progressengine.geneinference.service.AlleleDomains.CategoryDomains;
@@ -63,11 +64,19 @@ public class GenotypesValidator implements ConstraintValidator<ValidGenotypes, M
                         .addConstraintViolation();
                 valid = false;
             } else {
-                valid = validateCode(cat, dto.phenotype(), "Invalid phenotype code", hctx) && valid;
-            }
+                boolean phenotypeValid = validateCode(cat, dto.phenotype(), "Invalid phenotype code", hctx);
+                valid = phenotypeValid && valid;
 
-            if (dto.hiddenAllele() != null) {
-                valid = validateCode(cat, dto.hiddenAllele(), "Invalid hidden allele code", hctx) && valid;
+                boolean hiddenValid = true;
+                if (dto.hiddenAllele() != null) {
+                    hiddenValid = validateCode(cat, dto.hiddenAllele(), "Invalid hidden allele code", hctx);
+                    valid = hiddenValid && valid;
+                }
+
+                // 🔥 NEW: only check compatibility if both parsed successfully
+                if (phenotypeValid && hiddenValid && dto.hiddenAllele() != null) {
+                    valid = validateHiddenCompatibility(cat, dto.phenotype(), dto.hiddenAllele(), hctx) && valid;
+                }
             }
         }
 
@@ -91,5 +100,57 @@ public class GenotypesValidator implements ConstraintValidator<ValidGenotypes, M
                     .addConstraintViolation();
             return false;
         }
+    }
+
+    private boolean validateHiddenCompatibility(
+            Category category,
+            String phenotypeCode,
+            String hiddenCode,
+            HibernateConstraintValidatorContext hctx
+    ) {
+        try {
+            AlleleDomain<?> domain = CategoryDomains.domainFor(category);
+            return validateHiddenCompatibilityTyped(
+                    domain,
+                    category,
+                    phenotypeCode,
+                    hiddenCode,
+                    hctx
+            );
+        } catch (IllegalArgumentException ex) {
+            // parse should already have been validated earlier, so this is just a safety fallback
+            hctx.buildConstraintViolationWithTemplate(
+                            "Hidden allele is not compatible with phenotype for category "
+                                    + category + ": (" + phenotypeCode + ", " + hiddenCode + ")"
+                    )
+                    .addBeanNode()
+                    .inIterable().atKey(category)
+                    .addConstraintViolation();
+            return false;
+        }
+    }
+
+    private <A extends Enum<A> & Allele> boolean validateHiddenCompatibilityTyped(
+            AlleleDomain<A> domain,
+            Category category,
+            String phenotypeCode,
+            String hiddenCode,
+            HibernateConstraintValidatorContext hctx
+    ) {
+        A phenotype = domain.parse(phenotypeCode);
+        A hidden = domain.parse(hiddenCode);
+
+        if (!domain.isHiddenAllelePossible(phenotype, hidden)) {
+            hctx.buildConstraintViolationWithTemplate(
+                            "Hidden allele is not compatible with phenotype for category "
+                                    + category + ": (" + phenotypeCode + ", " + hiddenCode + ")"
+                    )
+                    .addBeanNode()
+                    .inIterable().atKey(category)
+                    .addConstraintViolation();
+            return false;
+        }
+
+        return true;
     }
 }

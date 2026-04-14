@@ -12,7 +12,6 @@ import com.progressengine.geneinference.service.AlleleDomains.CategoryDomains;
 
 import jakarta.persistence.*;
 import com.progressengine.geneinference.model.enums.Grade;
-import jakarta.transaction.Transactional;
 
 import java.util.*;
 
@@ -86,6 +85,21 @@ public class Sheep {
     }
 
 
+    public void applyNewSheepRequest(
+            Map<Category, SheepGenotypeDTO> genotypes,
+            Map<Category, Map<String, Double>> distributions
+    ) {
+        setGenotypes(genotypes);                 // validates and stores observed genotype/phenotype data
+        syncPriorsFromObservedGenotypes();       // derive priors from phenotype/genotype rules
+        upsertDistributionsFromDTO(distributions); // user-provided distributions override where allowed
+    }
+
+    public void syncPriorsFromObservedGenotypes() {
+        for (Category category : Category.values()) {
+            syncPriorFromPhenotype(category);
+        }
+    }
+
 
     /** Genotypes ------------------------------------------------------------------------------ */
     public Map<Category, SheepGenotypeDTO> getGenotypes() {
@@ -127,7 +141,7 @@ public class Sheep {
         return newGenotype;
     }
 
-    @Transactional
+
     public void setGenotypes(Map<Category, SheepGenotypeDTO> genotypesDTO) {
         // Validate all Grades are present
         Set<Category> missingCategories = EnumSet.allOf(Category.class);
@@ -176,8 +190,7 @@ public class Sheep {
     }
 
 
-    @Transactional
-    public void setGenotype(Category category, AllelePair<?> genotype) {
+    public <A extends Enum<A> & Allele> void setGenotype(Category category, AllelePair<A> genotype) {
         if (genotype == null) {
             throw new IllegalArgumentException(
                     formatErrorMessage("Genotype for category " + category + " is null")
@@ -189,14 +202,16 @@ public class Sheep {
             );
         }
 
-        AlleleDomain<?> domain = CategoryDomains.domainFor(category);
+        AlleleDomain<A> domain = CategoryDomains.typedDomainFor(category);
+
+        final A phenotype;
+        final A hiddenAllele;
 
         try {
-            domain.parse(genotype.getFirst().code());
-
-            if (genotype.getSecond() != null) {
-                domain.parse(genotype.getSecond().code());
-            }
+            phenotype = domain.parse(genotype.getFirst().code());
+            hiddenAllele = genotype.getSecond() == null
+                    ? null
+                    : domain.parse(genotype.getSecond().code());
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException(
                     formatErrorMessage("Genotype does not belong to category " + category + ": " + e.getMessage()),
@@ -204,15 +219,21 @@ public class Sheep {
             );
         }
 
-        createIfAbsentSheepGenotype(category).setGenotype(genotype);
+        if (hiddenAllele != null && !domain.isHiddenAllelePossible(phenotype, hiddenAllele)) {
+            throw new IllegalArgumentException(
+                    formatErrorMessage(
+                            "Hidden allele " + hiddenAllele.code()
+                                    + " is not compatible with phenotype "
+                                    + phenotype.code()
+                                    + " for category " + category
+                    )
+            );
+        }
+
+        createIfAbsentSheepGenotype(category).setGenotype(phenotype, hiddenAllele);
     }
 
-    @Transactional
-    public void setGenotype(String categoryStr, AllelePair<?> genotype) {
-        setGenotype(Category.valueOf(categoryStr), genotype);
-    }
 
-    @Transactional
     public <A extends Enum<A> & Allele> void setGenotypeCodes(
         Category category,
         String phenotypeCode,
@@ -239,6 +260,7 @@ public class Sheep {
         return getPhenotype(Category.valueOf(categoryStr));
     }
 
+
     public <A extends Enum<A> & Allele> void setPhenotype(Category category, A phenotype) {
         if (phenotype == null) {
             throw new IllegalArgumentException(
@@ -246,22 +268,50 @@ public class Sheep {
             );
         }
 
-        AlleleDomain<?> domain = CategoryDomains.domainFor(category);
+        setPhenotypeValidated(
+                CategoryDomains.typedDomainFor(category),
+                category,
+                phenotype
+        );
+    }
 
+    private <A extends Enum<A> & Allele> void setPhenotypeValidated(
+            AlleleDomain<A> domain,
+            Category category,
+            A phenotype
+    ) {
         try {
-            domain.parse(phenotype.code());
+            A parsedPhenotype = domain.parse(phenotype.code());
+
+            SheepGenotype genotype = createIfAbsentSheepGenotype(category);
+            A existingHidden = genotype.getHiddenAllele();
+
+            if (existingHidden != null && !domain.isHiddenAllelePossible(parsedPhenotype, existingHidden)) {
+                throw new IllegalArgumentException(
+                        formatErrorMessage(
+                                "Phenotype " + phenotype.code()
+                                        + " is not compatible with existing hidden allele "
+                                        + existingHidden.code()
+                                        + " for category " + category
+                        )
+                );
+            }
+
+            genotype.setPhenotype(parsedPhenotype);
+
         } catch (IllegalArgumentException e) {
+            if (e.getMessage() != null && e.getMessage().contains("not compatible")) {
+                throw e;
+            }
+
             throw new IllegalArgumentException(
                     formatErrorMessage("Phenotype " + phenotype.code() + " does not belong to category " + category),
                     e
             );
         }
+    }
 
-        createIfAbsentSheepGenotype(category).setPhenotype(phenotype);
-    }
-    public <A extends Enum<A> & Allele> void setPhenotype(String categoryStr, A phenotype) {
-        setPhenotype(Category.valueOf(categoryStr), phenotype);
-    }
+
     public <A extends Enum<A> & Allele> void setPhenotypeCode(Category category, String phenotypeCode) {
         if (phenotypeCode == null) {
             throw new IllegalArgumentException(
@@ -282,12 +332,14 @@ public class Sheep {
         return getHiddenAllele(Category.valueOf(categoryStr));
     }
 
-    public <A extends Enum<A> & Allele> void setHiddenAllele(Category category, A hiddenAllele) {
-        if (hiddenAllele != null) {
-            AlleleDomain<?> domain = CategoryDomains.domainFor(category);
 
+    public <A extends Enum<A> & Allele> void setHiddenAllele(Category category, A hiddenAllele) {
+        AlleleDomain<A> domain = CategoryDomains.typedDomainFor(category);
+
+        A parsedHidden = null;
+        if (hiddenAllele != null) {
             try {
-                domain.parse(hiddenAllele.code());
+                parsedHidden = domain.parse(hiddenAllele.code());
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException(
                         formatErrorMessage(
@@ -298,11 +350,25 @@ public class Sheep {
             }
         }
 
-        createIfAbsentSheepGenotype(category).setHiddenAllele(hiddenAllele);
+        SheepGenotype genotype = createIfAbsentSheepGenotype(category);
+        A existingPhenotype = genotype.getPhenotype();
+
+        if (existingPhenotype != null && parsedHidden != null
+                && !domain.isHiddenAllelePossible(existingPhenotype, parsedHidden)) {
+            throw new IllegalArgumentException(
+                    formatErrorMessage(
+                            "Hidden allele " + parsedHidden.code()
+                                    + " is not compatible with phenotype "
+                                    + existingPhenotype.code()
+                                    + " for category " + category
+                    )
+            );
+        }
+
+        genotype.setHiddenAllele(parsedHidden);
     }
-    public <A extends Enum<A> & Allele> void setHiddenAllele(String categoryStr, A hiddenAllele) {
-        setHiddenAllele(Category.valueOf(categoryStr), hiddenAllele);
-    }
+
+
     public <A extends Enum<A> & Allele> void setHiddenAlleleCode(Category category, String hiddenCode) {
         if (hiddenCode == null) {
             setHiddenAllele(category, null);
@@ -318,6 +384,48 @@ public class Sheep {
 
 
     /** SheepDistribution ------------------------------------------------------------------------- */
+    public <A extends Enum<A> & Allele> void syncPriorFromPhenotype(Category category) {
+        AlleleDomain<A> domain = CategoryDomains.typedDomainFor(category);
+
+        SheepGenotype genotype = findSheepGenotype(category);
+
+        A phenotype = genotype.getPhenotype();
+        if (phenotype == null) {
+            throw new IllegalStateException(
+                    formatErrorMessage("Cannot sync prior: phenotype is null for category " + category)
+            );
+        }
+
+        Map<A, Double> prior = domain.hiddenPriorGivenPhenotype(phenotype);
+        setDistribution(category, DistributionType.PRIOR, prior);
+
+        A forcedHidden = extractDeterministicAllele(prior);
+        if (forcedHidden != null) {
+            genotype.setHiddenAllele(forcedHidden);
+        } else if (genotype.getHiddenAllele() != null
+                && !domain.isHiddenAllelePossible(phenotype, genotype.getHiddenAllele())) {
+            genotype.setHiddenAllele(null);
+        }
+    }
+
+    private <A extends Enum<A> & Allele> A extractDeterministicAllele(Map<A, Double> distribution) {
+        A result = null;
+
+        for (Map.Entry<A, Double> entry : distribution.entrySet()) {
+            double value = entry.getValue();
+            if (Math.abs(value - 1.0) < 1e-9) {
+                if (result != null) {
+                    return null;
+                }
+                result = entry.getKey();
+            } else if (value > 1e-9) {
+                return null;
+            }
+        }
+
+        return result;
+    }
+
     private <A extends Enum<A> & Allele> void validateDistribution(
         Category category,
         Map<A, Double> distribution
@@ -336,7 +444,7 @@ public class Sheep {
         missingAlleles.removeAll(actualAlleles);
         if (!missingAlleles.isEmpty()) {
             throw new IllegalArgumentException(
-                    formatErrorMessage("Missing alleles in distribution for category " + category + ": " + missingAlleles)
+                    formatErrorMessage("Missing entries in distribution for category " + category + ": " + missingAlleles)
             );
         }
 

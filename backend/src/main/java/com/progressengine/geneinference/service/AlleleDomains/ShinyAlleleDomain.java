@@ -4,10 +4,7 @@ import com.progressengine.geneinference.model.AllelePair;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.Shiny;
 
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 
 public class ShinyAlleleDomain implements AlleleDomain<Shiny> {
 
@@ -53,5 +50,32 @@ public class ShinyAlleleDomain implements AlleleDomain<Shiny> {
         return second.isRecessive()
                 ? new AllelePair<>(first, second)
                 : new AllelePair<>(second, first);
+    }
+
+    @Override
+    public Map<Shiny, Double> hiddenPriorGivenPhenotype(Shiny phenotype) {
+        Map<Shiny, Double> result = createZeroDistribution();
+
+        if (phenotype == Shiny.NON_SHINY) {
+            result.put(Shiny.NON_SHINY, 1.0);
+            return result;
+        }
+
+        // SHINY → could be SHINY or NON_SHINY
+        result.put(Shiny.SHINY, 0.5);
+        result.put(Shiny.NON_SHINY, 0.5);
+
+        return result;
+    }
+
+    @Override
+    public boolean isHiddenAllelePossible(Shiny phenotype, Shiny hidden) {
+        if (hidden == null) {
+            return true;
+        }
+        if (phenotype == Shiny.NON_SHINY) {
+            return hidden == Shiny.NON_SHINY;
+        }
+        return true;
     }
 }

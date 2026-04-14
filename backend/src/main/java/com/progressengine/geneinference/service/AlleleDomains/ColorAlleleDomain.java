@@ -4,10 +4,7 @@ import com.progressengine.geneinference.model.AllelePair;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.Color;
 
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 
 public class ColorAlleleDomain implements AlleleDomain<Color> {
 
@@ -61,5 +58,31 @@ public class ColorAlleleDomain implements AlleleDomain<Color> {
         return second.isRecessive()
                 ? new AllelePair<>(first, second)
                 : new AllelePair<>(second, first);
+    }
+
+    @Override
+    public Map<Color, Double> hiddenPriorGivenPhenotype(Color phenotype) {
+        Map<Color, Double> result = createZeroDistribution();
+
+        if (phenotype == Color.NORMAL) {
+            result.put(Color.NORMAL, 1.0);
+            return result;
+        }
+
+        double uniform = 1.0 / getAlleles().size();
+        for (Color color : getAlleles()) {
+            result.put(color, uniform);
+        }
+
+        return result;
+    }
+
+    @Override
+    public boolean isHiddenAllelePossible(Color phenotype, Color hidden) {
+        if (hidden == null) return true;
+        if (phenotype == Color.NORMAL) {
+            return hidden == Color.NORMAL;
+        }
+        return true;
     }
 }

@@ -10,9 +10,7 @@ public class DomainMapper {
     public static Sheep fromRequestDTO(SheepNewRequestDTO dto) {
         Sheep sheep = new Sheep();
         sheep.setName(dto.getName());
-        sheep.setGenotypes(dto.getGenotypes());
-
-        sheep.upsertDistributionsFromDTO(dto.getDistributions());
+        sheep.applyNewSheepRequest(dto.getGenotypes(), dto.getDistributions());
 
         return sheep;
     }
