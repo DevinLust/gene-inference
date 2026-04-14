@@ -1,7 +1,9 @@
 package com.progressengine.geneinference.model.enums;
 
 public enum Grade implements Allele {
-    S("S", 5), A("A", 4), B("B", 3), C("C", 2), D("D", 1), E("E", 0);
+    S("S", 5), A("A", 4),
+    B("B", 3), C("C", 2),
+    D("D", 1), E("E", 0);
 
     private final String code;
     private final int rank;

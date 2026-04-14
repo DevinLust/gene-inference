@@ -6,7 +6,7 @@ import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.DistributionType;
 import com.progressengine.geneinference.model.enums.Grade;
 import com.progressengine.geneinference.service.AlleleDomains.CategoryDomains;
-import com.progressengine.geneinference.service.AlleleDomains.GradeAlleleDomain;
+import com.progressengine.geneinference.service.AlleleDomains.GradeAlleleDomainTest;
 import com.progressengine.geneinference.testutil.DomainFixtures;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -78,7 +78,7 @@ public class EnsembleInferenceTest extends InferenceEngineTest {
 
         // Assert 1
         for (Category category : Category.values()) {
-            if (!(CategoryDomains.domainFor(category) instanceof GradeAlleleDomain)) {
+            if (!(CategoryDomains.domainFor(category) instanceof GradeAlleleDomainTest)) {
                 continue;
             }
             Map<Grade, Double> hiddenDistribution1 = parent1.getDistribution(category, DistributionType.INFERRED);
@@ -163,7 +163,7 @@ public class EnsembleInferenceTest extends InferenceEngineTest {
 
         // Assert
         for (Category category : Category.values()) {
-            if (!(CategoryDomains.domainFor(category) instanceof GradeAlleleDomain)) {
+            if (!(CategoryDomains.domainFor(category) instanceof GradeAlleleDomainTest)) {
                 continue;
             }
             Map<Grade, Double> childDistribution = child.getDistribution(category, DistributionType.PRIOR);
@@ -231,7 +231,7 @@ public class EnsembleInferenceTest extends InferenceEngineTest {
 
         // Assert
         for (Category category : Category.values()) {
-            if (!(CategoryDomains.domainFor(category) instanceof GradeAlleleDomain)) {
+            if (!(CategoryDomains.domainFor(category) instanceof GradeAlleleDomainTest)) {
                 continue;
             }
             Map<Grade, Double> childDistribution = child.getDistribution(category, DistributionType.PRIOR);

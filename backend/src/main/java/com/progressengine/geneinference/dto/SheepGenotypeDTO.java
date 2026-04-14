@@ -8,9 +8,8 @@ import com.progressengine.geneinference.service.AlleleDomains.CategoryDomains;
 
 public record SheepGenotypeDTO(String phenotype, String hiddenAllele) {
 
-    @SuppressWarnings("unchecked")
     public <A extends Enum<A> & Allele> AllelePair<A> toAllelePair(Category category) {
-        AlleleDomain<A> domain = (AlleleDomain<A>) CategoryDomains.domainFor(category);
+        AlleleDomain<A> domain = CategoryDomains.typedDomainFor(category);
         return AllelePair.fromStrings(phenotype, hiddenAllele, domain);
     }
 

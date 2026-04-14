@@ -1,11 +1,11 @@
 package com.progressengine.geneinference.model.enums;
 
-public enum Tone implements Allele {
-    TWO_TONE("T"), MONOTONE("M");
+public enum Shiny implements Allele{
+    SHINY("SHN"), NON_SHINY("NRM");
 
     private final String code;
 
-    Tone(String code) {
+    Shiny(String code) {
         this.code = code;
     }
 
@@ -14,10 +14,14 @@ public enum Tone implements Allele {
         return this.code;
     }
 
-    public static Tone fromCode(String code) {
-        for (Tone a : values()) {
+    public static Shiny fromCode(String code) {
+        for (Shiny a : values()) {
             if (a.code.equals(code)) return a;
         }
         throw new IllegalArgumentException("Invalid code: " + code);
+    }
+
+    public boolean isRecessive() {
+        return this == NON_SHINY;
     }
 }

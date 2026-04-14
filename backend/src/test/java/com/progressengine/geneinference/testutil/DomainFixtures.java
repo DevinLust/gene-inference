@@ -1,7 +1,9 @@
 package com.progressengine.geneinference.testutil;
 
+import com.progressengine.geneinference.dto.SheepGenotypeDTO;
 import com.progressengine.geneinference.model.*;
 import com.progressengine.geneinference.model.enums.Category;
+import com.progressengine.geneinference.service.AlleleDomains.CategoryDomains;
 
 import java.util.*;
 
@@ -11,12 +13,16 @@ public class DomainFixtures {
 
     public static Sheep createTestSheep(Map<Category, String> phenotypes) {
         Sheep sheep = new Sheep();
-        for (Map.Entry<Category, String> entry : phenotypes.entrySet()) {
-            sheep.setPhenotypeCode(entry.getKey(), entry.getValue());
+
+        for (Category category : Category.values()) {
+            String phenotypeCode = phenotypes.getOrDefault(category, defaultPhenotypeCode(category));
+            sheep.setPhenotypeCode(category, phenotypeCode);
         }
+
         sheep.createDefaultDistributions();
         return sheep;
     }
+
     public static Sheep createTestSheep(Map<Category, String> phenotypes, int sheepId) {
         Sheep sheep = createTestSheep(phenotypes);
         sheep.setId(sheepId);
@@ -26,6 +32,19 @@ public class DomainFixtures {
     public static Sheep createTestSheep(UUID userId, Map<Category, String> phenotypes) {
         Sheep sheep = createTestSheep(phenotypes);
         sheep.setUserId(userId);
+        return sheep;
+    }
+
+    public static Sheep createTestSheepWithFullGenotype(Map<Category, SheepGenotypeDTO> phenotypes) {
+        Sheep sheep = new Sheep();
+
+        for (Category category : Category.values()) {
+            SheepGenotypeDTO genotypeDTO = phenotypes.getOrDefault(category, defaultGenotype(category));
+            AllelePair<?> genotype = genotypeDTO.toAllelePair(category);
+            sheep.setGenotype(category, genotype);
+        }
+
+        sheep.createDefaultDistributions();
         return sheep;
     }
 
@@ -96,6 +115,20 @@ public class DomainFixtures {
         }
 
         return relationship;
+    }
+
+    private static String defaultPhenotypeCode(Category category) {
+        return switch (category) {
+            case SWIM, FLY, RUN, POWER, STAMINA -> "C";
+            case TONE -> "T";
+            case COLOR, SHINY -> "NRM";
+            default -> CategoryDomains.domainFor(category).getAlleles().getFirst().code();
+        };
+    }
+
+    private static SheepGenotypeDTO defaultGenotype(Category category) {
+        String fallBack = defaultPhenotypeCode(category);
+        return new SheepGenotypeDTO(fallBack, fallBack);
     }
 
     private static int sumCategory(Map<AlleleCodePair, Map<String, Integer>> categoryFrequency) {

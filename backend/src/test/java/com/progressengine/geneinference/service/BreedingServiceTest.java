@@ -2,9 +2,8 @@ package com.progressengine.geneinference.service;
 
 import com.progressengine.geneinference.dto.SheepGenotypeDTO;
 import com.progressengine.geneinference.model.Sheep;
-import com.progressengine.geneinference.model.enums.Category;
-import com.progressengine.geneinference.model.enums.Grade;
-import com.progressengine.geneinference.model.enums.Tone;
+import com.progressengine.geneinference.model.enums.*;
+import com.progressengine.geneinference.testutil.DomainFixtures;
 import org.junit.jupiter.api.Test;
 
 import java.util.EnumSet;
@@ -19,53 +18,83 @@ public class BreedingServiceTest {
     private static final Random random = new Random(42);
 
     @Test
-    void testBreedNewSheep() {
-        // Arrange
-        Grade parent1Phenotype = Grade.A;
-        Grade parent2Phenotype = Grade.C;
-        Grade parent1HiddenAllele = Grade.S;
-        Grade parent2HiddenAllele = Grade.B;
-        Set<Grade> parent1Genotype = EnumSet.of(parent1Phenotype, parent1HiddenAllele);
-        Set<Grade> parent2Genotype = EnumSet.of(parent2Phenotype, parent2HiddenAllele);
-        Set<Grade> allAlleles = EnumSet.of(parent1Phenotype, parent1HiddenAllele, parent2Phenotype, parent2HiddenAllele);
+    void testBreedNewSheepSwim() {
+        testBreedNewSheepForCategory(
+                Category.SWIM,
+                Grade.A,
+                Grade.S,
+                Grade.C,
+                Grade.B
+        );
+    }
 
-        Sheep parent1 = createTestSheep(Map.of(
-                Category.SWIM, new SheepGenotypeDTO(parent1Phenotype.code(), parent1HiddenAllele.code()),
-                Category.FLY, new SheepGenotypeDTO(randomGrade(), randomGrade()),
-                Category.RUN, new SheepGenotypeDTO(randomGrade(), randomGrade()),
-                Category.POWER, new SheepGenotypeDTO(randomGrade(), randomGrade()),
-                Category.STAMINA, new SheepGenotypeDTO(randomGrade(), randomGrade()),
-                Category.TONE, new SheepGenotypeDTO(randomTone(), randomTone())
+    @Test
+    void testBreedNewSheepTone() {
+        testBreedNewSheepForCategory(
+                Category.TONE,
+                Tone.TWO_TONE,
+                Tone.TWO_TONE,
+                Tone.TWO_TONE,
+                Tone.MONOTONE
+        );
+    }
+
+    @Test
+    void testBreedNewSheepColor() {
+        testBreedNewSheepForCategory(
+                Category.COLOR,
+                Color.NORMAL,
+                Color.NORMAL,
+                Color.RED,
+                Color.NORMAL
+        );
+    }
+
+    private <A extends Enum<A> & Allele> void testBreedNewSheepForCategory(
+            Category categoryUnderTest,
+            A parent1Phenotype,
+            A parent1HiddenAllele,
+            A parent2Phenotype,
+            A parent2HiddenAllele
+    ) {
+        Set<A> parent1Genotype = EnumSet.of(parent1Phenotype, parent1HiddenAllele);
+        Set<A> parent2Genotype = EnumSet.of(parent2Phenotype, parent2HiddenAllele);
+        Set<A> allAlleles = EnumSet.of(
+                parent1Phenotype,
+                parent1HiddenAllele,
+                parent2Phenotype,
+                parent2HiddenAllele
+        );
+
+        Sheep parent1 = DomainFixtures.createTestSheepWithFullGenotype(Map.of(
+                categoryUnderTest,
+                new SheepGenotypeDTO(parent1Phenotype.code(), parent1HiddenAllele.code())
         ));
 
-        Sheep parent2 = createTestSheep(Map.of(
-                Category.SWIM, new SheepGenotypeDTO(parent2Phenotype.code(), parent2HiddenAllele.code()),
-                Category.FLY, new SheepGenotypeDTO(randomGrade(), randomGrade()),
-                Category.RUN, new SheepGenotypeDTO(randomGrade(), randomGrade()),
-                Category.POWER, new SheepGenotypeDTO(randomGrade(), randomGrade()),
-                Category.STAMINA, new SheepGenotypeDTO(randomGrade(), randomGrade()),
-                Category.TONE, new SheepGenotypeDTO(randomTone(), randomTone())
+        Sheep parent2 = DomainFixtures.createTestSheepWithFullGenotype(Map.of(
+                categoryUnderTest,
+                new SheepGenotypeDTO(parent2Phenotype.code(), parent2HiddenAllele.code())
         ));
 
-        // Act
         Sheep[] sheepChildren = new Sheep[10];
         for (int i = 0; i < sheepChildren.length; i++) {
-            Sheep newChild = BreedingService.breedNewSheep(parent1, parent2);
-            sheepChildren[i] = newChild;
+            sheepChildren[i] = BreedingService.breedNewSheep(parent1, parent2);
         }
 
-        // Assert
         for (Sheep child : sheepChildren) {
+            A phenotype = child.getPhenotype(categoryUnderTest);
+            A hiddenAllele = child.getHiddenAllele(categoryUnderTest);
+
             assertNotNull(child, "child should not be null");
-            assertTrue(allAlleles.contains(child.getPhenotype(Category.SWIM)), "phenotype should be in the set of possible alleles");
-            assertTrue(allAlleles.contains(child.getHiddenAllele(Category.SWIM)), "hidden allele should be in the set of possible alleles");
-            if (parent1Genotype.contains(child.getPhenotype(Category.SWIM))) {
-                assertTrue(parent2Genotype.contains(child.getHiddenAllele(Category.SWIM)), "hidden allele should be from parent 2");
-            } else if (parent2Genotype.contains(child.getPhenotype(Category.SWIM))) {
-                assertTrue(parent1Genotype.contains(child.getHiddenAllele(Category.SWIM)), "hidden allele should be from parent 1");
-            } else {
-                fail("impossible phenotype: " + child.getPhenotype(Category.SWIM));
-            }
+            assertTrue(allAlleles.contains(phenotype), "phenotype should be in the set of possible alleles");
+            assertTrue(allAlleles.contains(hiddenAllele), "hidden allele should be in the set of possible alleles");
+
+            boolean validInheritance =
+                    (parent1Genotype.contains(phenotype) && parent2Genotype.contains(hiddenAllele))
+                            || (parent2Genotype.contains(phenotype) && parent1Genotype.contains(hiddenAllele));
+
+            assertTrue(validInheritance,
+                    "child alleles must be explainable as one allele from each parent");
         }
     }
 

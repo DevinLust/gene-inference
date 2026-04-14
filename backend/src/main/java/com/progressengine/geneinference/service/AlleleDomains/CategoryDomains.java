@@ -16,6 +16,8 @@ public final class CategoryDomains {
     static {
         register(new GradeAlleleDomain());
         register(new ToneAlleleDomain());
+        register(new ColorAlleleDomain());
+        register(new ShinyAlleleDomain());
     }
 
     private CategoryDomains() {}

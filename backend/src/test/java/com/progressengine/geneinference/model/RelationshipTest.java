@@ -7,6 +7,8 @@ import com.progressengine.geneinference.model.enums.Tone;
 import com.progressengine.geneinference.testutil.DomainFixtures;
 import org.junit.jupiter.api.Test;
 
+import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -372,7 +374,11 @@ public class RelationshipTest {
         Map<Category, Map<AlleleCodePair, Map<String, Integer>>> phenotypeCache = relationship.getPhenotypeFrequencies();
 
         // Assert
-        assertEquals(expectedPhenotypeFrequencies, phenotypeCache, "Cache should equal phenotype frequencies");
+        assertEquals(
+                withEmptyFrequencyCategories(expectedPhenotypeFrequencies),
+                phenotypeCache,
+                "Cache should equal phenotype frequencies"
+        );
     }
 
     @Test
@@ -448,5 +454,25 @@ public class RelationshipTest {
 
         // Act/Assert
         assertThrows(ExcessAlleleDiversityException.class, () -> relationship.addChildToRelationship(child));
+    }
+
+    private static Map<Category, Map<AlleleCodePair, Map<String, Integer>>> withEmptyFrequencyCategories(
+            Map<Category, Map<AlleleCodePair, Map<String, Integer>>> input
+    ) {
+        Map<Category, Map<AlleleCodePair, Map<String, Integer>>> result = new EnumMap<>(Category.class);
+
+        for (Category category : Category.values()) {
+            Map<AlleleCodePair, Map<String, Integer>> categoryMap =
+                    input.getOrDefault(category, Map.of());
+
+            Map<AlleleCodePair, Map<String, Integer>> categoryCopy = new HashMap<>();
+            for (Map.Entry<AlleleCodePair, Map<String, Integer>> entry : categoryMap.entrySet()) {
+                categoryCopy.put(entry.getKey(), new HashMap<>(entry.getValue()));
+            }
+
+            result.put(category, categoryCopy);
+        }
+
+        return result;
     }
 }
