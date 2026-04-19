@@ -2,6 +2,7 @@ package com.progressengine.geneinference.model;
 
 import com.progressengine.geneinference.model.enums.Allele;
 import com.progressengine.geneinference.service.AlleleDomains.AlleleDomain;
+import org.springframework.lang.NonNull;
 
 public record AlleleCodePair(String first, String second) {
     public AlleleCodePair {
@@ -46,5 +47,23 @@ public record AlleleCodePair(String first, String second) {
                 domain.parse(first),
                 domain.parse(second)
         );
+    }
+
+    public String toKey() {
+        return first + "|" + second;
+    }
+
+    public static AlleleCodePair fromKey(String key) {
+        String[] parts = key.split("\\|");
+        if (parts.length != 2) {
+            throw new IllegalArgumentException("Invalid key: " + key);
+        }
+        return new AlleleCodePair(parts[0], parts[1]);
+    }
+
+    @Override
+    @NonNull
+    public String toString() {
+        return first + "|" + second;
     }
 }

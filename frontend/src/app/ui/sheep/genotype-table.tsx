@@ -1,11 +1,11 @@
-import { Sheep, Category } from '@/app/lib/definitions';
+import { Sheep, Category, displayAllele } from '@/app/lib/definitions';
 import CategoryTag from '@/app/ui/category-tag';
 import EvolveButton from "@/app/ui/sheep/evolve-button";
 
-export default function GenotypeTable({ sheep }: { sheep: Sheep }) {
+export default function GenotypeTable({ sheep, title, categories, showEvolve }: { sheep: Sheep, title: string, categories: Category[], showEvolve: boolean }) {
     return (
-        <div className="mt-6 mb-4 w-full max-w-[50%] p-2 rounded-xl bg-gray-600">
-            <h2 className="mb-2 text-xl">Genotypes</h2>
+        <div className="w-full p-2 rounded-xl bg-gray-600">
+            <h2 className="mb-2 text-xl">{title}</h2>
             <div className="p-2 bg-gray-800 rounded-lg border border-gray-500">
                 <div className="bg-blue-900 rounded-md overflow-hidden">
                     <table className="w-full">
@@ -20,31 +20,39 @@ export default function GenotypeTable({ sheep }: { sheep: Sheep }) {
                             <th className="bg-transparent px-2 py-2 font-semibold whitespace-nowrap">
                                 Hidden Allele
                             </th>
-                            <th scope="col" className="px-4 font-medium sm:pl-6">
-                                <span className="sr-only">Evolve</span>
-                            </th>
+                            {showEvolve && (
+                                <th scope="col" className="px-4 font-medium sm:pl-6">
+                                    <span className="sr-only">Evolve</span>
+                                </th>
+                            )}
                         </tr>
                         </thead>
                         <tbody>
-                        {Object.entries(sheep.genotypes).map(([category, genotype]) => (
-                            <tr key={category} className="border-t border-white/10 odd:bg-white/5 hover:bg-white/20 transition-colors">
-                                <td className="p-2">
-                                    <CategoryTag category={category as Category} />
-                                </td>
+                        {categories.map((category) => {
+                            const genotype = sheep.genotypes[category];
+                            return (
+                                <tr key={category}
+                                    className="border-t border-white/10 odd:bg-white/5 hover:bg-white/20 transition-colors">
+                                    <td className="p-2">
+                                        <CategoryTag category={category as Category}/>
+                                    </td>
 
-                                <td className="text-center p-2">
-                                    {genotype.phenotype}
-                                </td>
+                                    <td className="text-center p-2">
+                                        {displayAllele(category, genotype.phenotype)}
+                                    </td>
 
-                                <td className="text-center p-2">
-                                    {genotype.hiddenAllele ?? "unknown"}
-                                </td>
+                                    <td className="text-center p-2">
+                                        {displayAllele(category, genotype.hiddenAllele)}
+                                    </td>
 
-                                <td className="text-center p-2">
-                                    <EvolveButton sheepId={sheep.id} category={category as Category} />
-                                </td>
-                            </tr>
-                        ))}
+                                    {showEvolve && (
+                                        <td className="text-center p-2">
+                                            <EvolveButton sheepId={sheep.id} category={category as Category}/>
+                                        </td>
+                                    )}
+                                </tr>
+                            );
+                        })}
                         </tbody>
                     </table>
                 </div>

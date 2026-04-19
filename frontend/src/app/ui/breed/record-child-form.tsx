@@ -2,14 +2,16 @@
 
 import { useActionState, useState, useEffect, startTransition } from 'react';
 import { recordChild, ChildState } from '@/app/lib/actions';
-import { SheepSummary, Category, Grade } from '@/app/lib/definitions';
+import {
+    SheepSummary,
+    Category,
+    ALL_CATEGORIES,
+    CATEGORY_ALLELE_OPTIONS,
+} from '@/app/lib/definitions';
 import CategoryTag from '@/app/ui/category-tag';
 import SheepComboBox from "./sheep-combo-box";
 import { useBreedSheep } from "@/app/(main)/breed/breed-sheep-provider";
 import { useSearchParams } from "next/navigation";
-
-const categories: Category[] = ["SWIM", "FLY", "RUN", "POWER", "STAMINA"];
-const grades: Grade[] = ["S", "A", "B", "C", "D", "E"];
 
 export default function RecordChildForm() {
     const sheep: SheepSummary[] = useBreedSheep();
@@ -35,7 +37,7 @@ export default function RecordChildForm() {
 
     // controlled genotypes
     const [genotypes, setGenotypes] = useState(() =>
-        categories.reduce((acc, c) => {
+        ALL_CATEGORIES.reduce((acc, c) => {
             acc[c] = { phenotype: "", hiddenAllele: "" };
             return acc;
         }, {} as Record<string, { phenotype: string; hiddenAllele: string }>)
@@ -212,7 +214,8 @@ export default function RecordChildForm() {
             {/* Genotypes */}
             <fieldset className="border border-gray-500 bg-gray-800 p-3 rounded-lg">
                 <legend className="font-semibold">Genotypes</legend>
-                {categories.map((c) => {
+                {ALL_CATEGORIES.map((c) => {
+                    const options = CATEGORY_ALLELE_OPTIONS[c];
                     const validationGenotypeErrors = validationErrors?.genotypes?.[c]; // string[] | undefined
                     const constraintGenotypeViolation = constraintErrors?.genotypes?.[c]; // ExcessAlleleViolationDTO | undefined
                     return (
@@ -237,10 +240,10 @@ export default function RecordChildForm() {
                                     }
                                     className="ml-1 py-1 border border-gray-500 rounded bg-gray-800"
                                 >
-                                    <option value="">None</option>
-                                    {grades.map((g) => (
-                                        <option key={g} value={g}>
-                                            {g}
+                                    <option value="">Select...</option>
+                                    {options.map((opt) => (
+                                        <option key={opt.value} value={opt.value}>
+                                            {opt.label}
                                         </option>
                                     ))}
                                 </select>
@@ -262,9 +265,9 @@ export default function RecordChildForm() {
                                     className="ml-1 py-1 border border-gray-500 rounded bg-gray-800"
                                 >
                                     <option value="">None</option>
-                                    {grades.map((g) => (
-                                        <option key={g} value={g}>
-                                            {g}
+                                    {options.map((opt) => (
+                                        <option key={opt.value} value={opt.value}>
+                                            {opt.label}
                                         </option>
                                     ))}
                                 </select>

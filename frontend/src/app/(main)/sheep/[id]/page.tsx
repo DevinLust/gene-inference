@@ -1,7 +1,7 @@
 import { fetchSheepById } from "@/app/lib/data";
 import { notFound } from 'next/navigation';
 import EditableSheepName from '@/app/ui/sheep/editable-sheep-name';
-import GenotypeTable from '@/app/ui/sheep/genotype-table';
+import GenotypeTables from '@/app/ui/sheep/genotype-tables';
 import DistributionTable from '@/app/ui/sheep/distribution-table';
 import SheepDeleteButton from '@/app/ui/sheep/sheep-delete-button';
 import GraphBackButton from '@/app/ui/graph-back-button';
@@ -43,7 +43,7 @@ export default async function SheepDetailPage(props: { params: Promise<{ id: str
             </p>
 
             {/* Genotypes */}
-            <GenotypeTable sheep={sheep} />
+            <GenotypeTables sheep={sheep} />
 
             {/* Distributions */}
             <DistributionTable sheep={sheep} />
