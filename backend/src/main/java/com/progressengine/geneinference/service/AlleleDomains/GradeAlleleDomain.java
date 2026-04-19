@@ -40,6 +40,11 @@ public class GradeAlleleDomain implements AlleleDomain<Grade> {
     }
 
     @Override
+    public Grade defaultPhenotype() {
+        return Grade.E;
+    }
+
+    @Override
     public double[] expressionBias(Grade first, Grade second) {
         if (first == second) {
             return new double[]{0.5, 0.5};

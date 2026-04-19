@@ -33,6 +33,11 @@ public class ColorAlleleDomain implements AlleleDomain<Color> {
     }
 
     @Override
+    public Color defaultPhenotype() {
+        return Color.NORMAL;
+    }
+
+    @Override
     public double[] expressionBias(Color first, Color second) {
         if (first == second) {
             return new double[]{0.5, 0.5};

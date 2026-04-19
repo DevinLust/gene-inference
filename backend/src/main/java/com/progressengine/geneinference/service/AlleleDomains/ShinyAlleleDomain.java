@@ -33,6 +33,11 @@ public class ShinyAlleleDomain implements AlleleDomain<Shiny> {
     }
 
     @Override
+    public Shiny defaultPhenotype() {
+        return Shiny.NON_SHINY;
+    }
+
+    @Override
     public double[] expressionBias(Shiny first, Shiny second) {
         if (first == second) {
             return new double[]{0.5, 0.5};

@@ -100,6 +100,21 @@ public class Sheep {
         }
     }
 
+    public <A extends Enum<A> & Allele> void initializeCategoryWithDefaults(Category category) {
+        AlleleDomain<A> domain = CategoryDomains.typedDomainFor(category);
+
+        if (hasGenotype(category)) {
+            return; // idempotent: already initialized
+        }
+
+        SheepGenotype genotype = createIfAbsentSheepGenotype(category);
+        genotype.setPhenotype(domain.defaultPhenotype());
+
+        syncPriorFromPhenotype(category);
+
+        Map<A, Double> prior = getDistribution(category, DistributionType.PRIOR);
+        setDistribution(category, DistributionType.INFERRED, new EnumMap<>(prior));
+    }
 
     /** Genotypes ------------------------------------------------------------------------------ */
     public Map<Category, SheepGenotypeDTO> getGenotypes() {
@@ -139,6 +154,16 @@ public class Sheep {
         SheepGenotype newGenotype = new SheepGenotype(this, category);
         this.genotypes.add(newGenotype);
         return newGenotype;
+    }
+
+
+    public boolean hasGenotype(Category category) {
+        for (SheepGenotype genotype : genotypes) {
+            if (genotype.getCategory().equals(category)) {
+                return true;
+            }
+        }
+        return false;
     }
 
 
@@ -723,5 +748,4 @@ public class Sheep {
     private String formatErrorMessage(String specificMessage) {
         return String.format("Error in sheep with id %d: %s", this.id, specificMessage);
     }
-
 }

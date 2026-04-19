@@ -34,6 +34,11 @@ public class ToneAlleleDomain implements AlleleDomain<Tone> {
     }
 
     @Override
+    public Tone defaultPhenotype() {
+        return Tone.TWO_TONE;
+    }
+
+    @Override
     public double[] expressionBias(Tone first, Tone second) {
         return new double[]{0.5, 0.5};
     }

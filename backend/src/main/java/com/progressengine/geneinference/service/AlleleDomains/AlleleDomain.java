@@ -16,6 +16,8 @@ public interface AlleleDomain<A extends Enum<A> & Allele> {
     List<A> getAlleles();
     A parse(String code);
 
+    A defaultPhenotype();
+
     double[] expressionBias(A first, A second);
 
     AllelePair<A> sampleExpressionOrder(A first, A second, Random random);
