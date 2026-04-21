@@ -3,6 +3,7 @@ package com.progressengine.geneinference.testutil;
 import com.progressengine.geneinference.dto.SheepGenotypeDTO;
 import com.progressengine.geneinference.model.*;
 import com.progressengine.geneinference.model.enums.Category;
+import com.progressengine.geneinference.model.enums.DistributionType;
 import com.progressengine.geneinference.service.AlleleDomains.CategoryDomains;
 
 import java.util.*;
@@ -10,6 +11,22 @@ import java.util.*;
 public class DomainFixtures {
     public static final UUID TEST_USER_ID =
             UUID.fromString("11111111-1111-1111-1111-111111111111");
+
+    public static Sheep createPartialTestSheep(Map<Category, String> phenotypes) {
+        Sheep sheep = new Sheep();
+        sheep.setUserId(TEST_USER_ID);
+
+        for (Map.Entry<Category, String> entry : phenotypes.entrySet()) {
+            Category category = entry.getKey();
+            String phenotypeCode = entry.getValue();
+
+            sheep.setPhenotypeCode(category, phenotypeCode);
+            sheep.setUniformDistribution(category, DistributionType.PRIOR);
+            sheep.setUniformDistribution(category, DistributionType.INFERRED);
+        }
+
+        return sheep;
+    }
 
     public static Sheep createTestSheep(Map<Category, String> phenotypes) {
         Sheep sheep = new Sheep();
@@ -20,6 +37,7 @@ public class DomainFixtures {
         }
 
         sheep.createDefaultDistributions();
+        sheep.setUserId(TEST_USER_ID);
         return sheep;
     }
 

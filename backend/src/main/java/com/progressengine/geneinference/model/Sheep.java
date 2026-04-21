@@ -90,11 +90,11 @@ public class Sheep {
             Map<Category, Map<String, Double>> distributions
     ) {
         setGenotypes(genotypes);                 // validates and stores observed genotype/phenotype data
-        syncPriorsFromObservedGenotypes();       // derive priors from phenotype/genotype rules
+        syncPriorsFromObservedPhenotypes();       // derive priors from phenotype/genotype rules
         upsertDistributionsFromDTO(distributions); // user-provided distributions override where allowed
     }
 
-    public void syncPriorsFromObservedGenotypes() {
+    public void syncPriorsFromObservedPhenotypes() {
         for (Category category : Category.values()) {
             syncPriorFromPhenotype(category);
         }
@@ -131,17 +131,36 @@ public class Sheep {
     }
 
     private SheepGenotype findSheepGenotype(Category category) {
+        SheepGenotype genotype = findSheepGenotypeOrNull(category);
+
+        if (genotype == null) {
+            throw new IllegalStateException(
+                    formatErrorMessage("No genotype found for category: " + category)
+            );
+        }
+
+        return genotype;
+    }
+
+
+    private SheepGenotype findSheepGenotypeOrNull(Category category) {
         for (SheepGenotype genotype : this.genotypes) {
             if (genotype.getCategory().equals(category)) {
                 return genotype;
             }
         }
-        throw new IllegalStateException(formatErrorMessage("No genotype found for category: " + category));
+        return null;
     }
 
 
     public <A extends Enum<A> & Allele> AllelePair<A> getGenotype(Category category) {
         return findSheepGenotype(category).getGenotype();
+    }
+
+
+    public <A extends Enum<A> & Allele> AllelePair<A> getGenotypeOrNull(Category category) {
+        SheepGenotype genotype = findSheepGenotypeOrNull(category);
+        return genotype != null ? genotype.getGenotype() : null;
     }
 
 
@@ -193,18 +212,6 @@ public class Sheep {
         }
     }
 
-    public void updateGenotypes(Map<Category, SheepGenotypeDTO> updatedGenotypes) {
-        if (this.birthRecord != null) {
-            Relationship parentRelationship = this.birthRecord.getParentRelationship();
-            parentRelationship.updateChildPhenotypeFrequencies(this, updatedGenotypes);
-        } else if (updatedGenotypes != null && !updatedGenotypes.isEmpty()) {
-            for (Map.Entry<Category, SheepGenotypeDTO> entry : updatedGenotypes.entrySet()) {
-                Category category = entry.getKey();
-                AllelePair<?> genotype = entry.getValue().toAllelePair(category);
-                createIfAbsentSheepGenotype(category).setGenotype(genotype);
-            }
-        }
-    }
 
     public <A extends Enum<A> & Allele> void evolvePhenotype(Category category) {
         AlleleDomain<A> domain = CategoryDomains.typedDomainFor(category);
@@ -635,6 +642,24 @@ public class Sheep {
         }
 
         setDistribution(category, distributionType, typedDistribution);
+    }
+
+
+    public void copyAllPriorsToInferred() {
+        for (Category category : Category.values()) {
+            copyDistribution(category, DistributionType.PRIOR, DistributionType.INFERRED);
+        }
+    }
+
+
+    public <A extends Enum<A> & Allele> void copyDistribution(
+            Category category,
+            DistributionType from,
+            DistributionType to
+    ) {
+        Map<A, Double> source = getDistribution(category, from);
+        Map<A, Double> copy = new EnumMap<>(source);
+        setDistribution(category, to, copy);
     }
 
 

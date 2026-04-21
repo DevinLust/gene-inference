@@ -103,6 +103,11 @@ public class Relationship {
     }
 
 
+    public boolean hasBirthRecordsForCategory(Category category) {
+        return birthRecords.stream().anyMatch(br -> br.hasCategory(category));
+    }
+
+
     public Map<Category, Map<AlleleCodePair, Double>> getJointDistributions() {
         checkDirtyJointCache();
 

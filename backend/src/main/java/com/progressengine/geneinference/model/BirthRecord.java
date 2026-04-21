@@ -73,6 +73,15 @@ public class BirthRecord {
         this.child = child;
     }
 
+    public boolean hasCategory(Category category) {
+        for (BirthRecordPhenotype phenotypes : phenotypesAtBirth) {
+            if (phenotypes.getCategory() == category) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public Set<BirthRecordPhenotype> getPhenotypesAtBirth() {
         return phenotypesAtBirth;
     }

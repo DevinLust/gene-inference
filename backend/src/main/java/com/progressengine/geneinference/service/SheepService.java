@@ -3,6 +3,7 @@ package com.progressengine.geneinference.service;
 import com.progressengine.geneinference.dto.*;
 import com.progressengine.geneinference.exception.ResourceNotFoundException;
 import com.progressengine.geneinference.mapper.DomainMapper;
+import com.progressengine.geneinference.model.AllelePair;
 import com.progressengine.geneinference.model.BirthRecord;
 import com.progressengine.geneinference.model.Relationship;
 import com.progressengine.geneinference.model.Sheep;
@@ -236,6 +237,25 @@ public class SheepService {
         return sheepRepository.save(existing);
     }
 
+
+    public boolean isCategoryLockedForEditing(Sheep sheep, Category category) {
+        BirthRecord ownBirthRecord = sheep.getBirthRecord();
+        if (ownBirthRecord != null && ownBirthRecord.hasCategory(category)) {
+            return true;
+        }
+
+        List<Relationship> relationshipsAsParent = relationshipService.findRelationshipsByParent(sheep.getId());
+
+        for (Relationship relationship : relationshipsAsParent) {
+            if (relationship.hasBirthRecordsForCategory(category)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+
     @Transactional
     public Sheep updateSheep(UUID userId, Integer sheepId, SheepUpdateRequestDTO updateSheepModel) {
         Sheep sheep = findByIdAndUserId(sheepId, userId);
@@ -244,19 +264,56 @@ public class SheepService {
             sheep.setName(updateSheepModel.getName());
         }
 
-        // TODO - figure out constraints for genotype updates
-//        Map<Category, SheepGenotypeDTO> updatedGenotypes = updateSheepModel.getGenotypes();
-//        sheep.updateGenotypes(updatedGenotypes);
+        Map<Category, SheepGenotypeDTO> updatedGenotypes = updateSheepModel.getGenotypes();
 
-        Map<Category, Map<String, Double>> updatedPriors = updateSheepModel.getDistributions();
-        if (updatedPriors != null) {
-            for (Map.Entry<Category, Map<String, Double>> entry : updatedPriors.entrySet()) {
-                sheep.setDistributionFromCodes(entry.getKey(), DistributionType.PRIOR, entry.getValue());
+        if (updatedGenotypes != null) {
+            // Phase 1: validate all requested genotype updates first
+            for (Map.Entry<Category, SheepGenotypeDTO> entry : updatedGenotypes.entrySet()) {
+                Category category = entry.getKey();
+                SheepGenotypeDTO genotypeDTO = entry.getValue();
+
+                if (genotypeDTO == null) {
+                    continue;
+                }
+
+                if (isCategoryLockedForEditing(sheep, category)) {
+                    throw new IllegalStateException(
+                            "Category " + category + " cannot be edited because it appears in recorded history"
+                    );
+                }
+
+                // Optional: force parse/validation now so bad DTOs fail before any mutation
+                genotypeDTO.toAllelePair(category);
+            }
+
+            // Phase 2: apply updates only after all validation passes
+            for (Map.Entry<Category, SheepGenotypeDTO> entry : updatedGenotypes.entrySet()) {
+                Category category = entry.getKey();
+                SheepGenotypeDTO genotypeDTO = entry.getValue();
+
+                if (genotypeDTO == null) {
+                    continue;
+                }
+
+                applyGenotypeUpdate(sheep, category, genotypeDTO);
             }
         }
 
         return saveSheep(sheep);
     }
+
+
+    private <A extends Enum<A> & Allele> void applyGenotypeUpdate(
+            Sheep sheep,
+            Category category,
+            SheepGenotypeDTO genotypeDTO
+    ) {
+        AllelePair<A> genotype = genotypeDTO.toAllelePair(category);
+        sheep.setGenotype(category, genotype);
+        sheep.syncPriorFromPhenotype(category);
+        sheep.copyDistribution(category, DistributionType.PRIOR, DistributionType.INFERRED);
+    }
+
 
     @Transactional
     public void deleteSheep(UUID userId, Integer sheepId) {

@@ -1,7 +1,6 @@
 package com.progressengine.geneinference.dto;
 
 import com.progressengine.geneinference.model.enums.Category;
-import com.progressengine.geneinference.validation.ValidDistribution;
 
 import java.util.Map;
 
@@ -10,9 +9,6 @@ public class SheepUpdateRequestDTO {
 
     // genotypes can be partial and phenotypes null here
     private Map<Category, SheepGenotypeDTO> genotypes;
-
-    @ValidDistribution
-    private Map<Category, Map<String, Double>> distributions;
 
 
     public String getName() {
@@ -29,13 +25,5 @@ public class SheepUpdateRequestDTO {
 
     public void setGenotypes(Map<Category, SheepGenotypeDTO> genotypes) {
         this.genotypes = genotypes;
-    }
-
-    public Map<Category, Map<String, Double>> getDistributions() {
-        return distributions;
-    }
-
-    public void setDistributions(Map<Category, Map<String, Double>> distributions) {
-        this.distributions = distributions;
     }
 }

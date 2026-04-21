@@ -109,7 +109,8 @@ public class BreedingService {
             selectAllelesForChildCategory(child, sheep1, sheep2, category, random);
         }
 
-        child.createDefaultDistributions();
+        child.syncPriorsFromObservedPhenotypes();
+        child.copyAllPriorsToInferred();
         return child;
     }
 
