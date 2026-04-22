@@ -1,6 +1,6 @@
 'use server'; // server actions
 
-import { Grade, Category, SheepCreateDTO, SheepUpdateDTO, SheepChildDTO, BirthRecord, ValidationFailed, GeneticConstraintViolation } from '@/app/lib/definitions';
+import { Grade, Category, SheepCreateDTO, SheepUpdateDTO, SheepChildDTO, BirthRecord, ValidationFailed, GeneticConstraintViolation, ALL_CATEGORIES } from '@/app/lib/definitions';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from "@/app/lib/supabase/server";
@@ -40,7 +40,6 @@ if (!process.env.NEXT_PUBLIC_API_BASE_URL) {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
-const categories: Category[] = ["SWIM", "FLY", "RUN", "POWER", "STAMINA"];
 const grades: Grade[] = ["S", "A", "B", "C", "D", "E"];
 
 export async function logout(formData: FormData, nextPath: string = "/login") {
@@ -49,86 +48,92 @@ export async function logout(formData: FormData, nextPath: string = "/login") {
     redirect(nextPath);
 }
 
-export async function formDataToSheepCreateDTO(formData: FormData): Promise<SheepCreateDTO> {
-    // Build genotypes
-    const genotypes = Object.fromEntries(
-        categories.map((c) => [
-            c,
-            {
-                phenotype: formData.get(`genotypes.${c}.phenotype`) as Grade || null,
-                hiddenAllele: (formData.get(`genotypes.${c}.hiddenAllele`) as Grade) || null,
-            },
-        ])
+function parseOptionalString(value: FormDataEntryValue | null): string | null {
+    if (typeof value !== "string") return null;
+    const trimmed = value.trim();
+    return trimmed === "" ? null : trimmed;
+}
+
+function parseOptionalNumber(value: FormDataEntryValue | null): number | null {
+    if (value === null || value === "") return null;
+    const n = Number(value);
+    if (Number.isNaN(n)) {
+        throw new Error("Invalid numeric value");
+    }
+    return n;
+}
+
+function formDataToGenotypes(
+    formData: FormData
+): SheepCreateDTO["genotypes"] | null {
+    let hasAnyPhenotype = false;
+
+    const result = Object.fromEntries(
+        ALL_CATEGORIES.map((c) => {
+            const phenotype = parseOptionalString(
+                formData.get(`genotypes.${c}.phenotype`)
+            );
+            const hiddenAllele = parseOptionalString(
+                formData.get(`genotypes.${c}.hiddenAllele`)
+            );
+
+            if (phenotype !== null) {
+                hasAnyPhenotype = true;
+            }
+
+            return [
+                c,
+                {
+                    phenotype,
+                    hiddenAllele,
+                },
+            ];
+        })
     ) as SheepCreateDTO["genotypes"];
 
-    // Optionally parse distributions if the user included them in the form
-    const distributions: SheepCreateDTO["distributions"] = Object.fromEntries(
-        categories
-            .map((c) => {
-                // Build grade -> number map for this category
-                const gradeMap: Record<Grade, number> = {} as Record<Grade, number>;
+    return hasAnyPhenotype ? result : null;
+}
 
-                let hasValue = false;
-                for (const g of grades) {
-                    const val = formData.get(`distributions.${c}.${g}`);
-                    if (val !== null && val !== "") {
-                        gradeMap[g] = Number(val);
-                        hasValue = true;
-                    } else {
-                        gradeMap[g] = 0; // fill missing with 0
-                    }
-                }
+export async function formDataToSheepCreateDTO(
+    formData: FormData
+): Promise<SheepCreateDTO> {
+    const genotypes = formDataToGenotypes(formData);
 
-                // Only include category if at least one grade was filled
-                if (hasValue) return [c, gradeMap];
-                return null;
-            })
-            .filter(Boolean) as [Category, Record<Grade, number>][]
-    );
-
-    const parentRelationshipIdRaw = formData.get("parentRelationshipId");
-    const parentRelationshipId =
-        parentRelationshipIdRaw === null || parentRelationshipIdRaw === ""
-            ? null
-            : (() => {
-                const n = Number(parentRelationshipIdRaw);
-                if (Number.isNaN(n)) {
-                    throw new Error("Invalid parentRelationshipId");
-                }
-                return n;
-            })();
-    const childNameRaw = formData.get("name") as string;
-    const childName =
-        childNameRaw && childNameRaw.trim() !== ""
-            ? childNameRaw.trim()
-            : null;
+    const name = parseOptionalString(formData.get("name"));
 
     return {
-        name: childName,
-        genotypes: genotypes,
-        distributions: distributions,
-        parentRelationshipId: parentRelationshipId,
+        name,
+        genotypes,
     };
 }
 
-export async function formDataToSheepUpdateDTO(formData: FormData): Promise<SheepUpdateDTO> {
-    const createDTO: SheepCreateDTO = await formDataToSheepCreateDTO(formData);
+export async function formDataToSheepUpdateDTO(
+    formData: FormData
+): Promise<SheepUpdateDTO> {
     return {
-        name: createDTO.name,
-        genotypes: createDTO.genotypes,
-        distributions: createDTO.distributions
-    }
+        name: parseOptionalString(formData.get("name")),
+        genotypes: formDataToGenotypes(formData),
+    };
 }
 
-export async function formDataToChildDTO(formData: FormData): Promise<SheepChildDTO> {
-    const createDTO: SheepCreateDTO = await formDataToSheepCreateDTO(formData);
-    return {
-        name: createDTO.name,
-        genotypes: createDTO.genotypes,
-        distributions: createDTO.distributions,
-        parent1Id: Number(formData.get("parent1Id")),
-        parent2Id: Number(formData.get("parent2Id"))
+export async function formDataToChildDTO(
+    formData: FormData
+): Promise<SheepChildDTO> {
+    const name = parseOptionalString(formData.get("name"));
+
+    const parent1Id = parseOptionalNumber(formData.get("parent1Id"));
+    const parent2Id = parseOptionalNumber(formData.get("parent2Id"));
+
+    if (parent1Id === null || parent2Id === null) {
+        throw new Error("Both parent IDs are required");
     }
+
+    return {
+        name,
+        genotypes: formDataToGenotypes(formData),
+        parent1Id,
+        parent2Id,
+    };
 }
 
 export async function createSheep(prevState: CreateState, formData: FormData) {

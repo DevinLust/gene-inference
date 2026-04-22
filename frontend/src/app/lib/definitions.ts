@@ -32,8 +32,8 @@ export const TRAIT_CATEGORIES: Category[] = [
 ];
 
 export const APPEARANCE_CATEGORIES: Category[] = [
-    "TONE",
     "COLOR",
+    "TONE",
     "SHINY",
 ];
 
@@ -231,23 +231,19 @@ export type SheepFilter = {
 
 export type SheepCreateDTO = {
     name: string | null;
-    distributions: ProbabilityMapCreateDTO;
-    genotypes: GenotypeMap;
-    parentRelationshipId: number | null;
+    genotypes: GenotypeMap | null;
 };
 
 export type SheepChildDTO = {
     name: string | null;
-    distributions: ProbabilityMapCreateDTO;
-    genotypes: GenotypeMap;
+    genotypes: GenotypeMap | null;
     parent1Id: number;
     parent2Id: number;
 }
 
 export type SheepUpdateDTO = {
     name: string | null;
-    distributions: ProbabilityMapCreateDTO;
-    genotypes: GenotypeMap;
+    genotypes: GenotypeMap | null;
 }
 
 export type PhenotypeDistributions = {

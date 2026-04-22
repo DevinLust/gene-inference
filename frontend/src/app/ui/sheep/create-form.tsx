@@ -3,9 +3,9 @@
 import { useActionState, useState, startTransition } from "react";
 import { createSheep, CreateState } from "@/app/lib/actions";
 import DistributionForm from "./distributions-subform";
-import CategoryTag from "@/app/ui/category-tag";
 import FeatureInProgress from "@/app/ui/in-progress";
-import { ALL_CATEGORIES, CATEGORY_ALLELE_OPTIONS } from "@/app/lib/definitions";
+import GenotypeFields from "@/app/ui/genotype-fields";
+import { ControlledGenotypeMap, createEmptyControlledGenotypes } from "@/app/ui/genotype-fields";
 
 export default function SheepForm() {
     // Hook into the server action
@@ -14,12 +14,7 @@ export default function SheepForm() {
 
     const [name, setName] = useState("");
 
-    const [genotypes, setGenotypes] = useState(() =>
-        ALL_CATEGORIES.reduce((acc, c) => {
-            acc[c] = { phenotype: "", hiddenAllele: "" };
-            return acc;
-        }, {} as Record<string, { phenotype: string; hiddenAllele: string }>)
-    );
+    const [genotypes, setGenotypes] = useState<ControlledGenotypeMap>(createEmptyControlledGenotypes);
 
     const [parentRelationshipId, setParentRelationshipId] = useState("");
 
@@ -53,83 +48,11 @@ export default function SheepForm() {
             </label>
 
             {/* Genotypes */}
-            <fieldset className="border border-gray-500 bg-gray-800 p-3 rounded-lg">
-                <legend className="font-semibold">Genotypes</legend>
-                {ALL_CATEGORIES.map((c) => {
-                    const options = CATEGORY_ALLELE_OPTIONS[c];
-                    return (
-                    <div key={c} className="mb-2 bg-blue-900 border border-gray-500 rounded-lg">
-                        <div className="w-full bg-blue-500 pl-4 py-1 rounded-t-lg">
-                            <CategoryTag category={c} />
-                        </div>
-                        <div className="flex justify-around p-4">
-                            <label>
-                                Phenotype:
-                                <select
-                                    name={`genotypes.${c}.phenotype`}
-                                    value={genotypes[c]?.phenotype ?? ""}
-                                    onChange={(e) =>
-                                        setGenotypes((prev) => ({
-                                            ...prev,
-                                            [c]: {
-                                                ...prev[c],
-                                                phenotype: e.target.value,
-                                            },
-                                        }))
-                                    }
-                                    className="ml-1 py-1 border border-gray-500 rounded bg-gray-800"
-                                >
-                                    <option value="">None</option>
-                                    {options.map((opt) => (
-                                        <option key={opt.value} value={opt.value}>
-                                            {opt.label}
-                                        </option>
-                                    ))}
-                                </select>
-                            </label>
-                            <label>
-                                Hidden Allele:
-                                <select
-                                    name={`genotypes.${c}.hiddenAllele`}
-                                    value={genotypes[c]?.hiddenAllele ?? ""}
-                                    onChange={(e) =>
-                                        setGenotypes((prev) => ({
-                                            ...prev,
-                                            [c]: {
-                                                ...prev[c],
-                                                hiddenAllele: e.target.value,
-                                            },
-                                        }))
-                                    }
-                                    className="ml-1 py-1 border border-gray-500 rounded bg-gray-800"
-                                >
-                                    <option value="">None</option>
-                                    {options.map((opt) => (
-                                        <option key={opt.value} value={opt.value}>
-                                            {opt.label}
-                                        </option>
-                                    ))}
-                                </select>
-                            </label>
-                        </div>
-                        <div id={`genotypes-${c}-error`} aria-live="polite" aria-atomic="true">
-                            {state.errors?.genotypes?.[c] &&
-                                state.errors.genotypes[c].map((error: string) => (
-                                    <p className="m-2 text-sm text-yellow-500" key={error}>
-                                        {error}
-                                    </p>
-                                ))}
-                        </div>
-                    </div>
-                )})}
-
-
-            </fieldset>
-
-            {/* Distributions */}
-            <FeatureInProgress>
-                <DistributionForm />
-            </FeatureInProgress>
+            <GenotypeFields
+                genotypes={genotypes}
+                setGenotypes={setGenotypes}
+                validationErrors={state.errors?.genotypes}
+            />
 
             {/* Submit button */}
             <button

@@ -91,7 +91,7 @@ public class Sheep {
     ) {
         setGenotypes(genotypes);                 // validates and stores observed genotype/phenotype data
         syncPriorsFromObservedPhenotypes();       // derive priors from phenotype/genotype rules
-        upsertDistributionsFromDTO(distributions); // user-provided distributions override where allowed
+        copyAllPriorsToInferred();
     }
 
     public void syncPriorsFromObservedPhenotypes() {

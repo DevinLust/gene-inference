@@ -267,12 +267,12 @@ public class SheepService {
         Map<Category, SheepGenotypeDTO> updatedGenotypes = updateSheepModel.getGenotypes();
 
         if (updatedGenotypes != null) {
-            // Phase 1: validate all requested genotype updates first
+            // Phase 1: validate
             for (Map.Entry<Category, SheepGenotypeDTO> entry : updatedGenotypes.entrySet()) {
                 Category category = entry.getKey();
                 SheepGenotypeDTO genotypeDTO = entry.getValue();
 
-                if (genotypeDTO == null) {
+                if (isNoOp(genotypeDTO)) {
                     continue;
                 }
 
@@ -282,34 +282,89 @@ public class SheepService {
                     );
                 }
 
-                // Optional: force parse/validation now so bad DTOs fail before any mutation
-                genotypeDTO.toAllelePair(category);
+                validateGenotypePatch(sheep, category, genotypeDTO);
             }
 
-            // Phase 2: apply updates only after all validation passes
+            // Phase 2: apply
             for (Map.Entry<Category, SheepGenotypeDTO> entry : updatedGenotypes.entrySet()) {
                 Category category = entry.getKey();
                 SheepGenotypeDTO genotypeDTO = entry.getValue();
 
-                if (genotypeDTO == null) {
+                if (isNoOp(genotypeDTO)) {
                     continue;
                 }
 
-                applyGenotypeUpdate(sheep, category, genotypeDTO);
+                applyGenotypePatch(sheep, category, genotypeDTO);
             }
         }
 
         return saveSheep(sheep);
     }
 
+    private boolean isNoOp(SheepGenotypeDTO dto) {
+        return dto == null || (dto.phenotype() == null && dto.hiddenAllele() == null);
+    }
 
-    private <A extends Enum<A> & Allele> void applyGenotypeUpdate(
+
+    private <A extends Enum<A> & Allele> void validateGenotypePatch(
             Sheep sheep,
             Category category,
             SheepGenotypeDTO genotypeDTO
     ) {
-        AllelePair<A> genotype = genotypeDTO.toAllelePair(category);
-        sheep.setGenotype(category, genotype);
+        AlleleDomain<A> domain = CategoryDomains.typedDomainFor(category);
+
+        A newPhenotype = genotypeDTO.phenotype() != null
+                ? domain.parse(genotypeDTO.phenotype())
+                : null;
+
+        A newHidden = genotypeDTO.hiddenAllele() != null
+                ? domain.parse(genotypeDTO.hiddenAllele())
+                : null;
+
+        A effectivePhenotype = newPhenotype != null
+                ? newPhenotype
+                : sheep.getPhenotype(category);
+
+        if (effectivePhenotype == null) {
+            throw new IllegalArgumentException(
+                    "Cannot update hidden allele for category " + category + " because no phenotype exists"
+            );
+        }
+
+        if (newHidden != null && !domain.isHiddenAllelePossible(effectivePhenotype, newHidden)) {
+            throw new IllegalArgumentException(
+                    "Hidden allele " + newHidden.code()
+                            + " is not compatible with phenotype "
+                            + effectivePhenotype.code()
+                            + " for category " + category
+            );
+        }
+    }
+
+
+    private <A extends Enum<A> & Allele> void applyGenotypePatch(
+            Sheep sheep,
+            Category category,
+            SheepGenotypeDTO genotypeDTO
+    ) {
+        AlleleDomain<A> domain = CategoryDomains.typedDomainFor(category);
+
+        A newPhenotype = genotypeDTO.phenotype() != null
+                ? domain.parse(genotypeDTO.phenotype())
+                : null;
+
+        A newHidden = genotypeDTO.hiddenAllele() != null
+                ? domain.parse(genotypeDTO.hiddenAllele())
+                : null;
+
+        if (newPhenotype != null) {
+            sheep.setPhenotype(category, newPhenotype);
+        }
+
+        if (newHidden != null) {
+            sheep.setHiddenAllele(category, newHidden);
+        }
+
         sheep.syncPriorFromPhenotype(category);
         sheep.copyDistribution(category, DistributionType.PRIOR, DistributionType.INFERRED);
     }
