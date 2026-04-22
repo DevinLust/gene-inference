@@ -456,6 +456,179 @@ public class RelationshipTest {
         assertThrows(ExcessAlleleDiversityException.class, () -> relationship.addChildToRelationship(child));
     }
 
+    @Test
+    public void testAddChildToRelationship_colorHistoryCanForceParentHiddenAssignment() {
+        Sheep parent1 = DomainFixtures.createTestSheep(Map.of(
+                Category.COLOR, "NRM"
+        ));
+        Sheep parent2 = DomainFixtures.createTestSheep(Map.of(
+                Category.COLOR, "RED"
+        ));
+
+        Map<Category, Map<AlleleCodePair, Map<String, Integer>>> phenotypeFrequencies = Map.of(
+                Category.COLOR, Map.of(
+                        new AlleleCodePair("NRM", "RED"),
+                        Map.of("BLU", 1)
+                )
+        );
+
+        Relationship relationship = DomainFixtures.createPopulatedRelationship(parent1, parent2, phenotypeFrequencies);
+
+        Sheep child = DomainFixtures.createTestSheep(Map.of(
+                Category.COLOR, "NRM"
+        ));
+
+        assertThrows(
+                ExcessAlleleDiversityException.class,
+                () -> relationship.addChildToRelationship(child)
+        );
+    }
+
+    @Test
+    public void testAddChildToRelationship_colorConflictingHistoryRejectedEvenIfEarlierBirthMayBeWrong() {
+        Sheep parent1 = DomainFixtures.createTestSheep(Map.of(
+                Category.COLOR, "NRM"
+        ));
+        Sheep parent2 = DomainFixtures.createTestSheep(Map.of(
+                Category.COLOR, "RED"
+        ));
+
+        Map<Category, Map<AlleleCodePair, Map<String, Integer>>> phenotypeFrequencies = Map.of(
+                Category.COLOR, Map.of(
+                        new AlleleCodePair("NRM", "RED"),
+                        Map.of("PUR", 1)
+                )
+        );
+
+        Relationship relationship = DomainFixtures.createPopulatedRelationship(parent1, parent2, phenotypeFrequencies);
+
+        Sheep child = DomainFixtures.createTestSheep(Map.of(
+                Category.COLOR, "BLU"
+        ));
+
+        assertThrows(
+                ExcessAlleleDiversityException.class,
+                () -> relationship.addChildToRelationship(child)
+        );
+    }
+
+    @Test
+    public void testAddChildToRelationship_colorRecessivePhenotypeCountsAsStrongConstraint() {
+        Sheep parent1 = DomainFixtures.createTestSheep(Map.of(
+                Category.COLOR, "NRM"
+        ));
+        Sheep parent2 = DomainFixtures.createTestSheep(Map.of(
+                Category.COLOR, "RED"
+        ));
+
+        Map<Category, Map<AlleleCodePair, Map<String, Integer>>> phenotypeFrequencies = Map.of(
+                Category.COLOR, Map.of(
+                        new AlleleCodePair("NRM", "RED"),
+                        Map.of("NRM", 1)
+                )
+        );
+
+        Relationship relationship = DomainFixtures.createPopulatedRelationship(parent1, parent2, phenotypeFrequencies);
+
+        Sheep child = DomainFixtures.createTestSheep(Map.of(
+                Category.COLOR, "BLU"
+        ));
+
+        assertThrows(
+                ExcessAlleleDiversityException.class,
+                () -> relationship.addChildToRelationship(child)
+        );
+    }
+
+    @Test
+    public void testAddChildToRelationship_colorTwoWitnessedHiddenAllelesAllowedWhenSplitAcrossParents() {
+        Sheep parent1 = DomainFixtures.createTestSheep(Map.of(
+                Category.COLOR, "RED"
+        ));
+        Sheep parent2 = DomainFixtures.createTestSheep(Map.of(
+                Category.COLOR, "GRN"
+        ));
+
+        Map<Category, Map<AlleleCodePair, Map<String, Integer>>> phenotypeFrequencies = Map.of(
+                Category.COLOR, Map.of(
+                        new AlleleCodePair("RED", "GRN"),
+                        Map.of(
+                                "BLU", 1,
+                                "PUR", 1
+                        )
+                )
+        );
+
+        Relationship relationship = DomainFixtures.createPopulatedRelationship(parent1, parent2, phenotypeFrequencies);
+
+        Sheep child = DomainFixtures.createTestSheep(Map.of(
+                Category.COLOR, "BLU"
+        ));
+
+        assertDoesNotThrow(() -> relationship.addChildToRelationship(child));
+    }
+
+    @Test
+    public void testAddChildToRelationship_colorThreeHiddenAllelesAlwaysViolates() {
+        Sheep parent1 = DomainFixtures.createTestSheep(Map.of(
+                Category.COLOR, "RED"
+        ));
+        Sheep parent2 = DomainFixtures.createTestSheep(Map.of(
+                Category.COLOR, "GRN"
+        ));
+
+        Map<Category, Map<AlleleCodePair, Map<String, Integer>>> phenotypeFrequencies = Map.of(
+                Category.COLOR, Map.of(
+                        new AlleleCodePair("RED", "GRN"),
+                        Map.of(
+                                "BLU", 1,
+                                "PUR", 1
+                        )
+                )
+        );
+
+        Relationship relationship = DomainFixtures.createPopulatedRelationship(parent1, parent2, phenotypeFrequencies);
+
+        Sheep child = DomainFixtures.createTestSheep(Map.of(
+                Category.COLOR, "YEL"
+        ));
+
+        assertThrows(
+                ExcessAlleleDiversityException.class,
+                () -> relationship.addChildToRelationship(child)
+        );
+    }
+
+    @Test
+    public void testAddChildToRelationship_shinyRecessivePhenotypeCountsAsStrongConstraint() {
+        Sheep parent1 = DomainFixtures.createTestSheep(Map.of(
+                Category.SHINY, "NRM"
+        ));
+        Sheep parent2 = DomainFixtures.createTestSheep(Map.of(
+                Category.SHINY, "NRM"
+        ));
+
+        Map<Category, Map<AlleleCodePair, Map<String, Integer>>> phenotypeFrequencies = Map.of(
+                Category.SHINY, Map.of(
+                        new AlleleCodePair("NRM", "NRM"),
+                        Map.of("NRM", 1)
+                )
+        );
+
+        Relationship relationship = DomainFixtures.createPopulatedRelationship(parent1, parent2, phenotypeFrequencies);
+
+        Sheep child = DomainFixtures.createTestSheep(Map.of(
+                Category.SHINY, "SHN"
+        ));
+
+        // Depending on your exact shiny-domain rules, either this should succeed or fail.
+        // The point is to assert the rule explicitly once you settle the semantics.
+        assertThrows(
+                ExcessAlleleDiversityException.class,
+                () -> relationship.addChildToRelationship(child)
+        );
+    }
+
     private static Map<Category, Map<AlleleCodePair, Map<String, Integer>>> withEmptyFrequencyCategories(
             Map<Category, Map<AlleleCodePair, Map<String, Integer>>> input
     ) {

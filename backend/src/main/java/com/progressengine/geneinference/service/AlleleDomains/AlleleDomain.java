@@ -1,10 +1,6 @@
 package com.progressengine.geneinference.service.AlleleDomains;
 
-import java.util.List;
-import java.util.Random;
-import java.util.Set;
-import java.util.Map;
-import java.util.EnumMap;
+import java.util.*;
 
 import com.progressengine.geneinference.model.AllelePair;
 import com.progressengine.geneinference.model.enums.Allele;
@@ -53,5 +49,58 @@ public interface AlleleDomain<A extends Enum<A> & Allele> {
         if (hidden == null) return true;    // hidden is optional in many flows
 
         return hiddenPriorGivenPhenotype(phenotype).getOrDefault(hidden, 0.0) > 0.0;
+    }
+
+    default Set<A> possibleHiddenAllelesForPhenotype(A phenotype) {
+        Set<A> result = EnumSet.noneOf(getAlleleType());
+        for (A allele : getAlleles()) {
+            if (isHiddenAllelePossible(phenotype, allele)) {
+                result.add(allele);
+            }
+        }
+        return result;
+    }
+
+    default Set<AllelePair<A>> possibleParentHiddenAssignments(A parent1Phenotype, A parent2Phenotype) {
+        Set<A> parent1Possible = possibleHiddenAllelesForPhenotype(parent1Phenotype);
+        Set<A> parent2Possible = possibleHiddenAllelesForPhenotype(parent2Phenotype);
+        Set<AllelePair<A>> result = new HashSet<>();
+
+        for (A a1 : parent1Possible) {
+            for (A a2 : parent2Possible) {
+                result.add(new AllelePair<>(a1, a2));
+            }
+        }
+
+        return result;
+    }
+
+    default Set<A> possibleChildPhenotypesFromGenotypes(
+            A p1Phenotype, A p1Hidden,
+            A p2Phenotype, A p2Hidden
+    ) {
+        Set<A> result = EnumSet.noneOf(getAlleleType());
+
+        Set<A> p1Set = EnumSet.of(p1Phenotype, p1Hidden);
+        Set<A> p2Set = EnumSet.of(p2Phenotype, p2Hidden);
+
+        for (A a1 : p1Set) {
+            for (A a2 : p2Set) {
+                double[] bias = expressionBias(a1, a2);
+
+                if (bias[0] > 0.0) {
+                    result.add(a1);
+                }
+                if (bias[1] > 0.0) {
+                    result.add(a2);
+                }
+            }
+        }
+
+        return result;
+    }
+
+    default boolean canProduceChildPhenotype(A p1Phenotype, A p1Hidden, A p2Phenotype, A p2Hidden, A childPhenotype) {
+        return possibleChildPhenotypesFromGenotypes(p1Phenotype, p1Hidden, p2Phenotype, p2Hidden).contains(childPhenotype);
     }
 }

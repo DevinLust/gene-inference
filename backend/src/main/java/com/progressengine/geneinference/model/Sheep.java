@@ -252,7 +252,7 @@ public class Sheep {
         }
 
         if (hiddenAllele != null && !domain.isHiddenAllelePossible(phenotype, hiddenAllele)) {
-            throw new IllegalArgumentException(
+            throw new IllegalStateException(
                     formatErrorMessage(
                             "Hidden allele " + hiddenAllele.code()
                                     + " is not compatible with phenotype "

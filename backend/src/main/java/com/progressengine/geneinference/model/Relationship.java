@@ -14,6 +14,7 @@ import jakarta.transaction.Transactional;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Entity
 public class Relationship {
@@ -423,38 +424,6 @@ public class Relationship {
     }
 
 
-    // TODO - update for birthRecords when constraints are figured out
-    public void updateChildPhenotypeFrequencies(Sheep child, Map<Category, SheepGenotypeDTO> updatedGenotypes) {
-//        BirthRecord birthRecord = child.getBirthRecord();
-//        if (birthRecord == null || !this.equals(birthRecord.getParentRelationship())) throw new IllegalArgumentException("Sheep is not a child of this relationship");
-//        if (updatedGenotypes == null || updatedGenotypes.isEmpty()) return;
-//
-//        Map<Category, GradePair> phenotypeDeltas = new EnumMap<>(Category.class);
-//        for (Map.Entry<Category, SheepGenotypeDTO> entry : updatedGenotypes.entrySet()) {
-//            Category category = entry.getKey();
-//            GradePair genotype = entry.getValue().toGradePair();
-//
-//            Grade currentPhenotype = child.getPhenotype(category);
-//            Grade newPhenotype = genotype.getFirst();
-//            phenotypeDeltas.compute(category, (k, v) -> currentPhenotype != newPhenotype ? new GradePair(currentPhenotype, newPhenotype) : null);
-//        }
-//
-//        checkForExcessAlleles(phenotypeDeltas);
-//
-//        for (Map.Entry<Category, SheepGenotypeDTO> entry : updatedGenotypes.entrySet()) {
-//            Category category = entry.getKey();
-//            GradePair genotype = entry.getValue().toGradePair();
-//            child.setGenotype(category, genotype);
-//        }
-//        for (Map.Entry<Category, GradePair> entry : phenotypeDeltas.entrySet()) {
-//            Map<Grade, RelationshipPhenotypeFrequency> freqMap = getPhenotypeFrequenciesByCategory(entry.getKey());
-//            GradePair delta = entry.getValue();
-//            freqMap.get(delta.getFirst()).removeFrequency(1);
-//            freqMap.get(delta.getSecond()).addFrequency(1);
-//        }
-    }
-
-
     private void checkForExcessAllelesExperimental(Map<Category, SheepGenotypeDTO> childGenotypes) {
         List<ExcessAlleleViolation> violations = new ArrayList<>();
 
@@ -472,9 +441,9 @@ public class Relationship {
 
 
     private <A extends Enum<A> & Allele> void checkForExcessAllelesForCategory(
-        Category category,
-        Map<Category, SheepGenotypeDTO> childGenotypes,
-        List<ExcessAlleleViolation> violations
+            Category category,
+            Map<Category, SheepGenotypeDTO> childGenotypes,
+            List<ExcessAlleleViolation> violations
     ) {
         SheepGenotypeDTO childGenotype = childGenotypes.get(category);
         if (childGenotype == null || childGenotype.phenotype() == null) {
@@ -483,69 +452,62 @@ public class Relationship {
 
         AlleleDomain<A> domain = CategoryDomains.typedDomainFor(category);
 
-        A newAllele = domain.parse(childGenotype.phenotype());
         A parent1Phenotype = parent1.getPhenotype(category);
         A parent2Phenotype = parent2.getPhenotype(category);
+        A proposedChildPhenotype = domain.parse(childGenotype.phenotype());
 
-        AllelePair<A> currentParentPhenotypes = new AllelePair<>(parent1Phenotype, parent2Phenotype);
-
-        if (newAllele == currentParentPhenotypes.getFirst() || newAllele == currentParentPhenotypes.getSecond()) {
-            return;
-        }
+        Set<AllelePair<A>> feasibleAssignments =
+                domain.possibleParentHiddenAssignments(parent1Phenotype, parent2Phenotype);
 
         Map<AllelePair<A>, Map<A, Integer>> epochMap = getPhenotypeFrequencies(category);
-        Set<A> previousHidden = hiddenAlleleDiversity(epochMap, domain);
 
-        if (previousHidden.size() == 2 && !previousHidden.contains(newAllele)) {
-            Set<A> validAlleles = EnumSet.of(
-                    currentParentPhenotypes.getFirst(),
-                    currentParentPhenotypes.getSecond()
-            );
-            validAlleles.addAll(previousHidden);
+        if (epochMap != null) {
+            for (Map.Entry<AllelePair<A>, Map<A, Integer>> entry : epochMap.entrySet()) {
+                Map<A, Integer> childPhenotypes = entry.getValue();
 
-            Set<String> validAlleleCodes = validAlleles.stream()
-                .map(Allele::code)
-                .collect(Collectors.toSet());
+                for (Map.Entry<A, Integer> childEntry : childPhenotypes.entrySet()) {
+                    A historicalChildPhenotype = childEntry.getKey();
+                    Integer freq = childEntry.getValue();
 
-            violations.add(
-                new ExcessAlleleViolation(
-                        category,
-                        newAllele.code(),
-                        validAlleleCodes
-                )
-            );
-        }
-    }
+                    if (freq == null || freq <= 0) {
+                        continue;
+                    }
 
-
-    private <A extends Enum<A> & Allele> Set<A> hiddenAlleleDiversity(
-        Map<AllelePair<A>, Map<A, Integer>> epochMap,
-        AlleleDomain<A> domain
-    ) {
-        if (epochMap == null || epochMap.isEmpty()) {
-            return EnumSet.noneOf(domain.getAlleleType());
-        }
-
-        Set<A> definitiveHiddenAlleles = EnumSet.noneOf(domain.getAlleleType());
-
-        for (Map.Entry<AllelePair<A>, Map<A, Integer>> entry : epochMap.entrySet()) {
-            AllelePair<A> parentPhenotypes = entry.getKey();
-            Map<A, Integer> phenotypesSeen = entry.getValue();
-
-            for (Map.Entry<A, Integer> freqPair : phenotypesSeen.entrySet()) {
-                A phenotype = freqPair.getKey();
-                Integer freq = freqPair.getValue();
-
-                if (phenotype != parentPhenotypes.getFirst()
-                        && phenotype != parentPhenotypes.getSecond()
-                        && freq != null
-                        && freq > 0) {
-                    definitiveHiddenAlleles.add(phenotype);
+                    feasibleAssignments = feasibleAssignments.stream()
+                            .filter(assignment -> domain.canProduceChildPhenotype(
+                                    parent1Phenotype,
+                                    assignment.getFirst(),
+                                    parent2Phenotype,
+                                    assignment.getSecond(),
+                                    historicalChildPhenotype
+                            ))
+                            .collect(Collectors.toSet());
                 }
             }
         }
 
-        return definitiveHiddenAlleles;
+        Set<AllelePair<A>> afterProposed = feasibleAssignments.stream()
+                .filter(assignment -> domain.canProduceChildPhenotype(
+                        parent1Phenotype,
+                        assignment.getFirst(),
+                        parent2Phenotype,
+                        assignment.getSecond(),
+                        proposedChildPhenotype
+                ))
+                .collect(Collectors.toSet());
+
+        if (afterProposed.isEmpty()) {
+            Set<String> validAlleles = feasibleAssignments.stream()
+                    .flatMap(pair -> Stream.of(pair.getFirst(), pair.getSecond()))
+                    .map(Allele::code)
+                    .collect(Collectors.toSet());
+
+            violations.add(new ExcessAlleleViolation(
+                    category,
+                    proposedChildPhenotype.code(),
+                    validAlleles
+            ));
+        }
     }
 
 
