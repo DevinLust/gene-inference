@@ -70,8 +70,7 @@ public class SheepController {
                                      @AuthenticationPrincipal Jwt jwt
     ) {
         UUID userId = UUID.fromString(jwt.getSubject());
-        Sheep sheep = sheepService.findByIdAndUserId(sheepId, userId);
-        return DomainMapper.toResponseDTO(sheep);
+        return sheepService.getSheepResponseDTO(sheepId, userId);
     }
 
     @GetMapping("/{sheepId}/parents")

@@ -2,8 +2,7 @@
 
 import { useState, useActionState, useEffect, useRef } from "react";
 import type { UpdateSheepState } from "@/app/lib/actions";
-import { updateSheep } from "@/app/lib/actions";
-import { Loader2 } from "lucide-react";
+import { updateSheepName } from "@/app/lib/actions";
 
 export default function EditableSheepName({
                                               sheepId,
@@ -12,7 +11,7 @@ export default function EditableSheepName({
     sheepId: number;
     initialName: string;
 }) {
-    const action = updateSheep.bind(null, sheepId);
+    const action = updateSheepName.bind(null, sheepId);
     const [state, formAction, isPending] = useActionState<UpdateSheepState, FormData>(action, {});
     const [editing, setEditing] = useState(false);
     const [dismissed, setDismissed] = useState(false);

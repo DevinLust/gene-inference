@@ -19,6 +19,7 @@ export type ControlledGenotypeMap = Record<
 type GenotypeFieldsProps = {
     genotypes: ControlledGenotypeMap;
     setGenotypes: React.Dispatch<React.SetStateAction<ControlledGenotypeMap>>;
+    lockedCategories?: Category[];
     validationErrors?: Partial<Record<Category, string[]>>;
     constraintViolations?: Partial<Record<Category, ExcessAlleleViolationDTO>>;
 };
@@ -26,6 +27,7 @@ type GenotypeFieldsProps = {
 export default function GenotypeFields({
                                            genotypes,
                                            setGenotypes,
+                                           lockedCategories = [],
                                            validationErrors,
                                            constraintViolations,
                                        }: GenotypeFieldsProps) {
@@ -37,6 +39,7 @@ export default function GenotypeFields({
                 title="Appearance Genes"
                 subtleClassName="border-l-2 border-slate-400/40 pl-2"
                 categories={APPEARANCE_CATEGORIES}
+                lockedCategories={lockedCategories}
                 genotypes={genotypes}
                 setGenotypes={setGenotypes}
                 validationErrors={validationErrors}
@@ -47,6 +50,7 @@ export default function GenotypeFields({
                 title="Stat Genes"
                 subtleClassName="border-l-2 border-blue-300/30 pl-2"
                 categories={TRAIT_CATEGORIES}
+                lockedCategories={lockedCategories}
                 genotypes={genotypes}
                 setGenotypes={setGenotypes}
                 validationErrors={validationErrors}
@@ -60,6 +64,7 @@ type CategorySectionProps = {
     title: string;
     subtleClassName?: string;
     categories: Category[];
+    lockedCategories: Category[];
     genotypes: ControlledGenotypeMap;
     setGenotypes: React.Dispatch<React.SetStateAction<ControlledGenotypeMap>>;
     validationErrors?: Partial<Record<Category, string[]>>;
@@ -70,6 +75,7 @@ function CategorySection({
                              title,
                              subtleClassName = "",
                              categories,
+                             lockedCategories,
                              genotypes,
                              setGenotypes,
                              validationErrors,
@@ -81,14 +87,23 @@ function CategorySection({
 
             <div className="flex flex-col gap-2">
                 {categories.map((c) => {
+                    const isLocked = lockedCategories?.includes(c) ?? false;
                     const options = CATEGORY_ALLELE_OPTIONS[c];
                     const categoryValidationErrors = validationErrors?.[c];
                     const categoryConstraintViolation = constraintViolations?.[c];
 
                     return (
-                        <div key={c} className="bg-blue-900 border border-gray-500 rounded-lg">
-                            <div className="w-full bg-blue-500 pl-4 py-1 rounded-t-lg">
+                        <div
+                            key={c}
+                            className={`mb-2 border border-gray-500 rounded-lg ${
+                                isLocked ? "bg-blue-950/50 opacity-60" : "bg-blue-900"
+                            }`}
+                        >
+                            <div className="w-full bg-blue-500 pl-4 py-1 rounded-t-lg flex items-center justify-between">
                                 <CategoryTag category={c} />
+                                {isLocked && (
+                                    <span className="mr-3 text-xs text-gray-200">Locked</span>
+                                )}
                             </div>
 
                             <div className="grid grid-cols-[auto_minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-4 gap-y-2 p-4">
@@ -96,6 +111,7 @@ function CategorySection({
                                     Phenotype:
                                 </label>
                                 <select
+                                    disabled={isLocked}
                                     id={`genotypes.${c}.phenotype`}
                                     name={`genotypes.${c}.phenotype`}
                                     value={genotypes[c]?.phenotype ?? ""}
@@ -108,7 +124,7 @@ function CategorySection({
                                             },
                                         }))
                                     }
-                                    className="w-full min-w-0 py-1 border border-gray-500 rounded bg-gray-800"
+                                    className="ml-1 py-1 border border-gray-500 rounded bg-gray-800 disabled:opacity-60 disabled:cursor-not-allowed"
                                 >
                                     <option value="">Select...</option>
                                     {options.map((opt) => (
@@ -122,6 +138,7 @@ function CategorySection({
                                     Hidden Allele:
                                 </label>
                                 <select
+                                    disabled={isLocked}
                                     id={`genotypes.${c}.hiddenAllele`}
                                     name={`genotypes.${c}.hiddenAllele`}
                                     value={genotypes[c]?.hiddenAllele ?? ""}
@@ -134,7 +151,7 @@ function CategorySection({
                                             },
                                         }))
                                     }
-                                    className="w-full min-w-0 py-1 border border-gray-500 rounded bg-gray-800"
+                                    className="ml-1 py-1 border border-gray-500 rounded bg-gray-800 disabled:opacity-60 disabled:cursor-not-allowed"
                                 >
                                     <option value="">None</option>
                                     {options.map((opt) => (

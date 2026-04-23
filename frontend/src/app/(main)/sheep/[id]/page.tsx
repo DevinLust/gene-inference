@@ -3,10 +3,10 @@ import { notFound } from 'next/navigation';
 import EditableSheepName from '@/app/ui/sheep/editable-sheep-name';
 import GenotypeTables from '@/app/ui/sheep/genotype-tables';
 import DistributionTable from '@/app/ui/sheep/distribution-table';
+import SheepEditButton from '@/app/ui/sheep/sheep-edit-button';
 import SheepDeleteButton from '@/app/ui/sheep/sheep-delete-button';
 import GraphBackButton from '@/app/ui/graph-back-button';
 import { RelationshipGraphLink } from '@/app/ui/buttons';
-import Link from 'next/link';
 
 export default async function SheepDetailPage(props: { params: Promise<{ id: string }> }) {
     const params = await props.params;
@@ -25,7 +25,10 @@ export default async function SheepDetailPage(props: { params: Promise<{ id: str
             {/* Name */}
             <div className="flex flex-wrap justify-between">
                 <EditableSheepName sheepId={sheep.id} initialName={sheep.name ?? ""} />
-                <SheepDeleteButton sheepId={sheep.id} />
+                <div className="flex gap-2">
+                    <SheepEditButton sheepId={sheep.id} />
+                    <SheepDeleteButton sheepId={sheep.id} />
+                </div>
             </div>
 
 

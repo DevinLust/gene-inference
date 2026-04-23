@@ -1,10 +1,15 @@
 package com.progressengine.geneinference.mapper;
 
 import com.progressengine.geneinference.dto.*;
+import com.progressengine.geneinference.model.enums.Category;
 import org.springframework.data.domain.Page;
 import com.progressengine.geneinference.model.BirthRecord;
 import com.progressengine.geneinference.model.Relationship;
 import com.progressengine.geneinference.model.Sheep;
+
+import java.util.Arrays;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class DomainMapper {
     public static Sheep fromRequestDTO(SheepNewRequestDTO dto) {
@@ -26,11 +31,17 @@ public class DomainMapper {
     }
 
     public static SheepResponseDTO toResponseDTO(Sheep sheep) {
+        return toResponseDTO(sheep, null);
+    }
+
+    public static SheepResponseDTO toResponseDTO(Sheep sheep, Set<Category> lockedCategories) {
         SheepResponseDTO responseDTO = new SheepResponseDTO();
         responseDTO.setId(sheep.getId());
         responseDTO.setName(sheep.getName());
         responseDTO.setGenotypes(sheep.getGenotypes());
         responseDTO.setDistributions(sheep.getAllDistributions());
+
+        responseDTO.setLockedCategories(lockedCategories);
 
         if (sheep.getParentRelationship() != null) {
             responseDTO.setParentRelationshipId(sheep.getParentRelationship().getId());

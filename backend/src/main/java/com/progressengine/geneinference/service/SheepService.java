@@ -20,6 +20,7 @@ import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class SheepService {
@@ -76,6 +77,17 @@ public class SheepService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Sheep with id " + id + " not found"
                 ));
+    }
+
+    @Transactional
+    public SheepResponseDTO getSheepResponseDTO(Integer sheepId, UUID userId) {
+        Sheep sheep = findByIdAndUserId(sheepId, userId);
+
+        Set<Category> lockedCategories = Arrays.stream(Category.values())
+                .filter(category -> isCategoryLockedForEditing(sheep, category))
+                .collect(Collectors.toSet());
+
+        return DomainMapper.toResponseDTO(sheep, lockedCategories);
     }
 
     public Sheep saveSheep(Sheep sheep) {

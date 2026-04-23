@@ -2,8 +2,6 @@
 
 import { useActionState, useState, startTransition } from "react";
 import { createSheep, CreateState } from "@/app/lib/actions";
-import DistributionForm from "./distributions-subform";
-import FeatureInProgress from "@/app/ui/in-progress";
 import GenotypeFields from "@/app/ui/genotype-fields";
 import { ControlledGenotypeMap, createEmptyControlledGenotypes } from "@/app/ui/genotype-fields";
 
@@ -15,8 +13,6 @@ export default function SheepForm() {
     const [name, setName] = useState("");
 
     const [genotypes, setGenotypes] = useState<ControlledGenotypeMap>(createEmptyControlledGenotypes);
-
-    const [parentRelationshipId, setParentRelationshipId] = useState("");
 
     return (
         <form
@@ -58,7 +54,7 @@ export default function SheepForm() {
             <button
                 type="submit"
                 disabled={isPending}
-                className="bg-blue-600 text-white rounded px-4 py-2 hover:bg-blue-700"
+                className="flex gap-1 bg-blue-600 text-white rounded px-4 py-2 hover:bg-blue-700"
             >
                 {isPending && <Spinner />}
                 {isPending ? "Creating..." : "Create Sheep"}

@@ -4,6 +4,7 @@ import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.DistributionType;
 
 import java.util.Map;
+import java.util.Set;
 
 public class SheepResponseDTO {
     private Integer id;
@@ -11,6 +12,7 @@ public class SheepResponseDTO {
     private Map<Category, SheepGenotypeDTO> genotypes;
     private Map<Category, Map<DistributionType, Map<String, Double>>> distributions;
     private Integer parentRelationshipId;
+    private Set<Category> lockedCategories;
 
     public Integer getId() {
         return id;
@@ -42,6 +44,14 @@ public class SheepResponseDTO {
 
     public void setDistributions(Map<Category, Map<DistributionType, Map<String, Double>>> distributions) {
         this.distributions = distributions;
+    }
+
+    public Set<Category> getLockedCategories() {
+        return lockedCategories;
+    }
+
+    public void setLockedCategories(Set<Category> lockedCategories) {
+        this.lockedCategories = lockedCategories;
     }
 
     public Integer getParentRelationshipId() {

@@ -216,6 +216,7 @@ export type Sheep = {
     distributions: ProbabilityMap;
     genotypes: GenotypeMap;
     parentRelationshipId: number | null;
+    lockedCategories: Category[];
 };
 
 export type SheepSummary = {

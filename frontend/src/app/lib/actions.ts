@@ -9,7 +9,6 @@ export type CreateState = {
     message?: string | null;
     errors?: {
         name?: string[];
-        distributions?: Partial<Record<Category, string[]>>;
         genotypes?: Partial<Record<Category, string[]>>;
     };
 };
@@ -23,7 +22,10 @@ export type ChildState =
 export type UpdateSheepState = {
     success?: boolean;
     message?: string | null;
-    errors?: { name?: string[] };
+    errors?: {
+        name?: string[];
+        genotypes?: Partial<Record<Category, string[]>>;
+    };
 };
 
 export type BreedState = {
@@ -261,8 +263,34 @@ export async function breedSheep(prevState: BreedState, formData: FormData) {
     redirect(`/birth-record/${birthRecord.id}`);
 }
 
-
 export async function updateSheep(
+    sheepId: number,
+    prevState: UpdateSheepState,
+    formData: FormData
+) {
+    let updateDTO: SheepUpdateDTO;
+    try {
+        updateDTO = await formDataToSheepUpdateDTO(formData);
+    } catch (err) {
+        return err instanceof Error && err.message ? { message: err.message, errors: {} } : { message: "Invalid form data", errors: {} };
+    }
+
+    const res = await fetch(`${API_BASE_URL}/sheep/${sheepId}`, {
+        method: "PATCH",
+        headers: await authHeaders(),
+        body: JSON.stringify(updateDTO),
+    });
+
+    if (!res.ok) {
+        return await parseError(res);
+    }
+
+    revalidatePath("/sheep");
+    revalidatePath(`/sheep/${sheepId}`);
+    redirect(`/sheep/${sheepId}`);
+}
+
+export async function updateSheepName(
     sheepId: number,
     prevState: UpdateSheepState,
     formData: FormData
