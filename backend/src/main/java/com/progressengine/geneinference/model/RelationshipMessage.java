@@ -76,7 +76,7 @@ public class RelationshipMessage extends Message {
         Sheep targetSheep = target.getValue();
 
         boolean firstParentAsWeight = relationship.getParent2().equals(targetSheep);
-        Map<A, Double> weightDistribution = messages.get(0).getDistributionByCategory(category);
+        Map<A, Double> weightDistribution = messages.getFirst().getDistributionByCategory(category);
         Map<AllelePair<A>, Double> jointDistribution = relationship.getJointDistribution(category);
 
         for (int i = 1; i < messages.size(); i++) {
