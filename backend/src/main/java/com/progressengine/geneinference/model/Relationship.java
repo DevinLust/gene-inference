@@ -133,8 +133,9 @@ public class Relationship {
             Map<AlleleCodePair, Double> jointEpoch = uniformJointDistribution(category);
             Map<AlleleCodePair, Map<String, Integer>> epochFrequencies = phenotypeRecordFrequencies.get(category);
 
-            if (epochFrequencies == null) {
-                throw new IllegalStateException("phenotype frequencies for Category " + category + " not found");
+            if (epochFrequencies == null || epochFrequencies.isEmpty()) {
+                result.put(category, jointEpoch); // uniform
+                continue;
             }
 
             computeJointCacheForCategory(category, jointEpoch, epochFrequencies);

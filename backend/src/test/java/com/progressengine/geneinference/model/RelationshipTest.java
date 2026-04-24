@@ -688,6 +688,46 @@ public class RelationshipTest {
         );
     }
 
+    @Test
+    void getPhenotypeFrequencies_returnsEmptyMapWhenCategoryHasNoBirthRecords() {
+        Sheep parent1 = DomainFixtures.createTestSheep(Map.of());
+        Sheep parent2 = DomainFixtures.createTestSheep(Map.of());
+
+        Relationship relationship = DomainFixtures.createEmptyRelationship(parent1, parent2);
+
+        Map<AllelePair<Color>, Map<Color, Integer>> frequencies =
+                relationship.getPhenotypeFrequencies(Category.COLOR);
+
+        assertTrue(frequencies.isEmpty());
+    }
+
+    @Test
+    void getJointDistributions_usesUniformDistributionWhenCategoryHasNoBirthRecords() {
+        Sheep parent1 = DomainFixtures.createTestSheep(Map.of());
+        Sheep parent2 = DomainFixtures.createTestSheep(Map.of());
+
+        Relationship relationship = DomainFixtures.createEmptyRelationship(parent1, parent2);
+
+        Map<AlleleCodePair, Double> colorJoint =
+                relationship.getJointDistributions().get(Category.COLOR);
+
+        assertNotNull(colorJoint);
+        assertFalse(colorJoint.isEmpty());
+
+        double sum = colorJoint.values().stream()
+                .mapToDouble(Double::doubleValue)
+                .sum();
+
+        assertEquals(1.0, sum, 1e-9);
+
+        long distinctValues = colorJoint.values().stream()
+                .map(v -> Math.round(v * 1_000_000_000L))
+                .distinct()
+                .count();
+
+        assertEquals(1, distinctValues);
+    }
+
     private static Map<Category, Map<AlleleCodePair, Map<String, Integer>>> withEmptyFrequencyCategories(
             Map<Category, Map<AlleleCodePair, Map<String, Integer>>> input
     ) {
