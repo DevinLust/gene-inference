@@ -10,21 +10,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_DB: gene_inference_ci
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd="pg_isready -U postgres -d gene_inference_ci"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-
     steps:
       - uses: actions/checkout@v4
 
@@ -35,37 +20,21 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Install psql client
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
 
-      - name: Apply database migrations
+      - name: Start Supabase
         working-directory: ./backend
-        env:
-          PGPASSWORD: postgres
-        run: |
-          shopt -s nullglob
-          files=(supabase/migrations/*.sql)
-          if [ ${#files[@]} -eq 0 ]; then
-            echo "No migration files found"
-            exit 1
-          fi
-
-          for file in "${files[@]}"; do
-            echo "Applying $file"
-            psql \
-              -h localhost \
-              -U postgres \
-              -d gene_inference_ci \
-              -v ON_ERROR_STOP=1 \
-              -f "$file"
-          done
+        run: supabase start
 
       - name: Build with Maven
         working-directory: ./backend
         run: mvn -B clean test --file pom.xml
         env:
           SPRING_PROFILES_ACTIVE: ci
-          DB_URL: jdbc:postgresql://localhost:5432/gene_inference_ci
+          DB_URL: jdbc:postgresql://localhost:54322/postgres
           DB_USERNAME: postgres
           DB_PASSWORD: postgres
           SUPABASE_JWT_ISSUER: http://localhost/dummy-auth
