@@ -5,6 +5,8 @@ import com.progressengine.geneinference.dto.SheepSummaryResponseDTO;
 import com.progressengine.geneinference.model.Sheep;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.DistributionType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -124,6 +126,9 @@ public interface SheepRepository extends JpaRepository<Sheep, Integer>, JpaSpeci
     );
 
     List<Sheep> findAllByIdInAndUserId(List<Integer> ids, UUID userId);
+
+    @Query("select s.id from Sheep s")
+    Page<Integer> findAllIds(Pageable pageable);
 
     long deleteByIdAndUserId(Integer id, UUID userId);
 }
