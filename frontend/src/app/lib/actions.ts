@@ -1,6 +1,6 @@
 'use server'; // server actions
 
-import { Grade, Category, SheepCreateDTO, SheepUpdateDTO, SheepChildDTO, BirthRecord, ValidationFailed, GeneticConstraintViolation } from '@/app/lib/definitions';
+import { Grade, Category, SheepCreateDTO, SheepUpdateDTO, SheepChildDTO, BirthRecord, ValidationFailed, GeneticConstraintViolation, ALL_CATEGORIES } from '@/app/lib/definitions';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from "@/app/lib/supabase/server";
@@ -9,7 +9,6 @@ export type CreateState = {
     message?: string | null;
     errors?: {
         name?: string[];
-        distributions?: Partial<Record<Category, string[]>>;
         genotypes?: Partial<Record<Category, string[]>>;
     };
 };
@@ -20,11 +19,11 @@ export type ChildState =
     | ({ status: "error" } & ValidationFailed)             // backend validation
     | ({ status: "error" } & GeneticConstraintViolation);  // backend genetic constraint
 
-export type UpdateSheepState = {
-    success?: boolean;
-    message?: string | null;
-    errors?: { name?: string[] };
-};
+export type UpdateSheepState =
+    | { status: "idle" }
+    | { status: "success"; ok: true; message?: string }
+    | ({ status: "error" } & ValidationFailed)
+    | ({ status: "error" } & GeneticConstraintViolation);
 
 export type BreedState = {
     message?: string | null;
@@ -40,7 +39,6 @@ if (!process.env.NEXT_PUBLIC_API_BASE_URL) {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
-const categories: Category[] = ["SWIM", "FLY", "RUN", "POWER", "STAMINA"];
 const grades: Grade[] = ["S", "A", "B", "C", "D", "E"];
 
 export async function logout(formData: FormData, nextPath: string = "/login") {
@@ -49,86 +47,92 @@ export async function logout(formData: FormData, nextPath: string = "/login") {
     redirect(nextPath);
 }
 
-export async function formDataToSheepCreateDTO(formData: FormData): Promise<SheepCreateDTO> {
-    // Build genotypes
-    const genotypes = Object.fromEntries(
-        categories.map((c) => [
-            c,
-            {
-                phenotype: formData.get(`genotypes.${c}.phenotype`) as Grade || null,
-                hiddenAllele: (formData.get(`genotypes.${c}.hiddenAllele`) as Grade) || null,
-            },
-        ])
+function parseOptionalString(value: FormDataEntryValue | null): string | null {
+    if (typeof value !== "string") return null;
+    const trimmed = value.trim();
+    return trimmed === "" ? null : trimmed;
+}
+
+function parseOptionalNumber(value: FormDataEntryValue | null): number | null {
+    if (value === null || value === "") return null;
+    const n = Number(value);
+    if (Number.isNaN(n)) {
+        throw new Error("Invalid numeric value");
+    }
+    return n;
+}
+
+function formDataToGenotypes(
+    formData: FormData
+): SheepCreateDTO["genotypes"] | null {
+    let hasAnyPhenotype = false;
+
+    const result = Object.fromEntries(
+        ALL_CATEGORIES.map((c) => {
+            const phenotype = parseOptionalString(
+                formData.get(`genotypes.${c}.phenotype`)
+            );
+            const hiddenAllele = parseOptionalString(
+                formData.get(`genotypes.${c}.hiddenAllele`)
+            );
+
+            if (phenotype !== null) {
+                hasAnyPhenotype = true;
+            }
+
+            return [
+                c,
+                {
+                    phenotype,
+                    hiddenAllele,
+                },
+            ];
+        })
     ) as SheepCreateDTO["genotypes"];
 
-    // Optionally parse distributions if the user included them in the form
-    const distributions: SheepCreateDTO["distributions"] = Object.fromEntries(
-        categories
-            .map((c) => {
-                // Build grade -> number map for this category
-                const gradeMap: Record<Grade, number> = {} as Record<Grade, number>;
+    return hasAnyPhenotype ? result : null;
+}
 
-                let hasValue = false;
-                for (const g of grades) {
-                    const val = formData.get(`distributions.${c}.${g}`);
-                    if (val !== null && val !== "") {
-                        gradeMap[g] = Number(val);
-                        hasValue = true;
-                    } else {
-                        gradeMap[g] = 0; // fill missing with 0
-                    }
-                }
+export async function formDataToSheepCreateDTO(
+    formData: FormData
+): Promise<SheepCreateDTO> {
+    const genotypes = formDataToGenotypes(formData);
 
-                // Only include category if at least one grade was filled
-                if (hasValue) return [c, gradeMap];
-                return null;
-            })
-            .filter(Boolean) as [Category, Record<Grade, number>][]
-    );
-
-    const parentRelationshipIdRaw = formData.get("parentRelationshipId");
-    const parentRelationshipId =
-        parentRelationshipIdRaw === null || parentRelationshipIdRaw === ""
-            ? null
-            : (() => {
-                const n = Number(parentRelationshipIdRaw);
-                if (Number.isNaN(n)) {
-                    throw new Error("Invalid parentRelationshipId");
-                }
-                return n;
-            })();
-    const childNameRaw = formData.get("name") as string;
-    const childName =
-        childNameRaw && childNameRaw.trim() !== ""
-            ? childNameRaw.trim()
-            : null;
+    const name = parseOptionalString(formData.get("name"));
 
     return {
-        name: childName,
-        genotypes: genotypes,
-        distributions: distributions,
-        parentRelationshipId: parentRelationshipId,
+        name,
+        genotypes,
     };
 }
 
-export async function formDataToSheepUpdateDTO(formData: FormData): Promise<SheepUpdateDTO> {
-    const createDTO: SheepCreateDTO = await formDataToSheepCreateDTO(formData);
+export async function formDataToSheepUpdateDTO(
+    formData: FormData
+): Promise<SheepUpdateDTO> {
     return {
-        name: createDTO.name,
-        genotypes: createDTO.genotypes,
-        distributions: createDTO.distributions
-    }
+        name: parseOptionalString(formData.get("name")),
+        genotypes: formDataToGenotypes(formData),
+    };
 }
 
-export async function formDataToChildDTO(formData: FormData): Promise<SheepChildDTO> {
-    const createDTO: SheepCreateDTO = await formDataToSheepCreateDTO(formData);
-    return {
-        name: createDTO.name,
-        genotypes: createDTO.genotypes,
-        distributions: createDTO.distributions,
-        parent1Id: Number(formData.get("parent1Id")),
-        parent2Id: Number(formData.get("parent2Id"))
+export async function formDataToChildDTO(
+    formData: FormData
+): Promise<SheepChildDTO> {
+    const name = parseOptionalString(formData.get("name"));
+
+    const parent1Id = parseOptionalNumber(formData.get("parent1Id"));
+    const parent2Id = parseOptionalNumber(formData.get("parent2Id"));
+
+    if (parent1Id === null || parent2Id === null) {
+        throw new Error("Both parent IDs are required");
     }
+
+    return {
+        name,
+        genotypes: formDataToGenotypes(formData),
+        parent1Id,
+        parent2Id,
+    };
 }
 
 export async function createSheep(prevState: CreateState, formData: FormData) {
@@ -256,22 +260,69 @@ export async function breedSheep(prevState: BreedState, formData: FormData) {
     redirect(`/birth-record/${birthRecord.id}`);
 }
 
-
 export async function updateSheep(
     sheepId: number,
     prevState: UpdateSheepState,
     formData: FormData
-) {
+): Promise<UpdateSheepState> {
     let updateDTO: SheepUpdateDTO;
+
     try {
         updateDTO = await formDataToSheepUpdateDTO(formData);
     } catch (err) {
-        return err instanceof Error && err.message ? { message: err.message, errors: {} } : { message: "Invalid form data", errors: {} };
+        return {
+            status: "error",
+            error: "VALIDATION_FAILED",
+            message: err instanceof Error && err.message ? err.message : "Invalid form data",
+            errors: {},
+        };
     }
 
-    // only required while other fields are ignored for now
+    const res = await fetch(`${API_BASE_URL}/sheep/${sheepId}`, {
+        method: "PATCH",
+        headers: await authHeaders(),
+        body: JSON.stringify(updateDTO),
+    });
+
+    if (!res.ok) {
+        const apiErr = await parseError(res);
+        // Wrap it with status:"error" so narrowing works everywhere
+        return {
+            status: "error",
+            ...apiErr,
+        } as UpdateSheepState;
+    }
+
+    revalidatePath("/sheep");
+    revalidatePath(`/sheep/${sheepId}`);
+    redirect(`/sheep/${sheepId}`);
+}
+
+export async function updateSheepName(
+    sheepId: number,
+    prevState: UpdateSheepState,
+    formData: FormData
+): Promise<UpdateSheepState> {
+    let updateDTO: SheepUpdateDTO;
+
+    try {
+        updateDTO = await formDataToSheepUpdateDTO(formData);
+    } catch (err) {
+        return {
+            status: "error",
+            error: "VALIDATION_FAILED",
+            message: err instanceof Error && err.message ? err.message : "Invalid form data",
+            errors: {},
+        };
+    }
+
     if (!updateDTO.name) {
-        return { message: "Name is required", errors: { name: ["Name cannot be empty"] } };
+        return {
+            status: "error",
+            error: "VALIDATION_FAILED",
+            message: "Name is required",
+            errors: { name: ["Name cannot be empty"] },
+        };
     }
 
     const res = await fetch(`${API_BASE_URL}/sheep/${sheepId}`, {
@@ -286,8 +337,12 @@ export async function updateSheep(
 
     revalidatePath("/sheep");
     revalidatePath(`/sheep/${sheepId}`);
-    // no redirect needed if you’re already on the detail page
-    return { success: true };
+
+    return {
+        status: "success",
+        ok: true,
+        message: "Sheep updated successfully",
+    };
 }
 
 

@@ -1,11 +1,14 @@
 package com.progressengine.geneinference.service;
 
-import com.progressengine.geneinference.model.GradePair;
 import com.progressengine.geneinference.model.Relationship;
 import com.progressengine.geneinference.model.Sheep;
+import com.progressengine.geneinference.model.AllelePair;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.DistributionType;
 import com.progressengine.geneinference.model.enums.Grade;
+import com.progressengine.geneinference.service.AlleleDomains.CategoryDomains;
+import com.progressengine.geneinference.service.AlleleDomains.GradeAlleleDomain;
+
 import org.springframework.stereotype.Service;
 
 import java.util.EnumMap;
@@ -20,15 +23,18 @@ public class NaiveInference extends BaseInferenceEngine {
         Sheep parent1 = relationship.getParent1();
         Sheep parent2 = relationship.getParent2();
         for (Category category : Category.values()) {
-            Map<GradePair, Double> intermediateScores = new HashMap<>();
+            if (!(CategoryDomains.domainFor(category) instanceof GradeAlleleDomain)) {
+                continue;
+            }
+            Map<AllelePair<Grade>, Double> intermediateScores = new HashMap<>();
             Map<Grade, Integer> phenotypeFrequency = relationship.getCurrentPhenotypeFrequencies(category);
             Grade phenotype1 = parent1.getPhenotype(category);
             Grade phenotype2 = parent2.getPhenotype(category);
 
             for (Grade grade1 : Grade.values()) {
                 for (Grade grade2 : Grade.values()) {
-                    GradePair gradePair = new GradePair(grade1, grade2);
-                    double multiScore = multinomialScore(gradePair, phenotype1, phenotype2, phenotypeFrequency);
+                    AllelePair<Grade> gradePair = new AllelePair<>(grade1, grade2);
+                    double multiScore = InferenceMath.multinomialScore(gradePair, phenotype1, phenotype2, phenotypeFrequency, gradeDomain());
                     intermediateScores.put(gradePair, multiScore * parent1.getDistribution(category, DistributionType.INFERRED).get(grade1) * parent2.getDistribution(category, DistributionType.INFERRED).get(grade2));
                 }
             }
@@ -41,16 +47,19 @@ public class NaiveInference extends BaseInferenceEngine {
     // Returns a new Map of grades to probability given the relationship and observed phenotype of the child
     public void inferChildHiddenDistribution(Relationship relationship, Sheep child) {
         for (Category category : Category.values()) {
+            if (!(CategoryDomains.domainFor(category) instanceof GradeAlleleDomain)) {
+                continue;
+            }
             Map<Grade, Double> childHiddenDistribution = new EnumMap<>(Grade.class);
             Grade childPhenotype = child.getPhenotype(category);
 
             // find the probability distribution of the hidden allele given both genotypes
-            Map<GradePair, Map<Grade, Double>> conditionalDistributions = findConditionalDistributions(relationship, childPhenotype, category);
+            Map<AllelePair<Grade>, Map<Grade, Double>> conditionalDistributions = findConditionalDistributions(relationship, childPhenotype, category);
 
             // sum all conditional distributions from each genotype multiplied by the joint probability of that genotype
-            Map<GradePair, Double> jointDistribution = relationship.getJointDistribution(category);
-            for (Map.Entry<GradePair, Double> entry : jointDistribution.entrySet()) {
-                GradePair gradePair = entry.getKey();
+            Map<AllelePair<Grade>, Double> jointDistribution = relationship.getJointDistribution(category);
+            for (Map.Entry<AllelePair<Grade>, Double> entry : jointDistribution.entrySet()) {
+                AllelePair<Grade> gradePair = entry.getKey();
                 double jointProbability = entry.getValue();
                 Map<Grade, Double> genotypeDistribution = conditionalDistributions.get(gradePair);
 
@@ -74,13 +83,16 @@ public class NaiveInference extends BaseInferenceEngine {
         Sheep parent1 = relationship.getParent1();
         Sheep parent2 = relationship.getParent2();
         for (Category category : Category.values()) {
-            Map<GradePair, Double> jointDistribution = relationship.getJointDistribution(category);
+            if (!(CategoryDomains.domainFor(category) instanceof GradeAlleleDomain)) {
+                continue;
+            }
+            Map<AllelePair<Grade>, Double> jointDistribution = relationship.getJointDistribution(category);
 
             Map<Grade, Double> parent1NewMarginalProbabilities = new EnumMap<>(Grade.class);
             Map<Grade, Double> parent2NewMarginalProbabilities = new EnumMap<>(Grade.class);
 
-            for (Map.Entry<GradePair, Double> entry : jointDistribution.entrySet()) {
-                GradePair gradePair = entry.getKey();
+            for (Map.Entry<AllelePair<Grade>, Double> entry : jointDistribution.entrySet()) {
+                AllelePair<Grade> gradePair = entry.getKey();
                 double jointProbability = entry.getValue();
 
                 parent1NewMarginalProbabilities.merge(gradePair.getFirst(), jointProbability, Double::sum);

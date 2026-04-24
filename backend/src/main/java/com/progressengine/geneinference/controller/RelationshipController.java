@@ -1,6 +1,5 @@
 package com.progressengine.geneinference.controller;
 
-import com.progressengine.geneinference.dto.BirthRecordDTO;
 import com.progressengine.geneinference.dto.RelationshipResponseDTO;
 import com.progressengine.geneinference.dto.RelationshipRow;
 import com.progressengine.geneinference.mapper.DomainMapper;

@@ -6,13 +6,16 @@ import com.progressengine.geneinference.exception.IncompleteGenotypeException;
 import com.progressengine.geneinference.exception.ResourceNotFoundException;
 import com.progressengine.geneinference.mapper.DomainMapper;
 import com.progressengine.geneinference.model.*;
+import com.progressengine.geneinference.model.enums.Allele;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.DistributionType;
 import com.progressengine.geneinference.model.enums.Grade;
+import com.progressengine.geneinference.service.AlleleDomains.AlleleDomain;
+import com.progressengine.geneinference.service.AlleleDomains.GradeAlleleDomain;
+import com.progressengine.geneinference.service.AlleleDomains.CategoryDomains;
 
 import com.progressengine.geneinference.repository.BirthRecordRepository;
 import jakarta.transaction.Transactional;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -25,13 +28,11 @@ public class BreedingService {
 
     private final SheepService sheepService;
     private final RelationshipService relationshipService;
-    private final InferenceEngine inferenceEngine;
     private final BirthRecordRepository birthRecordRepository;
 
-    public BreedingService(SheepService sheepService, RelationshipService relationshipService, @Qualifier("loopy") InferenceEngine inferenceEngine, BirthRecordRepository birthRecordRepository) {
+    public BreedingService(SheepService sheepService, RelationshipService relationshipService, BirthRecordRepository birthRecordRepository) {
         this.sheepService = sheepService;
         this.relationshipService = relationshipService;
-        this.inferenceEngine = inferenceEngine;
         this.birthRecordRepository = birthRecordRepository;
     }
 
@@ -83,10 +84,6 @@ public class BreedingService {
             birthRecord = relationship.addChildInformationToRelationship(newChild);
         }
 
-        for (Category category : Category.values()) {
-            newChild.setDistribution(category, DistributionType.INFERRED, newChild.getDistribution(category, DistributionType.PRIOR));
-        }
-
         return birthRecord;
     }
 
@@ -109,25 +106,31 @@ public class BreedingService {
         Random random = new Random();
 
         for (Category category : Category.values()) {
-            if (sheep1.getHiddenAllele(category) == null || sheep2.getHiddenAllele(category) == null) {
-                throw new IllegalArgumentException("Missing known hidden allele in category " + category);
-            }
-
-            Grade parent1Allele = random.nextBoolean()
-                    ? sheep1.getPhenotype(category)
-                    : sheep1.getHiddenAllele(category);
-
-            Grade parent2Allele = random.nextBoolean()
-                    ? sheep2.getPhenotype(category)
-                    : sheep2.getHiddenAllele(category);
-
-            GradePair expressedOrder = GradeExpressionRules.sampleExpressionOrder(parent1Allele, parent2Allele, random);
-
-            child.setGenotype(category, expressedOrder);
+            selectAllelesForChildCategory(child, sheep1, sheep2, category, random);
         }
 
-        child.createDefaultDistributions();
+        child.syncPriorsFromObservedPhenotypes();
+        child.copyAllPriorsToInferred();
         return child;
+    }
+
+    private static <A extends Enum<A> & Allele> void selectAllelesForChildCategory(Sheep child, Sheep p1, Sheep p2, Category category, Random random) {
+        if (p1.getHiddenAllele(category) == null || p2.getHiddenAllele(category) == null) {
+            throw new IllegalArgumentException("Missing known hidden allele in category " + category);
+        }
+        AlleleDomain<A> domain = CategoryDomains.typedDomainFor(category);
+
+        A parent1Allele = random.nextBoolean() // assumes no inheritance bias
+            ? p1.getPhenotype(category)
+            : p1.getHiddenAllele(category);
+
+        A parent2Allele = random.nextBoolean()
+            ? p2.getPhenotype(category)
+            : p2.getHiddenAllele(category);
+
+        AllelePair<A> expressedOrder = domain.sampleExpressionOrder(parent1Allele, parent2Allele, random);
+
+        child.setGenotype(category, expressedOrder);
     }
 
 
@@ -160,10 +163,6 @@ public class BreedingService {
             birthRecord = relationship.addChildInformationToRelationship(child);
         }
 
-        for (Category category : Category.values()) {
-            child.setDistribution(category, DistributionType.INFERRED, child.getDistribution(category, DistributionType.PRIOR));
-        }
-
         return birthRecord;
     }
 
@@ -172,14 +171,14 @@ public class BreedingService {
                 .orElseThrow(() -> new ResourceNotFoundException("Birth record not found"));
     }
 
-    public PredictionResponseDTO predictChild(UUID userId, Integer sheep1Id, Integer sheep2Id) {
+    public PredictionResponseDTO predictChild(UUID userId, Integer sheep1Id, Integer sheep2Id) { // Update prediction to hold generic categories
         Sheep sheep1 = sheepService.findByIdAndUserId(sheep1Id, userId);
         Sheep sheep2 = sheepService.findByIdAndUserId(sheep2Id, userId);
 
-        return new PredictionResponseDTO(inferenceEngine.predictChildrenDistributions(sheep1, sheep2));
+        return new PredictionResponseDTO(InferenceMath.predictChildrenDistributions(sheep1, sheep2));
     }
 
-    public List<BestPredictionDTO> bestPredictions(UUID userId) {
+    public List<BestPredictionDTO> bestPredictions(UUID userId) { // update to only base best off grades but include all categories for prediction
         List<Sheep> allSheep = sheepService.getAllSheep(userId);
         if (allSheep.size() < 2) {
             throw new IllegalStateException(
@@ -190,9 +189,9 @@ public class BreedingService {
         // loop through all sheep and keep track of the sheep that are the best in a category
         Map<Category, PriorityQueue<Sheep>> bestSheepMap = new EnumMap<>(Category.class);
         for (Sheep sheep : allSheep) {
-            for (Category category : Category.values()) {
+            for (Category category : gradeCategories()) {
                 PriorityQueue<Sheep> bestSheepQueue = bestSheepMap.computeIfAbsent(category,
-                        k -> new PriorityQueue<>((a, b) -> compareCategory(a, b, category)));
+                        k -> new PriorityQueue<>((a, b) -> compareGradeCategory(a, b, category)));
                 bestSheepQueue.add(sheep);
                 if (bestSheepQueue.size() > MAX_SHEEP_PER_CATEGORY) {
                     bestSheepQueue.poll();
@@ -219,7 +218,7 @@ public class BreedingService {
             for (int j = i + 1; j < bestSheepList.size(); j++) {
                 Sheep parent1 = bestSheepList.get(i);
                 Sheep parent2 = bestSheepList.get(j);
-                Map<Category, Map<Grade, Double>> predictionMap = inferenceEngine.predictChildrenDistributions(parent1, parent2);
+                Map<Category, Map<String, Double>> predictionMap = InferenceMath.predictChildrenDistributions(parent1, parent2);
                 SheepSummaryResponseDTO parent1Summary = new SheepSummaryResponseDTO(parent1.getId(), parent1.getName());
                 SheepSummaryResponseDTO parent2Summary = new SheepSummaryResponseDTO(parent2.getId(), parent2.getName());
                 predictions.add(new BestPredictionDTO(parent1Summary, parent2Summary, sheepToCategoryMap.get(parent1), sheepToCategoryMap.get(parent2), predictionMap));
@@ -231,13 +230,13 @@ public class BreedingService {
     }
 
     @Transactional
-    public List<Map<Category, Map<Grade, Double>>> recalculateAll(UUID userId) {
+    public List<Map<Category, Map<String, Double>>> recalculateAll(UUID userId) {
         List<Sheep> allSheep = sheepService.getAllSheep(userId);
         List<Relationship> allRelationship = relationshipService.getAllRelationships(userId);
 
         FactorGraph factorGraph = new FactorGraph(allSheep, allRelationship);
         factorGraph.recalculateAllMessages();
-        List<Map<Category, Map<Grade, Double>>> newBeliefs = factorGraph.computeBeliefs();
+        List<Map<Category, Map<String, Double>>> newBeliefs = factorGraph.computeBeliefs();
 
         return newBeliefs;
     }
@@ -261,11 +260,24 @@ public class BreedingService {
         return categories;
     }
 
-    private int compareCategory(Sheep sheep1, Sheep sheep2, Category category) {
+    private List<Category> gradeCategories() {
+        return Arrays.stream(Category.values())
+                .filter(category -> CategoryDomains.domainFor(category) instanceof GradeAlleleDomain)
+                .toList();
+    }
+
+    private int compareGradeCategory(Sheep sheep1, Sheep sheep2, Category category) {
+        if (!(CategoryDomains.domainFor(category) instanceof GradeAlleleDomain)) {
+            throw new IllegalArgumentException("Tried to compare Grade categories on a non-grade category");
+        }
+ 
         Grade sheep1Best = bestGradeInCategory(sheep1, category);
-        double sheep1Entropy = InferenceMath.entropy(sheep1.getDistribution(category, DistributionType.INFERRED));
+        Map<Grade, Double> sheep1Dist = sheep1.getDistribution(category, DistributionType.INFERRED);
+        double sheep1Entropy = InferenceMath.entropy(sheep1Dist);
+
         Grade sheep2Best = bestGradeInCategory(sheep2, category);
-        double sheep2Entropy = InferenceMath.entropy(sheep2.getDistribution(category, DistributionType.INFERRED));
+        Map<Grade, Double> sheep2Dist = sheep2.getDistribution(category, DistributionType.INFERRED);
+        double sheep2Entropy = InferenceMath.entropy(sheep2Dist);
 
         if (sheep1Best.isBetterThan(sheep2Best)) {
             return 1;
@@ -276,8 +288,13 @@ public class BreedingService {
     }
 
     private Grade bestGradeInCategory(Sheep sheep, Category category) {
+        if (!(CategoryDomains.domainFor(category) instanceof GradeAlleleDomain)) {
+            throw new IllegalArgumentException("Tried to find best grade in a non-grade category");
+        }
+
         Grade bestGrade = sheep.getPhenotype(category);
-        for (Map.Entry<Grade, Double> entry : sheep.getDistribution(category, DistributionType.INFERRED).entrySet()) {
+        Map<Grade, Double> gradeDist = sheep.getDistribution(category, DistributionType.INFERRED);
+        for (Map.Entry<Grade, Double> entry : gradeDist.entrySet()) {
             if (entry.getValue() >= CERTAINTY_THRESHOLD && entry.getKey().isBetterThan(bestGrade)) {
                 bestGrade = entry.getKey();
             }

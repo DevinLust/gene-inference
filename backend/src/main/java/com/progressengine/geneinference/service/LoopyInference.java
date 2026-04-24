@@ -1,11 +1,14 @@
 package com.progressengine.geneinference.service;
 
-import com.progressengine.geneinference.model.GradePair;
 import com.progressengine.geneinference.model.Relationship;
 import com.progressengine.geneinference.model.Sheep;
+import com.progressengine.geneinference.model.AllelePair;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.DistributionType;
 import com.progressengine.geneinference.model.enums.Grade;
+import com.progressengine.geneinference.service.AlleleDomains.CategoryDomains;
+import com.progressengine.geneinference.service.AlleleDomains.GradeAlleleDomain;
+
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
@@ -39,6 +42,9 @@ public class LoopyInference extends EnsembleInference {
 
         // loopy belief propagation to get new marginals
         for (Category category : Category.values()) {
+            if (!(CategoryDomains.domainFor(category) instanceof GradeAlleleDomain)) {
+                continue;
+            }
             List<Map<Grade, Double>> newMarginals = loopMarginalProbabilities(relationship, parent1Relationships, parent2Relationships, category);
 
             parent1.setDistribution(category, DistributionType.INFERRED, newMarginals.get(0));
@@ -120,10 +126,10 @@ public class LoopyInference extends EnsembleInference {
      */
     private Map<Grade, Double> halfJointMarginal(Relationship relationship, Map<Grade, Double> weightDistribution, boolean firstParentAsWeight, Category category) {
         Map<Grade, Double> newHalfMarginal = new EnumMap<>(Grade.class);
-        Map<GradePair, Double> jointDistribution = relationship.getJointDistributions().get(category);
+        Map<AllelePair<Grade>, Double> jointDistribution = relationship.getJointDistribution(category);
 
-        for (Map.Entry<GradePair, Double> entry : jointDistribution.entrySet()) {
-            GradePair pair = entry.getKey();
+        for (Map.Entry<AllelePair<Grade>, Double> entry : jointDistribution.entrySet()) {
+            AllelePair<Grade> pair = entry.getKey();
             double probability = entry.getValue();
             Grade weightGrade = firstParentAsWeight ? pair.getFirst() : pair.getSecond();
             Grade targetGrade = firstParentAsWeight ? pair.getSecond() : pair.getFirst();

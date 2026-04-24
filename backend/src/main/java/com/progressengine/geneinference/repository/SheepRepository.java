@@ -5,7 +5,6 @@ import com.progressengine.geneinference.dto.SheepSummaryResponseDTO;
 import com.progressengine.geneinference.model.Sheep;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.DistributionType;
-import com.progressengine.geneinference.model.enums.Grade;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -60,13 +59,15 @@ public interface SheepRepository extends JpaRepository<Sheep, Integer>, JpaSpeci
       from Sheep s
       join s.genotypes g
       where s.userId = :userId
-        and (g.phenotype in :grades or g.hiddenAllele in :grades)
+        and g.category in :categories
+        and (g.phenotypeCode in :grades or g.hiddenAlleleCode in :grades)
         and (:name is null or lower(cast(s.name as string)) like lower(concat('%', cast(:name as string), '%')))
       order by s.id desc
     """)
     List<SheepSummaryResponseDTO> listSheepHavingAnyGradeAndName(
             @Param("userId") UUID userId,
-            @Param("grades") Set<Grade> grades,
+            @Param("categories") List<Category> categories,
+            @Param("grades") List<String> grades,
             @Param("name") String name
     );
 
@@ -106,7 +107,7 @@ public interface SheepRepository extends JpaRepository<Sheep, Integer>, JpaSpeci
     @Query("""
       select new com.progressengine.geneinference.dto.SheepDistributionRow(
         d.sheep.id,
-        d.grade,
+        d.alleleCode,
         d.probability
       )
       from SheepDistribution d

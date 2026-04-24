@@ -39,7 +39,7 @@ public class BreedController {
 
     @PostMapping(value = "/record-birth")
     public ResponseEntity<?> createChild(@Valid @RequestBody SheepBreedRequestDTO sheepBreedRequestDTO,
-                                         @RequestParam(name = "saveChild", defaultValue = "true") boolean saveChild,
+                                         @RequestParam(defaultValue = "true") boolean saveChild,
                                          @AuthenticationPrincipal Jwt jwt
     ) {
         UUID userId = UUID.fromString(jwt.getSubject());

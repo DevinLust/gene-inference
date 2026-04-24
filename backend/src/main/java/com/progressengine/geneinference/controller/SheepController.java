@@ -51,7 +51,7 @@ public class SheepController {
         // convert list to set to remove duplicates
         Set<Grade> gradeSet = grades == null ? Collections.emptySet() : new HashSet<>(grades);
 
-        return sheepService.filterSheep(userId, name, gradeSet);
+        return sheepService.filterSheepByNameAndGrade(userId, name, gradeSet);
     }
 
     @GetMapping("/distributions")
@@ -69,9 +69,8 @@ public class SheepController {
     public SheepResponseDTO getSheep(@Positive @PathVariable Integer sheepId,
                                      @AuthenticationPrincipal Jwt jwt
     ) {
-        UUID userId = UUID.fromString(jwt.getSubject()); // TODO - change findById to be user scoped
-        Sheep sheep = sheepService.findByIdAndUserId(sheepId, userId);
-        return DomainMapper.toResponseDTO(sheep);
+        UUID userId = UUID.fromString(jwt.getSubject());
+        return sheepService.getSheepResponseDTO(sheepId, userId);
     }
 
     @GetMapping("/{sheepId}/parents")

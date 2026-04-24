@@ -2,14 +2,12 @@
 
 import { useActionState, useState, useEffect, startTransition } from 'react';
 import { recordChild, ChildState } from '@/app/lib/actions';
-import { SheepSummary, Category, Grade } from '@/app/lib/definitions';
-import CategoryTag from '@/app/ui/category-tag';
+import { SheepSummary } from '@/app/lib/definitions';
 import SheepComboBox from "./sheep-combo-box";
 import { useBreedSheep } from "@/app/(main)/breed/breed-sheep-provider";
 import { useSearchParams } from "next/navigation";
-
-const categories: Category[] = ["SWIM", "FLY", "RUN", "POWER", "STAMINA"];
-const grades: Grade[] = ["S", "A", "B", "C", "D", "E"];
+import GenotypeFields from "@/app/ui/genotype-fields";
+import { ControlledGenotypeMap, createEmptyControlledGenotypes } from "@/app/ui/genotype-fields";
 
 export default function RecordChildForm() {
     const sheep: SheepSummary[] = useBreedSheep();
@@ -34,12 +32,7 @@ export default function RecordChildForm() {
     const [childName, setChildName] = useState<string>("");
 
     // controlled genotypes
-    const [genotypes, setGenotypes] = useState(() =>
-        categories.reduce((acc, c) => {
-            acc[c] = { phenotype: "", hiddenAllele: "" };
-            return acc;
-        }, {} as Record<string, { phenotype: string; hiddenAllele: string }>)
-    );
+    const [genotypes, setGenotypes] = useState<ControlledGenotypeMap>(createEmptyControlledGenotypes);
 
     // hide old server errors once user changes inputs
     const [dirtySinceSubmit, setDirtySinceSubmit] = useState(false);
@@ -71,11 +64,11 @@ export default function RecordChildForm() {
                     formAction(formData)
                 })
             }}
-            className="flex flex-col gap-6 p-4 bg-gray-600 rounded-lg w-fit"
+            className="flex flex-col gap-6 p-4 bg-gray-600 rounded-lg w-full max-w-5xl"
         >
             <h2 className="text-lg font-semibold">Record External Event</h2>
 
-            <div className="flex justify-start gap-2">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 items-start">
             <div className="max-w-md">
                 {/* Parents */}
                 <div className={"grid grid-cols-1 gap-4"}>
@@ -210,85 +203,14 @@ export default function RecordChildForm() {
             </div>
 
             {/* Genotypes */}
-            <fieldset className="border border-gray-500 bg-gray-800 p-3 rounded-lg">
-                <legend className="font-semibold">Genotypes</legend>
-                {categories.map((c) => {
-                    const validationGenotypeErrors = validationErrors?.genotypes?.[c]; // string[] | undefined
-                    const constraintGenotypeViolation = constraintErrors?.genotypes?.[c]; // ExcessAlleleViolationDTO | undefined
-                    return (
-                    <div key={c} className="mb-2 bg-blue-900 border border-gray-500 rounded-lg">
-                        <div className="w-full bg-blue-500 pl-4 py-1 rounded-t-lg">
-                            <CategoryTag category={c} />
-                        </div>
-                        <div className="flex justify-around p-4 flex-wrap">
-                            <label className="mx-2">
-                                Phenotype:
-                                <select
-                                    name={`genotypes.${c}.phenotype`}
-                                    value={genotypes[c]?.phenotype ?? ""}
-                                    onChange={(e) =>
-                                        setGenotypes((prev) => ({
-                                            ...prev,
-                                            [c]: {
-                                                ...prev[c],
-                                                phenotype: e.target.value,
-                                            },
-                                        }))
-                                    }
-                                    className="ml-1 py-1 border border-gray-500 rounded bg-gray-800"
-                                >
-                                    <option value="">None</option>
-                                    {grades.map((g) => (
-                                        <option key={g} value={g}>
-                                            {g}
-                                        </option>
-                                    ))}
-                                </select>
-                            </label>
-                            <label className="mx-2">
-                                Hidden Allele:
-                                <select
-                                    name={`genotypes.${c}.hiddenAllele`}
-                                    value={genotypes[c]?.hiddenAllele ?? ""}
-                                    onChange={(e) =>
-                                        setGenotypes((prev) => ({
-                                            ...prev,
-                                            [c]: {
-                                                ...prev[c],
-                                                hiddenAllele: e.target.value,
-                                            },
-                                        }))
-                                    }
-                                    className="ml-1 py-1 border border-gray-500 rounded bg-gray-800"
-                                >
-                                    <option value="">None</option>
-                                    {grades.map((g) => (
-                                        <option key={g} value={g}>
-                                            {g}
-                                        </option>
-                                    ))}
-                                </select>
-                            </label>
-                        </div>
-                        <div id={`genotypes-${c}-error`} aria-live="polite" aria-atomic="true">
-                            {validationGenotypeErrors?.map((err) => (
-                                <p key={err} className="ml-2 text-sm text-yellow-500">{err}</p>
-                            ))}
-
-                            {constraintGenotypeViolation && (
-                                <div className="ml-2">
-                                    <p className="text-sm text-yellow-500">
-                                        Attempted to record: {constraintGenotypeViolation.attemptedAllele}
-                                    </p>
-                                    <p className="text-sm text-yellow-500">
-                                        Possible alleles: {constraintGenotypeViolation.validAlleles.join(", ")}
-                                    </p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )})}
-            </fieldset>
+                <div className="min-w-0 w-full">
+                    <GenotypeFields
+                        genotypes={genotypes}
+                        setGenotypes={setGenotypes}
+                        validationErrors={validationErrors?.genotypes}
+                        constraintViolations={constraintErrors?.genotypes}
+                    />
+                </div>
             </div>
         </form>
     );

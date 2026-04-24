@@ -5,10 +5,12 @@ import com.progressengine.geneinference.dto.VisualGraphSnapshot;
 import com.progressengine.geneinference.dto.VisualNodeDTO;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.DistributionType;
-import com.progressengine.geneinference.model.enums.Grade;
+import com.progressengine.geneinference.model.enums.Allele;
 import com.progressengine.geneinference.model.enums.RelationshipEdgeRole;
 import com.progressengine.geneinference.service.InferenceMath;
 import com.progressengine.geneinference.service.SheepService;
+import com.progressengine.geneinference.service.AlleleDomains.AlleleDomain;
+import com.progressengine.geneinference.service.AlleleDomains.CategoryDomains;
 
 import java.util.*;
 
@@ -550,11 +552,11 @@ public class FactorGraph {
         return operands;
     }
 
-    public Map<Category, Map<Grade, Double>> computeMessage(Message message) {
+    public Map<Category, Map<String, Double>> computeMessage(Message message) {
         return message.computeMessage(operandsOf(message));
     }
 
-    public Map<Grade, Double> computeMessageForCategory(Message message, Category category) {
+    public <A extends Enum<A> & Allele> Map<A, Double> computeMessageForCategory(Message message, Category category) {
         return message.computeMessageForCategory(category, operandsOf(message));
     }
 
@@ -579,30 +581,40 @@ public class FactorGraph {
             MessageCategoryTask task = frontier.poll();
             queued.remove(task);
 
-            Message message = task.message();
-            Category category = task.category();
-
-            Map<Grade, Double> newDistribution = computeMessageForCategory(message, category);
-
-            if (!reachedConvergence(message, category, newDistribution)) {
-                message.setDistributionForCategory(category, newDistribution);
-
-                for (MessageCategoryTask dependent : dependentsOf(message, category)) {
-                    if (queued.add(dependent)) {
-                        frontier.add(dependent);
-                    }
-                }
+            if (recalculateMessageForCategory(task.message(), task.category(), frontier, queued)) {
                 iterations++;
             }
         }
     }
 
-    public List<Map<Category, Map<Grade, Double>>> computeBeliefs() {
-        List<Map<Category, Map<Grade, Double>>> beliefs = new ArrayList<>();
+    private <A extends Enum<A> & Allele> boolean recalculateMessageForCategory(
+        Message message,
+        Category category,
+        Queue<MessageCategoryTask> frontier,
+        Set<MessageCategoryTask> queued
+    ) {
+        Map<A, Double> newDistribution = computeMessageForCategory(message, category);
+
+        if (!reachedConvergence(message, category, newDistribution)) {
+            message.setDistributionForCategory(category, newDistribution);
+
+            for (MessageCategoryTask dependent : dependentsOf(message, category)) {
+                if (queued.add(dependent)) {
+                    frontier.add(dependent);
+                }
+            }
+            return true;
+        }
+
+        return false;
+    }
+
+    public List<Map<Category, Map<String, Double>>> computeBeliefs() {
+        List<Map<Category, Map<String, Double>>> beliefs = new ArrayList<>();
         for (Node<?> node : adjacencyMatrix.keySet()) {
             if (node instanceof SheepNode) {
                 Sheep sheep = ((SheepNode) node).getValue();
-                Map<Category, Map<Grade, Double>> belief = newBelief();
+                Map<Category, Map<String, Double>> belief = sheep.getAllDistributionsByType(DistributionType.PRIOR);;
                 for (Node<?> neighbor : adjacencyMatrix.get(node)) {
                     NodePair nodePair = new NodePair(neighbor, node);
                     Message message = messageMap.get(nodePair);
@@ -617,13 +629,13 @@ public class FactorGraph {
         return beliefs;
     }
 
-    public Map<Category, Map<Grade, Double>> computeBeliefForSheep(Sheep sheep) {
+    public Map<Category, Map<String, Double>> computeBeliefForSheep(Sheep sheep) {
         Node<Sheep> node = sheepToNode.get(sheep);
         if (node == null) {
             throw new IllegalArgumentException("Sheep is not in factor graph");
         }
 
-        Map<Category, Map<Grade, Double>> belief = newBelief();
+        Map<Category, Map<String, Double>> belief = sheep.getAllDistributionsByType(DistributionType.PRIOR);
 
         for (Node<?> neighbor : adjacencyMatrix.get(node)) {
             NodePair nodePair = new NodePair(neighbor, node);
@@ -659,40 +671,21 @@ public class FactorGraph {
         return incoming;
     }
 
-    private boolean reachedConvergence(Message message, Map<Category, Map<Grade, Double>> newMessage) {
-        double epsilon = 1e-3;
-
-        Map<Category, Map<Grade, Double>> oldMessage = message.getDistribution();
-        boolean converged = true;
-
-        for (Map.Entry<Category, Map<Grade, Double>> dist : oldMessage.entrySet()) {
-            Category category = dist.getKey();
-            double distance = 0.0;
-            for (Map.Entry<Grade, Double> entry : dist.getValue().entrySet()) {
-                Grade key = entry.getKey();
-                Double value = entry.getValue();
-                distance += (value - newMessage.get(category).get(key)) * (value - newMessage.get(category).get(key));
-            }
-            converged = converged && distance <= (epsilon * epsilon);
-        }
-
-        return converged;
-    }
-
-    public boolean reachedConvergence(
+    public <A extends Enum<A> & Allele> boolean reachedConvergence(
             Message message,
             Category category,
-            Map<Grade, Double> newDistribution
+            Map<A, Double> newDistribution
     ) {
         double epsilon = 1e-3;
         double threshold = epsilon * epsilon;
 
-        Map<Grade, Double> oldDistribution = message.getDistribution().get(category);
+        AlleleDomain<A> domain = CategoryDomains.typedDomainFor(category);
+        Map<A, Double> oldDistribution = message.getDistributionByCategory(category);
 
         double distance = 0.0;
-        for (Grade grade : Grade.values()) {
-            double oldValue = oldDistribution.get(grade);
-            double newValue = newDistribution.get(grade);
+        for (A allele : domain.getAlleles()) {
+            double oldValue = oldDistribution.get(allele);
+            double newValue = newDistribution.get(allele);
             double diff = oldValue - newValue;
             distance += diff * diff;
         }
@@ -700,11 +693,20 @@ public class FactorGraph {
         return distance <= threshold;
     }
 
-    private Map<Category, Map<Grade, Double>> newBelief() {
-        Map<Category, Map<Grade, Double>> result = new EnumMap<>(Category.class);
+    private Map<Category, Map<String, Double>> newBelief() {
+        Map<Category, Map<String, Double>> result = new EnumMap<>(Category.class);
         for (Category category : Category.values()) {
-            result.put(category, SheepService.createUniformDistribution());
+            result.put(category, newUniformDistribution(category));
         }
         return result;
+    }
+
+    private <A extends Enum<A> & Allele> Map<String, Double> newUniformDistribution(Category category) {
+        Map<A, Double> uniformDist = SheepService.createUniformDistribution(category);
+        Map<String, Double> uniformStrDist = new HashMap<>();
+        for (Map.Entry<A, Double> entry : uniformDist.entrySet()) {
+            uniformStrDist.put(entry.getKey().code(), entry.getValue());
+        }
+        return uniformStrDist;
     }
 }

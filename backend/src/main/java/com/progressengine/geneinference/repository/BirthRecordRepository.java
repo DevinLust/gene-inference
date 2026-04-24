@@ -2,7 +2,6 @@ package com.progressengine.geneinference.repository;
 
 import com.progressengine.geneinference.dto.BirthRecordRow;
 import com.progressengine.geneinference.model.BirthRecord;
-import com.progressengine.geneinference.model.Sheep;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.Grade;
 import org.springframework.data.domain.Page;
@@ -12,7 +11,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -133,8 +131,8 @@ public interface BirthRecordRepository extends JpaRepository<BirthRecord, Intege
         from BirthRecordPhenotype pab
         where pab.birthRecord = br
           and pab.category = :category
-          and pab.parent1Phenotype = :p1ph
-          and pab.parent2Phenotype = :p2ph
+          and pab.parent1PhenotypeCode = :p1ph
+          and pab.parent2PhenotypeCode = :p2ph
       )
   """,
             countQuery = """
@@ -151,8 +149,8 @@ public interface BirthRecordRepository extends JpaRepository<BirthRecord, Intege
         from BirthRecordPhenotype pab
         where pab.birthRecord = br
           and pab.category = :category
-          and pab.parent1Phenotype = :p1ph
-          and pab.parent2Phenotype = :p2ph
+          and pab.parent1PhenotypeCode = :p1ph
+          and pab.parent2PhenotypeCode = :p2ph
       )
   """
     )

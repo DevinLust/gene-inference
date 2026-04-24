@@ -4,9 +4,14 @@ import com.progressengine.geneinference.model.GradeExpressionRules;
 import com.progressengine.geneinference.model.GradePair;
 import com.progressengine.geneinference.model.Relationship;
 import com.progressengine.geneinference.model.Sheep;
+import com.progressengine.geneinference.model.enums.Allele;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.DistributionType;
 import com.progressengine.geneinference.model.enums.Grade;
+import com.progressengine.geneinference.model.AllelePair;
+import com.progressengine.geneinference.service.AlleleDomains.AlleleDomain;
+import com.progressengine.geneinference.service.AlleleDomains.GradeAlleleDomain;
+import com.progressengine.geneinference.service.AlleleDomains.CategoryDomains;
 
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -28,6 +33,9 @@ public abstract class BaseInferenceEngine implements InferenceEngine {
         Map<Category, Map<Grade, Double>> predictedDistributions = new EnumMap<>(Category.class);
 
         for (Category category : Category.values()) {
+            if (!(CategoryDomains.domainFor(category) instanceof GradeAlleleDomain)) {
+                continue;
+            }
             Map<Grade, Double> parent1AlleleDistribution = inheritedAlleleDistribution(parent1, category);
             Map<Grade, Double> parent2AlleleDistribution = inheritedAlleleDistribution(parent2, category);
 
@@ -85,10 +93,11 @@ public abstract class BaseInferenceEngine implements InferenceEngine {
     }
 
     // check the hidden distributions of a sheep and if an allele is certain, set the hidden allele to it
-    protected void checkCertainty(Sheep sheep, Category category) {
+    protected <A extends Enum<A> & Allele> void checkCertainty(Sheep sheep, Category category) {
         if (sheep.getHiddenAllele(category) != null) { return; }
 
-        for (Map.Entry<Grade, Double> entry : sheep.getDistribution(category, DistributionType.INFERRED).entrySet()) {
+        Map<A, Double> distMap = sheep.getDistribution(category, DistributionType.INFERRED);
+        for (Map.Entry<A, Double> entry : distMap.entrySet()) {
             if (entry.getValue() == 1.0) { // could make this a certainty threshold
                 sheep.setHiddenAllele(category, entry.getKey());
             }
@@ -96,14 +105,14 @@ public abstract class BaseInferenceEngine implements InferenceEngine {
     }
 
     // Maps a pair of hidden alleles to a conditional distribution based on the observed phenotype
-    protected Map<GradePair, Map<Grade, Double>> findConditionalDistributions(Relationship relationship, Grade childPhenotype, Category category) {
+    protected Map<AllelePair<Grade>, Map<Grade, Double>> findConditionalDistributions(Relationship relationship, Grade childPhenotype, Category category) {
         Grade phenotype1 = relationship.getParent1().getPhenotype(category);
         Grade phenotype2 = relationship.getParent2().getPhenotype(category);
-        Map<GradePair, Double> jointDistribution = relationship.getJointDistributions().get(category);
+        Map<AllelePair<Grade>, Double> jointDistribution = relationship.getJointDistribution(category);
 
         // find the probability distribution of the hidden allele given both genotypes
-        Map<GradePair, Map<Grade, Double>> conditionalDistributions = new HashMap<>();
-        for (GradePair gradePair : jointDistribution.keySet()) {
+        Map<AllelePair<Grade>, Map<Grade, Double>> conditionalDistributions = new HashMap<>();
+        for (AllelePair<Grade> gradePair : jointDistribution.keySet()) {
             // find the probability the phenotype came from each parent
             double[] parentProbabilities = InferenceMath.probabilityAlleleFromParents(gradePair, phenotype1, phenotype2, childPhenotype);
 
@@ -119,6 +128,7 @@ public abstract class BaseInferenceEngine implements InferenceEngine {
 
         return conditionalDistributions;
     }
+
 
     @Deprecated
     // Returns a relative multinomial score based on the given hidden alleles, phenotypes, and phenotype frequency seen in the relationship
@@ -149,5 +159,9 @@ public abstract class BaseInferenceEngine implements InferenceEngine {
         for (Grade grade : Grade.values()) {
             scores.putIfAbsent(grade, 0.0);
         }
+    }
+
+    protected AlleleDomain<Grade> gradeDomain() {
+        return CategoryDomains.typedDomainFor(Category.SWIM);
     }
 }

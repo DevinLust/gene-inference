@@ -2,15 +2,18 @@ package com.progressengine.geneinference.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.progressengine.geneinference.dto.SheepGenotypeDTO;
+import com.progressengine.geneinference.model.enums.Allele;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.DistributionType;
+import com.progressengine.geneinference.service.InferenceMath;
 import com.progressengine.geneinference.service.SheepService;
+import com.progressengine.geneinference.service.AlleleDomains.AlleleDomain;
+import com.progressengine.geneinference.service.AlleleDomains.CategoryDomains;
+
 import jakarta.persistence.*;
 import com.progressengine.geneinference.model.enums.Grade;
-import jakarta.transaction.Transactional;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Entity
 @NamedEntityGraph(
@@ -38,7 +41,7 @@ public class Sheep {
     private Set<SheepDistribution> distributions = new HashSet<>();
 
     @Transient
-    private Map<Category, Map<DistributionType, Map<Grade, SheepDistribution>>> distributionsByCategory = new EnumMap<>(Category.class);
+    private Map<Category, Map<DistributionType, Map<String, SheepDistribution>>> distributionsByCategory = new EnumMap<>(Category.class);
 
     @Transient
     private boolean organized = false;
@@ -82,6 +85,35 @@ public class Sheep {
     }
 
 
+    public void applyNewSheepRequest(
+            Map<Category, SheepGenotypeDTO> genotypes
+    ) {
+        setGenotypes(genotypes);                 // validates and stores observed genotype/phenotype data
+        syncPriorsFromObservedPhenotypes();       // derive priors from phenotype/genotype rules
+        copyAllPriorsToInferred();
+    }
+
+    public void syncPriorsFromObservedPhenotypes() {
+        for (Category category : Category.values()) {
+            syncPriorFromPhenotype(category);
+        }
+    }
+
+    public <A extends Enum<A> & Allele> void initializeCategoryWithDefaults(Category category) {
+        AlleleDomain<A> domain = CategoryDomains.typedDomainFor(category);
+
+        if (hasGenotype(category)) {
+            return; // idempotent: already initialized
+        }
+
+        SheepGenotype genotype = createIfAbsentSheepGenotype(category);
+        genotype.setPhenotype(domain.defaultPhenotype());
+
+        syncPriorFromPhenotype(category);
+
+        Map<A, Double> prior = getDistribution(category, DistributionType.PRIOR);
+        setDistribution(category, DistributionType.INFERRED, new EnumMap<>(prior));
+    }
 
     /** Genotypes ------------------------------------------------------------------------------ */
     public Map<Category, SheepGenotypeDTO> getGenotypes() {
@@ -90,7 +122,7 @@ public class Sheep {
         for (SheepGenotype genotype : this.genotypes) {
             genotypesByCategory.put(
                     genotype.getCategory(),
-                    new SheepGenotypeDTO(genotype.getPhenotype(), genotype.getHiddenAllele())
+                    new SheepGenotypeDTO(genotype.getPhenotypeCode(), genotype.getHiddenAlleleCode())
             );
         }
 
@@ -98,20 +130,38 @@ public class Sheep {
     }
 
     private SheepGenotype findSheepGenotype(Category category) {
+        SheepGenotype genotype = findSheepGenotypeOrNull(category);
+
+        if (genotype == null) {
+            throw new IllegalStateException(
+                    formatErrorMessage("No genotype found for category: " + category)
+            );
+        }
+
+        return genotype;
+    }
+
+
+    private SheepGenotype findSheepGenotypeOrNull(Category category) {
         for (SheepGenotype genotype : this.genotypes) {
             if (genotype.getCategory().equals(category)) {
                 return genotype;
             }
         }
-        throw new IllegalStateException(formatErrorMessage("No genotype found for category: " + category));
+        return null;
     }
 
-    public GradePair getGenotype(Category category) {
+
+    public <A extends Enum<A> & Allele> AllelePair<A> getGenotype(Category category) {
         return findSheepGenotype(category).getGenotype();
     }
-    public GradePair getGenotype(String categoryStr) {
-        return getGenotype(Category.valueOf(categoryStr));
+
+
+    public <A extends Enum<A> & Allele> AllelePair<A> getGenotypeOrNull(Category category) {
+        SheepGenotype genotype = findSheepGenotypeOrNull(category);
+        return genotype != null ? genotype.getGenotype() : null;
     }
+
 
     private SheepGenotype createIfAbsentSheepGenotype(Category category) {
         for (SheepGenotype genotype : this.genotypes) {
@@ -124,7 +174,17 @@ public class Sheep {
         return newGenotype;
     }
 
-    @Transactional
+
+    public boolean hasGenotype(Category category) {
+        for (SheepGenotype genotype : genotypes) {
+            if (genotype.getCategory().equals(category)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+
     public void setGenotypes(Map<Category, SheepGenotypeDTO> genotypesDTO) {
         // Validate all Grades are present
         Set<Category> missingCategories = EnumSet.allOf(Category.class);
@@ -137,92 +197,300 @@ public class Sheep {
         for (Map.Entry<Category, SheepGenotypeDTO> entry : genotypesDTO.entrySet()) {
             Category category = entry.getKey();
             SheepGenotypeDTO genotypeDTO = entry.getValue();
+            if (genotypeDTO == null) {
+                throw new IllegalArgumentException(
+                        formatErrorMessage("Genotype DTO for category " + category + " is null")
+                );
+            }
             if (genotypeDTO.phenotype() == null) {
                 throw new IllegalArgumentException(formatErrorMessage("Phenotype of category " + category + " is null"));
             }
             SheepGenotype genotype = createIfAbsentSheepGenotype(category);
-            genotype.setGenotype(genotypeDTO.phenotype(),  genotypeDTO.hiddenAllele());
+            AllelePair<?> pair = genotypeDTO.toAllelePair(category);
+            genotype.setGenotype(pair);
         }
     }
 
-    public void updateGenotypes(Map<Category, SheepGenotypeDTO> updatedGenotypes) {
-        if (this.birthRecord != null) {
-            Relationship parentRelationship = this.birthRecord.getParentRelationship();
-            parentRelationship.updateChildPhenotypeFrequencies(this, updatedGenotypes);
-        } else if (updatedGenotypes != null && !updatedGenotypes.isEmpty()) {
-            for (Map.Entry<Category, SheepGenotypeDTO> entry : updatedGenotypes.entrySet()) {
-                Category category = entry.getKey();
-                GradePair genotype = entry.getValue().toGradePair();
-                createIfAbsentSheepGenotype(category).setGenotype(genotype);
-            }
-        }
-    }
 
-    public void evolvePhenotype(Category category) {
+    public <A extends Enum<A> & Allele> void evolvePhenotype(Category category) {
+        AlleleDomain<A> domain = CategoryDomains.typedDomainFor(category);
         SheepGenotype genotype = findSheepGenotype(category);
-        Grade newPhenotype = genotype.getPhenotype().promoteOnce();
+        A phenotype = genotype.getPhenotype();
+        A newPhenotype = domain.evolvePhenotype(phenotype);
         genotype.setPhenotype(newPhenotype);
     }
 
 
-    @Transactional
-    public void setGenotype(Category category, GradePair genotype) {
-        createIfAbsentSheepGenotype(category).setGenotype(genotype);
-    }
-    @Transactional
-    public void setGenotype(String categoryStr, GradePair genotype) {
-        setGenotype(Category.valueOf(categoryStr), genotype);
+    public <A extends Enum<A> & Allele> void setGenotype(Category category, AllelePair<A> genotype) {
+        if (genotype == null) {
+            throw new IllegalArgumentException(
+                    formatErrorMessage("Genotype for category " + category + " is null")
+            );
+        }
+        if (genotype.getFirst() == null) {
+            throw new IllegalArgumentException(
+                    formatErrorMessage("Phenotype for category " + category + " is null")
+            );
+        }
+
+        AlleleDomain<A> domain = CategoryDomains.typedDomainFor(category);
+
+        final A phenotype;
+        final A hiddenAllele;
+
+        try {
+            phenotype = domain.parse(genotype.getFirst().code());
+            hiddenAllele = genotype.getSecond() == null
+                    ? null
+                    : domain.parse(genotype.getSecond().code());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(
+                    formatErrorMessage("Genotype does not belong to category " + category + ": " + e.getMessage()),
+                    e
+            );
+        }
+
+        if (hiddenAllele != null && !domain.isHiddenAllelePossible(phenotype, hiddenAllele)) {
+            throw new IllegalStateException(
+                    formatErrorMessage(
+                            "Hidden allele " + hiddenAllele.code()
+                                    + " is not compatible with phenotype "
+                                    + phenotype.code()
+                                    + " for category " + category
+                    )
+            );
+        }
+
+        createIfAbsentSheepGenotype(category).setGenotype(phenotype, hiddenAllele);
     }
 
-    public Grade getPhenotype(Category category) {
-        return findSheepGenotype(category).getPhenotype();
+
+    public <A extends Enum<A> & Allele> void setGenotypeCodes(
+        Category category,
+        String phenotypeCode,
+        String hiddenAlleleCode
+    ) {
+        if (phenotypeCode == null) {
+            throw new IllegalArgumentException(
+                    formatErrorMessage("Phenotype of category " + category + " is null")
+            );
+        }
+
+        AlleleDomain<A> domain = CategoryDomains.typedDomainFor(category);
+        A phenotype = domain.parse(phenotypeCode);
+        A hiddenAllele = hiddenAlleleCode == null ? null : domain.parse(hiddenAlleleCode);
+
+        setGenotype(category, new AllelePair<>(phenotype, hiddenAllele));
     }
-    public Grade getPhenotype(String categoryStr) {
+
+    public <A extends Enum<A> & Allele> A getPhenotype(Category category) {
+        SheepGenotype genotype = findSheepGenotype(category);
+        return genotype.getPhenotype();
+    }
+    public <A extends Enum<A> & Allele> A getPhenotype(String categoryStr) {
         return getPhenotype(Category.valueOf(categoryStr));
     }
 
-    public void setPhenotype(Category category, Grade phenotype) {
-        createIfAbsentSheepGenotype(category).setPhenotype(phenotype);
-    }
-    public void setPhenotype(String categoryStr, Grade phenotype) {
-        setPhenotype(Category.valueOf(categoryStr), phenotype);
+
+    public <A extends Enum<A> & Allele> void setPhenotype(Category category, A phenotype) {
+        if (phenotype == null) {
+            throw new IllegalArgumentException(
+                    formatErrorMessage("Phenotype of category " + category + " is null")
+            );
+        }
+
+        setPhenotypeValidated(
+                CategoryDomains.typedDomainFor(category),
+                category,
+                phenotype
+        );
     }
 
-    public Grade getHiddenAllele(Category category) {
-        return findSheepGenotype(category).getHiddenAllele();
+    private <A extends Enum<A> & Allele> void setPhenotypeValidated(
+            AlleleDomain<A> domain,
+            Category category,
+            A phenotype
+    ) {
+        try {
+            A parsedPhenotype = domain.parse(phenotype.code());
+
+            SheepGenotype genotype = createIfAbsentSheepGenotype(category);
+            A existingHidden = genotype.getHiddenAllele();
+
+            if (existingHidden != null && !domain.isHiddenAllelePossible(parsedPhenotype, existingHidden)) {
+                throw new IllegalArgumentException(
+                        formatErrorMessage(
+                                "Phenotype " + phenotype.code()
+                                        + " is not compatible with existing hidden allele "
+                                        + existingHidden.code()
+                                        + " for category " + category
+                        )
+                );
+            }
+
+            genotype.setPhenotype(parsedPhenotype);
+
+        } catch (IllegalArgumentException e) {
+            if (e.getMessage() != null && e.getMessage().contains("not compatible")) {
+                throw e;
+            }
+
+            throw new IllegalArgumentException(
+                    formatErrorMessage("Phenotype " + phenotype.code() + " does not belong to category " + category),
+                    e
+            );
+        }
     }
-    public Grade getHiddenAllele(String categoryStr) {
+
+
+    public <A extends Enum<A> & Allele> void setPhenotypeCode(Category category, String phenotypeCode) {
+        if (phenotypeCode == null) {
+            throw new IllegalArgumentException(
+                    formatErrorMessage("Phenotype of category " + category + " is null")
+            );
+        }
+
+        AlleleDomain<A> domain = CategoryDomains.typedDomainFor(category);
+        A phenotype = domain.parse(phenotypeCode);
+        setPhenotype(category, phenotype);
+    }
+
+    public <A extends Enum<A> & Allele> A getHiddenAllele(Category category) {
+        SheepGenotype genotype = findSheepGenotype(category);
+        return genotype.getHiddenAllele();
+    }
+    public <A extends Enum<A> & Allele> A getHiddenAllele(String categoryStr) {
         return getHiddenAllele(Category.valueOf(categoryStr));
     }
 
-    public void setHiddenAllele(Category category, Grade hiddenAllele) {
-        createIfAbsentSheepGenotype(category).setHiddenAllele(hiddenAllele);
+
+    public <A extends Enum<A> & Allele> void setHiddenAllele(Category category, A hiddenAllele) {
+        AlleleDomain<A> domain = CategoryDomains.typedDomainFor(category);
+
+        A parsedHidden = null;
+        if (hiddenAllele != null) {
+            try {
+                parsedHidden = domain.parse(hiddenAllele.code());
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException(
+                        formatErrorMessage(
+                                "Hidden allele " + hiddenAllele.code() + " does not belong to category " + category
+                        ),
+                        e
+                );
+            }
+        }
+
+        SheepGenotype genotype = createIfAbsentSheepGenotype(category);
+        A existingPhenotype = genotype.getPhenotype();
+
+        if (existingPhenotype != null && parsedHidden != null
+                && !domain.isHiddenAllelePossible(existingPhenotype, parsedHidden)) {
+            throw new IllegalArgumentException(
+                    formatErrorMessage(
+                            "Hidden allele " + parsedHidden.code()
+                                    + " is not compatible with phenotype "
+                                    + existingPhenotype.code()
+                                    + " for category " + category
+                    )
+            );
+        }
+
+        genotype.setHiddenAllele(parsedHidden);
     }
-    public void setHiddenAllele(String categoryStr, Grade hiddenAllele) {
-        setHiddenAllele(Category.valueOf(categoryStr), hiddenAllele);
+
+
+    public <A extends Enum<A> & Allele> void setHiddenAlleleCode(Category category, String hiddenCode) {
+        if (hiddenCode == null) {
+            setHiddenAllele(category, null);
+            return;
+        }
+
+        AlleleDomain<A> domain = CategoryDomains.typedDomainFor(category);
+        A hiddenAllele = domain.parse(hiddenCode);
+        setHiddenAllele(category, hiddenAllele);
     }
     // -------------------------------------------------------------------------------------------
 
 
 
     /** SheepDistribution ------------------------------------------------------------------------- */
-    private void validateDistribution(Map<Grade, Double> distribution) {
-        // Validate all Grades are present
-        Set<Grade> missingGrades = EnumSet.allOf(Grade.class);
-        missingGrades.removeAll(distribution.keySet());
+    public <A extends Enum<A> & Allele> void syncPriorFromPhenotype(Category category) {
+        AlleleDomain<A> domain = CategoryDomains.typedDomainFor(category);
 
-        if (!missingGrades.isEmpty()) {
-            throw new IllegalArgumentException(formatErrorMessage("Missing grades in distribution: " + missingGrades));
+        SheepGenotype genotype = findSheepGenotype(category);
+
+        A phenotype = genotype.getPhenotype();
+        if (phenotype == null) {
+            throw new IllegalStateException(
+                    formatErrorMessage("Cannot sync prior: phenotype is null for category " + category)
+            );
+        }
+
+        Map<A, Double> prior = domain.hiddenPriorGivenPhenotype(phenotype);
+        setDistribution(category, DistributionType.PRIOR, prior);
+
+        A forcedHidden = extractDeterministicAllele(prior);
+        if (forcedHidden != null) {
+            genotype.setHiddenAllele(forcedHidden);
+        } else if (genotype.getHiddenAllele() != null
+                && !domain.isHiddenAllelePossible(phenotype, genotype.getHiddenAllele())) {
+            genotype.setHiddenAllele(null);
+        }
+    }
+
+    private <A extends Enum<A> & Allele> A extractDeterministicAllele(Map<A, Double> distribution) {
+        A result = null;
+
+        for (Map.Entry<A, Double> entry : distribution.entrySet()) {
+            double value = entry.getValue();
+            if (Math.abs(value - 1.0) < 1e-9) {
+                if (result != null) {
+                    return null;
+                }
+                result = entry.getKey();
+            } else if (value > 1e-9) {
+                return null;
+            }
+        }
+
+        return result;
+    }
+
+    private <A extends Enum<A> & Allele> void validateDistribution(
+        Category category,
+        Map<A, Double> distribution
+    ) {
+        if (distribution == null) {
+            throw new IllegalArgumentException(
+                    formatErrorMessage("Distribution for category " + category + " is null")
+            );
+        }
+
+        AlleleDomain<A> domain = CategoryDomains.typedDomainFor(category);
+        Set<A> expectedAlleles = EnumSet.allOf(domain.getAlleleType());
+        Set<A> actualAlleles = distribution.keySet();
+
+        Set<A> missingAlleles = EnumSet.copyOf(expectedAlleles);
+        missingAlleles.removeAll(actualAlleles);
+        if (!missingAlleles.isEmpty()) {
+            throw new IllegalArgumentException(
+                    formatErrorMessage("Missing entries in distribution for category " + category + ": " + missingAlleles)
+            );
+        }
+
+        Set<A> extraAlleles = actualAlleles.isEmpty()
+                ? EnumSet.noneOf(domain.getAlleleType())
+                : EnumSet.copyOf(actualAlleles);
+        extraAlleles.removeAll(expectedAlleles);
+        if (!extraAlleles.isEmpty()) {
+            throw new IllegalArgumentException(
+                    formatErrorMessage("Invalid alleles in distribution for category " + category + ": " + extraAlleles)
+            );
         }
 
         // Validate sum ≈ 1.0
-        double total = distribution.values().stream()
-                .mapToDouble(Double::doubleValue)
-                .sum();
-
-        if (Math.abs(total - 1.0) > 1e-6) {
-            throw new IllegalArgumentException(formatErrorMessage("Distribution probabilities must sum to 1.0 (±1e-6). Actual sum: " + total));
-        }
+        InferenceMath.validateDistribution(distribution);
     }
 
     public void organizeDistributions() {
@@ -233,18 +501,18 @@ public class Sheep {
         for (SheepDistribution dist : distributions) {
             distributionsByCategory
                     .computeIfAbsent(dist.getCategory(), k -> new EnumMap<>(DistributionType.class))
-                    .computeIfAbsent(dist.getDistributionType(), k -> new EnumMap<>(Grade.class))
-                    .put(dist.getGrade(), dist);
+                    .computeIfAbsent(dist.getDistributionType(), k -> new HashMap<>())
+                    .put(dist.getAlleleCode(), dist);
         }
         organized = true;
     }
 
 
-    private Map<Grade, SheepDistribution> getDistributionByCategoryAndType(Category category,  DistributionType distributionType) {
+    private Map<String, SheepDistribution> getDistributionByCategoryAndType(Category category,  DistributionType distributionType) {
         if (!distributionsByCategory.containsKey(category)) {
             throw new IllegalArgumentException(formatErrorMessage("Category " + category + " does not exist in distribution map"));
         }
-        Map<DistributionType, Map<Grade, SheepDistribution>> typeMap = distributionsByCategory.get(category);
+        Map<DistributionType, Map<String, SheepDistribution>> typeMap = distributionsByCategory.get(category);
 
         if (typeMap == null) {
             throw new IllegalArgumentException(formatErrorMessage(category + " is missing distribution-type map"));
@@ -260,72 +528,88 @@ public class Sheep {
     }
 
 
-    public Map<Category, Map<DistributionType, Map<Grade, Double>>> getAllDistributions() {
-        Map<Category, Map<DistributionType, Map<Grade, Double>>> distributionsByCategoryDTO = new EnumMap<>(Category.class);
+    public Map<Category, Map<DistributionType, Map<String, Double>>> getAllDistributions() {
+        Map<Category, Map<DistributionType, Map<String, Double>>> distributionsByCategoryDTO = new EnumMap<>(Category.class);
 
         for (SheepDistribution dist : distributions) {
             distributionsByCategoryDTO
                     .computeIfAbsent(dist.getCategory(), k -> new EnumMap<>(DistributionType.class))
-                    .computeIfAbsent(dist.getDistributionType(), k -> new EnumMap<>(Grade.class))
-                    .put(dist.getGrade(), dist.getProbability());
+                    .computeIfAbsent(dist.getDistributionType(), k -> new HashMap<>())
+                    .put(dist.getAlleleCode(), dist.getProbability());
         }
         return distributionsByCategoryDTO;
     }
 
 
-    public Map<Category, Map<Grade, Double>> getAllDistributionsByType(DistributionType distributionType) {
-        Map<Category, Map<Grade, Double>> distributionsByTypeDTO = new EnumMap<>(Category.class);
+    public Map<Category, Map<String, Double>> getAllDistributionsByType(DistributionType distributionType) {
+        Map<Category, Map<String, Double>> distributionsByTypeDTO = new EnumMap<>(Category.class);
 
         for (SheepDistribution dist : distributions) {
             if (dist.getDistributionType() != distributionType) { continue; }
             distributionsByTypeDTO
-                    .computeIfAbsent(dist.getCategory(), k -> new EnumMap<>(Grade.class))
-                    .put(dist.getGrade(), dist.getProbability());
+                    .computeIfAbsent(dist.getCategory(), k -> new HashMap<>())
+                    .put(dist.getAlleleCode(), dist.getProbability());
         }
         return distributionsByTypeDTO;
     }
 
 
-    public Map<Grade, Double> getDistribution(Category category, DistributionType distributionType) {
+    public <A extends Enum<A> & Allele> Map<A, Double> getDistribution(
+        Category category,
+        DistributionType distributionType
+    ) {
         if (!organized) {
             organizeDistributions();
         }
 
-        Map<Grade, SheepDistribution> distMap = getDistributionByCategoryAndType(category, distributionType);
+        AlleleDomain<A> domain = CategoryDomains.typedDomainFor(category);
+        Map<String, SheepDistribution> distMap = getDistributionByCategoryAndType(category, distributionType);
 
-        return distMap.entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().getProbability()));
+        Map<A, Double> result = new EnumMap<>(domain.getAlleleType());
+        for (A allele : domain.getAlleles()) {
+            SheepDistribution dist = distMap.get(allele.code());
+            result.put(allele, dist == null ? 0.0 : dist.getProbability());
+        }
+
+        return result;
     }
 
 
-    public Map<Grade, Double> getDistribution(String categoryStr, String distributionTypeStr) {
+    public <A extends Enum<A> & Allele> Map<A, Double> getDistribution(String categoryStr, String distributionTypeStr) {
         return getDistribution(Category.valueOf(categoryStr), DistributionType.valueOf(distributionTypeStr));
     }
 
 
-    private Map<Grade, SheepDistribution> createIfAbsentDistributionByCategoryAndType(Category category, DistributionType distributionType) {
+    private Map<String, SheepDistribution> createIfAbsentDistributionByCategoryAndType(Category category, DistributionType distributionType) {
         return distributionsByCategory
                 .computeIfAbsent(category, k -> new EnumMap<>(DistributionType.class))
-                .computeIfAbsent(distributionType, k -> new EnumMap<>(Grade.class));
+                .computeIfAbsent(distributionType, k -> new HashMap<>());
     }
 
 
-    private void upsertDistributionsByCategory(Category category, DistributionType distributionType, Map<Grade, Double> distribution) {
-        Map<Grade, SheepDistribution> distMap = createIfAbsentDistributionByCategoryAndType(category, distributionType);
+    private <A extends Enum<A> & Allele> void upsertDistributionsByCategory(
+        Category category,
+        DistributionType distributionType,
+        Map<A, Double> distribution
+    ) {
+        Map<String, SheepDistribution> distMap =
+                createIfAbsentDistributionByCategoryAndType(category, distributionType);
 
-        // set the associated SheepDistribution to the new probability
-        for  (Map.Entry<Grade, Double> entry : distribution.entrySet()) {
-            Grade key = entry.getKey();
-            Double value = entry.getValue();
+        for (Map.Entry<A, Double> entry : distribution.entrySet()) {
+            A allele = entry.getKey();
+            Double probability = entry.getValue();
+
             SheepDistribution sheepDistribution = distMap.computeIfAbsent(
-                    key,
-                    k -> {
-                        SheepDistribution newDist = new SheepDistribution(this, category, distributionType, k);
-                        distributions.add(newDist); // Ensure it's part of the entity list
+                    allele.code(),
+                    code -> {
+                        SheepDistribution newDist =
+                                new SheepDistribution(this, category, distributionType, code);
+                        distributions.add(newDist);
                         return newDist;
                     }
             );
-            sheepDistribution.setProbability(value);
+
+            sheepDistribution.setProbability(probability);
         }
     }
 
@@ -337,56 +621,112 @@ public class Sheep {
     }
 
 
+    public <A extends Enum<A> & Allele> void setDistributionFromCodes(
+        Category category,
+        DistributionType distributionType,
+        Map<String, Double> distributionByCode
+    ) {
+        if (distributionByCode == null) {
+            throw new IllegalArgumentException(
+                    formatErrorMessage("Distribution for category " + category + " is null")
+            );
+        }
+
+        AlleleDomain<A> domain = CategoryDomains.typedDomainFor(category);
+        Map<A, Double> typedDistribution = new EnumMap<>(domain.getAlleleType());
+
+        for (Map.Entry<String, Double> entry : distributionByCode.entrySet()) {
+            A allele = domain.parse(entry.getKey());
+            typedDistribution.put(allele, entry.getValue());
+        }
+
+        setDistribution(category, distributionType, typedDistribution);
+    }
+
+
+    public void copyAllPriorsToInferred() {
+        for (Category category : Category.values()) {
+            copyDistribution(category, DistributionType.PRIOR, DistributionType.INFERRED);
+        }
+    }
+
+
+    public <A extends Enum<A> & Allele> void copyDistribution(
+            Category category,
+            DistributionType from,
+            DistributionType to
+    ) {
+        Map<A, Double> source = getDistribution(category, from);
+        Map<A, Double> copy = new EnumMap<>(source);
+        setDistribution(category, to, copy);
+    }
+
+
+    public <A extends Enum<A> & Allele> void setUniformDistribution(
+        Category category,
+        DistributionType distributionType
+    ) {
+        Map<A, Double> distribution = SheepService.createUniformDistribution(category);
+        setDistribution(
+            category,
+            distributionType,
+            distribution
+        );
+    }
+
+
     // Replaces the distributions by categories into this sheep and resets the rest
-    public void replaceDistributionsFromDTO(Map<Category, Map<Grade, Double>> distributionsByCategoryDTO) {
-        if (!organized) organizeDistributions();
+    public void replaceDistributionsFromDTO(Map<Category, Map<String, Double>> distributionsByCategoryDTO) {
+        if (!organized) {
+            organizeDistributions();
+        }
 
         for (Category category : Category.values()) {
             if (distributionsByCategoryDTO != null && distributionsByCategoryDTO.containsKey(category)) {
-                Map<Grade, Double> distribution = distributionsByCategoryDTO.get(category);
-                setDistribution(category, DistributionType.PRIOR, distribution);
-                setDistribution(category, DistributionType.INFERRED, distribution);
+                Map<String, Double> distribution = distributionsByCategoryDTO.get(category);
+                setDistributionFromCodes(category, DistributionType.PRIOR, distribution);
+                setDistributionFromCodes(category, DistributionType.INFERRED, distribution);
             } else {
-                setDistribution(category, DistributionType.PRIOR, SheepService.createUniformDistribution());
-                setDistribution(category, DistributionType.INFERRED, SheepService.createUniformDistribution());
+                setUniformDistribution(category, DistributionType.PRIOR);
+                setUniformDistribution(category, DistributionType.INFERRED);
             }
         }
     }
 
 
-    public void setDistributionByType(Map<Category, Map<Grade, Double>> distributionsByCategoryDTO, DistributionType distributionType) {
+    public void setDistributionByType(Map<Category, Map<String, Double>> distributionsByCategoryDTO, DistributionType distributionType) {
         if (!organized) organizeDistributions();
 
         for (Category category : Category.values()) {
             if (distributionsByCategoryDTO != null && distributionsByCategoryDTO.containsKey(category)) {
-                Map<Grade, Double> distribution = distributionsByCategoryDTO.get(category);
-                setDistribution(category, distributionType, distribution);
+                Map<String, Double> distribution = distributionsByCategoryDTO.get(category);
+                setDistributionFromCodes(category, distributionType, distribution);
             } else {
-                setDistribution(category, distributionType, SheepService.createUniformDistribution());
+                setUniformDistribution(category, distributionType);
             }
         }
     }
 
 
     // Upserts the partial distributions by categories into this sheep
-    public void upsertDistributionsFromDTO(Map<Category, Map<Grade, Double>> distributionsByCategoryDTO) {
+    public void upsertDistributionsFromDTO(Map<Category, Map<String, Double>> distributionsByCategoryDTO) {
         // the value passed in might be null in which case follow next steps as if no category is passed
         if (!organized) organizeDistributions();
 
         for (Category category : Category.values()) {
             // if a category is passed in then the prior should always be overwritten however the inferred should only be set if it's not already
             if (distributionsByCategoryDTO != null && distributionsByCategoryDTO.containsKey(category)) {
-                Map<Grade, Double> distribution = distributionsByCategoryDTO.get(category);
-                setDistribution(category, DistributionType.PRIOR, distribution);
+                Map<String, Double> distribution = distributionsByCategoryDTO.get(category);
+                setDistributionFromCodes(category, DistributionType.PRIOR, distribution);
 
                 // if the sheep doesn't already have an inferred distribution, set it to the new prior
                 if (missingDistributionByCategory(category, DistributionType.INFERRED)) {
-                    setDistribution(category, DistributionType.INFERRED, distribution);
+                    setDistributionFromCodes(category, DistributionType.INFERRED, distribution);
                 }
             } else if (missingDistributionByCategory(category, DistributionType.PRIOR)) {
                 // if the category is not passed then it stays the same unless it is not set then it defaults to a uniform distribution
-                setDistribution(category, DistributionType.PRIOR, SheepService.createUniformDistribution());
-                setDistribution(category, DistributionType.INFERRED, SheepService.createUniformDistribution());
+                setUniformDistribution(category, DistributionType.PRIOR);
+                setUniformDistribution(category, DistributionType.INFERRED);
             }
         }
     }
@@ -396,17 +736,17 @@ public class Sheep {
         if (!organized) organizeDistributions();
 
         for (Category category : Category.values()) {
-            setDistribution(category, DistributionType.PRIOR, SheepService.createUniformDistribution());
-            setDistribution(category, DistributionType.INFERRED, SheepService.createUniformDistribution());
+            setUniformDistribution(category, DistributionType.PRIOR);
+            setUniformDistribution(category, DistributionType.INFERRED);
         }
     }
 
 
-    public void setDistribution(Category category, DistributionType distributionType, Map<Grade, Double> distribution) {
+    public <A extends Enum<A> & Allele> void setDistribution(Category category, DistributionType distributionType, Map<A, Double> distribution) {
         if (!organized) {
             organizeDistributions();
         }
-        validateDistribution(distribution);
+        validateDistribution(category, distribution);
         upsertDistributionsByCategory(category, distributionType, distribution);
     }
 
@@ -432,5 +772,4 @@ public class Sheep {
     private String formatErrorMessage(String specificMessage) {
         return String.format("Error in sheep with id %d: %s", this.id, specificMessage);
     }
-
 }

@@ -83,7 +83,9 @@ export default async function SheepList({ selectedCategory, filter }: { selected
                                         <span>{s.name || <span className="text-gray-400">(unnamed)</span>}</span>
                                     </td>
                                     {ALL_GRADES.map(grade => {
-                                        const prob = distributions.distributions[s.id][grade];
+                                        const sheepDist = distributions.distributions[String(s.id)];
+
+                                        const prob = sheepDist?.[grade] ?? 0;
                                         return (
                                             <td
                                                 className={`whitespace-nowrap py-3 pr-3 text-right ${

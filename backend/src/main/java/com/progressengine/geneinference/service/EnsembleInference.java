@@ -1,11 +1,14 @@
 package com.progressengine.geneinference.service;
 
-import com.progressengine.geneinference.model.GradePair;
+import com.progressengine.geneinference.model.AllelePair;
 import com.progressengine.geneinference.model.Relationship;
 import com.progressengine.geneinference.model.Sheep;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.model.enums.DistributionType;
 import com.progressengine.geneinference.model.enums.Grade;
+import com.progressengine.geneinference.service.AlleleDomains.GradeAlleleDomain;
+import com.progressengine.geneinference.service.AlleleDomains.CategoryDomains;
+
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
@@ -20,12 +23,12 @@ public class EnsembleInference extends BaseInferenceEngine {
     }
 
 
-    private Map<GradePair, Double> multinomialJointScores(Grade phenotype1, Grade phenotype2, Map<Grade, Integer> phenotypeFrequency) {
-        Map<GradePair, Double> multinomialDistribution = new HashMap<>();
+    private Map<AllelePair<Grade>, Double> multinomialJointScores(Grade phenotype1, Grade phenotype2, Map<Grade, Integer> phenotypeFrequency) {
+        Map<AllelePair<Grade>, Double> multinomialDistribution = new HashMap<>();
         for (Grade grade1 : Grade.values()) {
             for (Grade grade2 : Grade.values()) {
-                GradePair gradePair = new GradePair(grade1, grade2);
-                double multiScore = multinomialScore(gradePair, phenotype1, phenotype2, phenotypeFrequency);
+                AllelePair<Grade> gradePair = new AllelePair<>(grade1, grade2);
+                double multiScore = InferenceMath.multinomialScore(gradePair, phenotype1, phenotype2, phenotypeFrequency, gradeDomain());
                 multinomialDistribution.put(gradePair, multiScore);
             }
         }
@@ -45,11 +48,14 @@ public class EnsembleInference extends BaseInferenceEngine {
         Sheep parent2 = relationship.getParent2();
 
         for (Category category : Category.values()) {
+            if (!(CategoryDomains.domainFor(category) instanceof GradeAlleleDomain)) {
+                continue;
+            }
             Map<Grade, Integer> phenotypeFrequency = relationship.getCurrentPhenotypeFrequencies(category);
             Grade phenotype1 = parent1.getPhenotype(category);
             Grade phenotype2 = parent2.getPhenotype(category);
 
-            Map<GradePair, Double> intermediateScores = multinomialJointScores(phenotype1, phenotype2, phenotypeFrequency);
+            Map<AllelePair<Grade>, Double> intermediateScores = multinomialJointScores(phenotype1, phenotype2, phenotypeFrequency);
             InferenceMath.normalizeScores(intermediateScores);
             relationship.setJointDistribution(category, intermediateScores);
         }
@@ -59,13 +65,13 @@ public class EnsembleInference extends BaseInferenceEngine {
         Map<Grade, Double> childHiddenDistribution = new EnumMap<>(Grade.class);
 
         // find the probability distribution of the child's hidden allele given a pair of assumed hidden alleles from the parents
-        Map<GradePair, Map<Grade, Double>> conditionalDistributions = findConditionalDistributions(relationship, childPhenotype, category);
+        Map<AllelePair<Grade>, Map<Grade, Double>> conditionalDistributions = findConditionalDistributions(relationship, childPhenotype, category);
 
         // get a true joint distribution by multiplying each joint probability by the respective marginals and normalizing
-        Map<GradePair, Double> jointDistribution = relationship.getJointDistributions().get(category);
+        Map<AllelePair<Grade>, Double> jointDistribution = relationship.getJointDistribution(category);
         // sum all conditional distributions from each genotype multiplied by the joint probability of that genotype
-        for (Map.Entry<GradePair, Double> entry : jointDistribution.entrySet()) {
-            GradePair gradePair = entry.getKey();
+        for (Map.Entry<AllelePair<Grade>, Double> entry : jointDistribution.entrySet()) {
+            AllelePair<Grade> gradePair = entry.getKey();
             double marginal1 = relationship.getParent1().getDistribution(category, DistributionType.INFERRED).get(gradePair.getFirst());
             double marginal2 = relationship.getParent2().getDistribution(category, DistributionType.INFERRED).get(gradePair.getSecond());
             double jointProbability = entry.getValue() * marginal1 * marginal2; // un-normalized
@@ -97,6 +103,9 @@ public class EnsembleInference extends BaseInferenceEngine {
     @Transactional
     public void inferChildHiddenDistribution(Relationship relationship, Sheep child) {
         for (Category category : Category.values()) {
+            if (!(CategoryDomains.domainFor(category) instanceof GradeAlleleDomain)) {
+                continue;
+            }
             Grade childPhenotype = child.getPhenotype(category);
             Map<Grade, Double> childHiddenDistribution = findChildDistributionByCategory(relationship, childPhenotype, category);
 
@@ -111,6 +120,9 @@ public class EnsembleInference extends BaseInferenceEngine {
 
         // use the multinomial scores of the relationship each sheep is apart of
         for  (Category category : Category.values()) {
+            if (!(CategoryDomains.domainFor(category) instanceof GradeAlleleDomain)) {
+                continue;
+            }
             Map<Grade, Double> parent1NewMarginalProbabilities = ensembleMarginalProbability(parent1, category);
             Map<Grade, Double> parent2NewMarginalProbabilities = ensembleMarginalProbability(parent2, category);
 
@@ -151,12 +163,12 @@ public class EnsembleInference extends BaseInferenceEngine {
     // accumulate the joint distribution multiplied by each corresponding marginal
     private Map<Grade, Double> completeJointContextMarginal(Relationship relationship, boolean firstParent, Category category) {
         Map<Grade, Double> partialMarginals = new EnumMap<>(Grade.class);
-        Map<GradePair, Double> jointDistribution = relationship.getJointDistribution(category);
+        Map<AllelePair<Grade>, Double> jointDistribution = relationship.getJointDistribution(category);
         Map<Grade, Double> firstParentDistribution = relationship.getParent1().getDistribution(category, DistributionType.INFERRED);
         Map<Grade, Double> secondParentDistribution = relationship.getParent2().getDistribution(category, DistributionType.INFERRED);
 
-        for (Map.Entry<GradePair, Double> entry : jointDistribution.entrySet()) {
-            GradePair gradePair = entry.getKey();
+        for (Map.Entry<AllelePair<Grade>, Double> entry : jointDistribution.entrySet()) {
+            AllelePair<Grade> gradePair = entry.getKey();
             double newProbability = entry.getValue() * firstParentDistribution.get(gradePair.getFirst()) * secondParentDistribution.get(gradePair.getSecond());
 
             // the probability contributes if the other parents marginal allows it

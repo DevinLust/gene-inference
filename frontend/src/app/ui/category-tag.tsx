@@ -1,20 +1,12 @@
-import { Category } from '@/app/lib/definitions';
+import { Category, CATEGORY_COLORS, CATEGORY_LABELS } from '@/app/lib/definitions';
 
 const rgbContrast: number = 30;
 
-const categoryColors: Record<Category, string> = {
-    "SWIM": "#b8aa11",
-    "FLY": "#ac0db8",
-    "RUN": "#047a21",
-    "POWER": "#a30f1b",
-    "STAMINA": "#ab690e",
-};
-
 export default function CategoryTag({ category }: { category: Category}) {
-    const backgroundColor: string = categoryColors[category];
+    const backgroundColor: string = CATEGORY_COLORS[category];
     const startColor: string = adjustColor(backgroundColor, rgbContrast);
     const endColor: string = adjustColor(backgroundColor, -rgbContrast);
-    const categoryText = category.charAt(0).toUpperCase() + category.slice(1).toLowerCase();
+    const categoryText = CATEGORY_LABELS[category];
 
     return (
         <span

@@ -1,8 +1,166 @@
 // Categories sheep can have
-export type Category = "SWIM" | "FLY" | "RUN" | "POWER" | "STAMINA";
+export const ALL_CATEGORIES = [
+    "SWIM",
+    "FLY",
+    "RUN",
+    "POWER",
+    "STAMINA",
+    "TONE",
+    "COLOR",
+    "SHINY",
+] as const;
+
+export type Category = typeof ALL_CATEGORIES[number];
+
+export const CATEGORY_LABELS: Record<Category, string> = {
+    SWIM: "Swim",
+    FLY: "Fly",
+    RUN: "Run",
+    POWER: "Power",
+    STAMINA: "Stamina",
+    TONE: "Tone",
+    COLOR: "Color",
+    SHINY: "Shiny",
+};
+
+export const TRAIT_CATEGORIES: Category[] = [
+    "SWIM",
+    "FLY",
+    "RUN",
+    "POWER",
+    "STAMINA",
+];
+
+export const APPEARANCE_CATEGORIES: Category[] = [
+    "COLOR",
+    "TONE",
+    "SHINY",
+];
+
+export const CATEGORY_COLORS: Record<Category, string> = {
+    SWIM: "#b8aa11",
+    FLY: "#ac0db8",
+    RUN: "#047a21",
+    POWER: "#a30f1b",
+    STAMINA: "#ab690e",
+    TONE: "#2563eb",
+    COLOR: "#db2777",
+    SHINY: "#9ca3af",
+};
 
 // Distribution types
 export type DistributionType = "PRIOR" | "INFERRED";
+
+// General Alleles
+export type AlleleCode = string;
+export type AlleleCodePairKey = string; // e.g. "SHN|NRM"
+
+export const ALLELE_LABELS: Partial<Record<Category, Record<string, string>>> = {
+    SHINY: {
+        SHN: "Shiny",
+        NRM: "Non-Shiny",
+    },
+    COLOR: {
+        NRM: "Normal",
+        RED: "Red",
+        BLU: "Blue",
+        YEL: "Yellow",
+        PNK: "Pink",
+        PUR: "Purple",
+        SKY: "Sky Blue",
+        ORA: "Orange",
+        GRN: "Green",
+        BRN: "Brown",
+        GRY: "Grey",
+        LIM: "Lime Green",
+        BLK: "Black",
+        WHT: "White",
+    },
+    TONE: {
+        M: "Monotone",
+        T: "Two Tone",
+    },
+};
+
+export const CATEGORY_ALLELE_OPTIONS: Record<Category, { value: string; label: string }[]> = {
+    SWIM: [
+        { value: "S", label: "S" },
+        { value: "A", label: "A" },
+        { value: "B", label: "B" },
+        { value: "C", label: "C" },
+        { value: "D", label: "D" },
+        { value: "E", label: "E" },
+    ],
+    FLY: [
+        { value: "S", label: "S" },
+        { value: "A", label: "A" },
+        { value: "B", label: "B" },
+        { value: "C", label: "C" },
+        { value: "D", label: "D" },
+        { value: "E", label: "E" },
+    ],
+    RUN: [
+        { value: "S", label: "S" },
+        { value: "A", label: "A" },
+        { value: "B", label: "B" },
+        { value: "C", label: "C" },
+        { value: "D", label: "D" },
+        { value: "E", label: "E" },
+    ],
+    POWER: [
+        { value: "S", label: "S" },
+        { value: "A", label: "A" },
+        { value: "B", label: "B" },
+        { value: "C", label: "C" },
+        { value: "D", label: "D" },
+        { value: "E", label: "E" },
+    ],
+    STAMINA: [
+        { value: "S", label: "S" },
+        { value: "A", label: "A" },
+        { value: "B", label: "B" },
+        { value: "C", label: "C" },
+        { value: "D", label: "D" },
+        { value: "E", label: "E" },
+    ],
+    TONE: [
+        { value: "M", label: "Monotone" },
+        { value: "T", label: "Two Tone" },
+    ],
+    COLOR: [
+        { value: "NRM", label: "Normal" },
+        { value: "WHT", label: "White" },
+        { value: "RED", label: "Red" },
+        { value: "BLU", label: "Blue" },
+        { value: "YEL", label: "Yellow" },
+        { value: "PNK", label: "Pink" },
+        { value: "PUR", label: "Purple" },
+        { value: "SKY", label: "Sky Blue" },
+        { value: "ORA", label: "Orange" },
+        { value: "GRN", label: "Green" },
+        { value: "BRN", label: "Brown" },
+        { value: "GRY", label: "Grey" },
+        { value: "LIM", label: "Lime Green" },
+        { value: "BLK", label: "Black" },
+    ],
+    SHINY: [
+        { value: "NRM", label: "Non-Shiny" },
+        { value: "SHN", label: "Shiny" },
+    ],
+};
+
+export function displayAllele(category: Category, code: string | null | undefined): string {
+    if (!code) return "unknown";
+    return ALLELE_LABELS[category]?.[code] ?? code;
+}
+
+export function parseAlleleCodePair(key: AlleleCodePairKey): [AlleleCode, AlleleCode] {
+    const parts = key.split("|");
+    if (parts.length !== 2) {
+        throw new Error(`Invalid AlleleCodePairKey: ${key}`);
+    }
+    return [parts[0], parts[1]];
+}
 
 // Grades of certain categories
 export type Grade = "S" | "A" | "B" | "C" | "D" | "E";
@@ -19,26 +177,22 @@ export function parseGradePair(key: GradePairKey): [Grade, Grade] {
 }
 
 // Map of probabilities of grades across categories and their distribution types
-type ProbabilityMap = {
+export type ProbabilityMap = {
     [C in Category]: {
-        [D in DistributionType]: {
-            [G in Grade]: number;
-        };
+        [D in DistributionType]: Record<AlleleCode, number>;
     };
 };
 
-type ProbabilityMapCreateDTO = {
-    [C in Category]?: {
-        [G in Grade]: number;
-    };
+export type ProbabilityMapCreateDTO = {
+    [C in Category]?: Record<AlleleCode, number>;
 } | null;
 
 // Maps the phenotype and hidden alleles of sheep in each category
-type GenotypeMap = {
+export type GenotypeMap = {
     [C in Category]: {
-        "phenotype": Grade;
-        "hiddenAllele": Grade | null;
-    }
+        phenotype: AlleleCode;
+        hiddenAllele: AlleleCode | null;
+    };
 };
 
 export type PageRequest = {
@@ -62,6 +216,7 @@ export type Sheep = {
     distributions: ProbabilityMap;
     genotypes: GenotypeMap;
     parentRelationshipId: number | null;
+    lockedCategories: Category[];
 };
 
 export type SheepSummary = {
@@ -77,36 +232,30 @@ export type SheepFilter = {
 
 export type SheepCreateDTO = {
     name: string | null;
-    distributions: ProbabilityMapCreateDTO;
-    genotypes: GenotypeMap;
-    parentRelationshipId: number | null;
+    genotypes: GenotypeMap | null;
 };
 
 export type SheepChildDTO = {
     name: string | null;
-    distributions: ProbabilityMapCreateDTO;
-    genotypes: GenotypeMap;
+    genotypes: GenotypeMap | null;
     parent1Id: number;
     parent2Id: number;
 }
 
 export type SheepUpdateDTO = {
     name: string | null;
-    distributions: ProbabilityMapCreateDTO;
-    genotypes: GenotypeMap;
+    genotypes: GenotypeMap | null;
 }
 
 export type PhenotypeDistributions = {
-    [C in Category]: {
-        [G in Grade]: number;
-    };
+    [C in Category]: Record<AlleleCode, number>;
 };
 
 export type Distributions = {
     category: Category;
     type: DistributionType;
-    distributions: Record<string, Record<Grade, number>>;
-}
+    distributions: Record<string, Record<AlleleCode, number>>;
+};
 
 export type DistributionFilter = {
     category: Category;
@@ -129,8 +278,8 @@ export type BestPrediction = {
 
 export type PhenotypeFrequencies = Record<
     Category,
-    Record<GradePairKey,
-        Partial<Record<Grade, number>>>>
+    Record<AlleleCodePairKey, Partial<Record<AlleleCode, number>>>
+>;
 
 export type Relationship = {
     id: number;
@@ -148,10 +297,10 @@ export type RelationshipRow = {
 }
 
 export type PhenotypesAtBirth = {
-    parent1: Grade;
-    parent2: Grade;
-    child: Grade;
-}
+    parent1Code: AlleleCode;
+    parent2Code: AlleleCode;
+    childCode: AlleleCode;
+};
 
 export type RelationshipSummary = {
     id: number;
@@ -198,8 +347,10 @@ export type ValidationFailed = {
 };
 
 export type ExcessAlleleViolationDTO = {
-    attemptedAllele: Grade;
-    validAlleles: Grade[]; // use array in JSON, not Set
+    reason: string;
+    message: string;
+    attemptedAllele?: AlleleCode;
+    validAlleles?: AlleleCode[];
 };
 
 export type GeneticConstraintViolation = {

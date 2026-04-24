@@ -36,7 +36,7 @@ public class BirthRecord {
 
         for (Category category : Category.values()) {
             BirthRecordPhenotype phenotypeRecord = new BirthRecordPhenotype(record, category);
-            phenotypeRecord.setAllPhenotypes(parent1.getPhenotype(category), parent2.getPhenotype(category), childGenotypes.get(category).phenotype());
+            phenotypeRecord.setAllPhenotypeCodes(parent1.getPhenotype(category).code(), parent2.getPhenotype(category).code(), childGenotypes.get(category).phenotype());
             record.phenotypesAtBirth.add(phenotypeRecord);
         }
 
@@ -71,6 +71,15 @@ public class BirthRecord {
 
     public void setChild(Sheep child) {
         this.child = child;
+    }
+
+    public boolean hasCategory(Category category) {
+        for (BirthRecordPhenotype phenotypes : phenotypesAtBirth) {
+            if (phenotypes.getCategory() == category) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public Set<BirthRecordPhenotype> getPhenotypesAtBirth() {

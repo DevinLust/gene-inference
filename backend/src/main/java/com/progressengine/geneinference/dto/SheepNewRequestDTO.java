@@ -1,7 +1,6 @@
 package com.progressengine.geneinference.dto;
 
 import com.progressengine.geneinference.model.enums.Category;
-import com.progressengine.geneinference.model.enums.Grade;
 import com.progressengine.geneinference.validation.ValidDistribution;
 import com.progressengine.geneinference.validation.ValidGenotypes;
 import jakarta.validation.constraints.NotNull;
@@ -14,9 +13,6 @@ public class SheepNewRequestDTO {
     @NotNull
     @ValidGenotypes
     private Map<Category, SheepGenotypeDTO> genotypes;
-
-    @ValidDistribution
-    private Map<Category, Map<Grade, Double>> distributions;
 
 
     public String getName() {
@@ -35,20 +31,11 @@ public class SheepNewRequestDTO {
         this.genotypes = genotypes;
     }
 
-    public Map<Category, Map<Grade, Double>> getDistributions() {
-        return distributions;
-    }
-
-    public void setDistributions(Map<Category, Map<Grade, Double>> distributions) {
-        this.distributions = distributions;
-    }
-
     @Override
     public String toString() {
         return "SheepDTO{" +
                 "name='" + name + '\'' +
                 ", genotypes=" + genotypes +
-                ", distributions=" + distributions +
                 '}';
     }
 }

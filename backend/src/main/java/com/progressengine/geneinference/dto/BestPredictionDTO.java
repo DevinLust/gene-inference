@@ -11,9 +11,9 @@ public class BestPredictionDTO implements Comparable<BestPredictionDTO> {
     private final Map<Category, Grade> parent1BestCategoryGradeMap; // maps category to the grade that won it
     private final Map<Category, Grade> parent2BestCategoryGradeMap;
     private final Set<Category> bestCategoriesSet;
-    private final Map<Category, Map<Grade, Double>> phenotypeDistributions; // Maps each category to the distribution a child has these phenotypes
+    private final Map<Category, Map<String, Double>> phenotypeDistributions; // Maps each category to the distribution a child has these phenotypes
 
-    public BestPredictionDTO(SheepSummaryResponseDTO parent1, SheepSummaryResponseDTO parent2, Map<Category, Grade> parent1BestGrades, Map<Category, Grade> parent2BestGrades, Map<Category, Map<Grade, Double>> predictions) {
+    public BestPredictionDTO(SheepSummaryResponseDTO parent1, SheepSummaryResponseDTO parent2, Map<Category, Grade> parent1BestGrades, Map<Category, Grade> parent2BestGrades, Map<Category, Map<String, Double>> predictions) {
         this.parent1 = parent1;
         this.parent2 = parent2;
         this.parent1BestCategoryGradeMap = parent1BestGrades;
@@ -44,7 +44,7 @@ public class BestPredictionDTO implements Comparable<BestPredictionDTO> {
         return bestCategoriesSet;
     }
 
-    public Map<Category, Map<Grade, Double>> getPhenotypeDistributions() {
+    public Map<Category, Map<String, Double>> getPhenotypeDistributions() {
         return phenotypeDistributions;
     }
 

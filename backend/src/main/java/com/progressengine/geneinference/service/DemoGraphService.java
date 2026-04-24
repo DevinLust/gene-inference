@@ -2,7 +2,10 @@ package com.progressengine.geneinference.service;
 
 import com.progressengine.geneinference.model.*;
 import com.progressengine.geneinference.model.enums.Category;
+import com.progressengine.geneinference.model.enums.Allele;
 import com.progressengine.geneinference.model.enums.Grade;
+import com.progressengine.geneinference.service.AlleleDomains.AlleleDomain;
+import com.progressengine.geneinference.service.AlleleDomains.CategoryDomains;
 import org.springframework.stereotype.Service;
 
 import java.util.EnumMap;
@@ -18,41 +21,41 @@ public class DemoGraphService {
                 1,
                 "Alpha",
                 genotypeMap(
-                        new GradePair(Grade.A, Grade.B),
-                        new GradePair(Grade.B, Grade.B),
-                        new GradePair(Grade.C, Grade.B),
-                        new GradePair(Grade.A, Grade.A),
-                        new GradePair(Grade.B, Grade.C)
+                        new AlleleCodePair(Grade.A, Grade.B),
+                        new AlleleCodePair(Grade.B, Grade.B),
+                        new AlleleCodePair(Grade.C, Grade.B),
+                        new AlleleCodePair(Grade.A, Grade.A),
+                        new AlleleCodePair(Grade.B, Grade.C)
                 )
         );
         Sheep s2 = demoSheep(2,
                 "Beta",
                 genotypeMap(
-                        new GradePair(Grade.C, Grade.E),
-                        new GradePair(Grade.S, Grade.A),
-                        new GradePair(Grade.C, Grade.E),
-                        new GradePair(Grade.D, Grade.B),
-                        new GradePair(Grade.S, Grade.S)
+                        new AlleleCodePair(Grade.C, Grade.E),
+                        new AlleleCodePair(Grade.S, Grade.A),
+                        new AlleleCodePair(Grade.C, Grade.E),
+                        new AlleleCodePair(Grade.D, Grade.B),
+                        new AlleleCodePair(Grade.S, Grade.S)
                 )
         );
         Sheep s3 = demoSheep(3,
                 "Gamma",
                 genotypeMap(
-                        new GradePair(Grade.A, Grade.A),
-                        new GradePair(Grade.C, Grade.B),
-                        new GradePair(Grade.D, Grade.E),
-                        new GradePair(Grade.B, Grade.S),
-                        new GradePair(Grade.E, Grade.E)
+                        new AlleleCodePair(Grade.A, Grade.A),
+                        new AlleleCodePair(Grade.C, Grade.B),
+                        new AlleleCodePair(Grade.D, Grade.E),
+                        new AlleleCodePair(Grade.B, Grade.S),
+                        new AlleleCodePair(Grade.E, Grade.E)
                 )
         );
         Sheep s4 = demoSheep(4,
                 "Delta",
                 genotypeMap(
-                        new GradePair(Grade.C, Grade.E),
-                        new GradePair(Grade.B, Grade.C),
-                        new GradePair(Grade.C, Grade.S),
-                        new GradePair(Grade.S, Grade.S),
-                        new GradePair(Grade.A, Grade.D)
+                        new AlleleCodePair(Grade.C, Grade.E),
+                        new AlleleCodePair(Grade.B, Grade.C),
+                        new AlleleCodePair(Grade.C, Grade.S),
+                        new AlleleCodePair(Grade.S, Grade.S),
+                        new AlleleCodePair(Grade.A, Grade.D)
                 )
         );
 
@@ -65,11 +68,11 @@ public class DemoGraphService {
         Sheep c1 = demoSheep(5,
                 "Epsilon",
                 genotypeMap(
-                        new GradePair(Grade.B, Grade.E),
-                        new GradePair(Grade.S, Grade.B),
-                        new GradePair(Grade.E, Grade.C),
-                        new GradePair(Grade.A, Grade.D),
-                        new GradePair(Grade.C, Grade.S)
+                        new AlleleCodePair(Grade.B, Grade.E),
+                        new AlleleCodePair(Grade.S, Grade.B),
+                        new AlleleCodePair(Grade.E, Grade.C),
+                        new AlleleCodePair(Grade.A, Grade.D),
+                        new AlleleCodePair(Grade.C, Grade.S)
                 )
         );
         r1.addChildToRelationship(c1);
@@ -77,11 +80,11 @@ public class DemoGraphService {
         Sheep c2 = demoSheep(6,
                 "Phi",
                 genotypeMap(
-                        new GradePair(Grade.A, Grade.E),
-                        new GradePair(Grade.B, Grade.A),
-                        new GradePair(Grade.D, Grade.C),
-                        new GradePair(Grade.B, Grade.B),
-                        new GradePair(Grade.E, Grade.S)
+                        new AlleleCodePair(Grade.A, Grade.E),
+                        new AlleleCodePair(Grade.B, Grade.A),
+                        new AlleleCodePair(Grade.D, Grade.C),
+                        new AlleleCodePair(Grade.B, Grade.B),
+                        new AlleleCodePair(Grade.E, Grade.S)
                 )
         );
         r2.addChildToRelationship(c2);
@@ -89,11 +92,11 @@ public class DemoGraphService {
         Sheep c3 = demoSheep(7,
                 "Eta",
                 genotypeMap(
-                        new GradePair(Grade.A, Grade.E), // A from s3, E from s4
-                        new GradePair(Grade.C, Grade.C), // C from s3, C from s4
-                        new GradePair(Grade.E, Grade.S), // E from s3, S from s4
-                        new GradePair(Grade.B, Grade.S), // B from s3, S from s4
-                        new GradePair(Grade.E, Grade.D)  // E from s3, D from s4
+                        new AlleleCodePair(Grade.A, Grade.E), // A from s3, E from s4
+                        new AlleleCodePair(Grade.C, Grade.C), // C from s3, C from s4
+                        new AlleleCodePair(Grade.E, Grade.S), // E from s3, S from s4
+                        new AlleleCodePair(Grade.B, Grade.S), // B from s3, S from s4
+                        new AlleleCodePair(Grade.E, Grade.D)  // E from s3, D from s4
                 )
         );
         r3.addChildToRelationship(c3);
@@ -101,11 +104,11 @@ public class DemoGraphService {
         Sheep c4 = demoSheep(8,
                 "Theta",
                 genotypeMap(
-                        new GradePair(Grade.A, Grade.B), // A from s3, B from s1
-                        new GradePair(Grade.B, Grade.B), // B from s3, B from s1
-                        new GradePair(Grade.D, Grade.C), // D from s3, C from s1
-                        new GradePair(Grade.S, Grade.A), // S from s3, A from s1
-                        new GradePair(Grade.E, Grade.C)  // E from s3, C from s1
+                        new AlleleCodePair(Grade.A, Grade.B), // A from s3, B from s1
+                        new AlleleCodePair(Grade.B, Grade.B), // B from s3, B from s1
+                        new AlleleCodePair(Grade.D, Grade.C), // D from s3, C from s1
+                        new AlleleCodePair(Grade.S, Grade.A), // S from s3, A from s1
+                        new AlleleCodePair(Grade.E, Grade.C)  // E from s3, C from s1
                 )
         );
         r4.addChildToRelationship(c4);
@@ -114,11 +117,11 @@ public class DemoGraphService {
         Sheep c5 = demoSheep(9,
                 "Mu",
                 genotypeMap(
-                        new GradePair(Grade.A, Grade.A), // A from s3, B from s1
-                        new GradePair(Grade.C, Grade.B), // B from s3, B from s1
-                        new GradePair(Grade.E, Grade.C), // D from s3, C from s1
-                        new GradePair(Grade.A, Grade.S), // S from s3, A from s1
-                        new GradePair(Grade.C, Grade.E)  // E from s3, C from s1
+                        new AlleleCodePair(Grade.A, Grade.A), // A from s3, B from s1
+                        new AlleleCodePair(Grade.C, Grade.B), // B from s3, B from s1
+                        new AlleleCodePair(Grade.E, Grade.C), // D from s3, C from s1
+                        new AlleleCodePair(Grade.A, Grade.S), // S from s3, A from s1
+                        new AlleleCodePair(Grade.C, Grade.E)  // E from s3, C from s1
                 )
         );
         r5.addChildToRelationship(c5);
@@ -129,11 +132,11 @@ public class DemoGraphService {
         Sheep gc1 = demoSheep(10,
                 "Pi",
                 genotypeMap(
-                        new GradePair(Grade.B, Grade.A),
-                        new GradePair(Grade.A, Grade.B),
-                        new GradePair(Grade.C, Grade.C),
-                        new GradePair(Grade.A, Grade.B),
-                        new GradePair(Grade.S, Grade.S)
+                        new AlleleCodePair(Grade.B, Grade.A),
+                        new AlleleCodePair(Grade.A, Grade.B),
+                        new AlleleCodePair(Grade.C, Grade.C),
+                        new AlleleCodePair(Grade.A, Grade.B),
+                        new AlleleCodePair(Grade.S, Grade.S)
                 )
         );
         r6.addChildToRelationship(gc1);
@@ -146,17 +149,32 @@ public class DemoGraphService {
         );
     }
 
-    private Sheep demoSheep(int id, String name, Map<Category, GradePair> genotypes) {
+    private Sheep demoSheep(int id, String name, Map<Category, AlleleCodePair> genotypes) {
         Sheep sheep = new Sheep();
         sheep.setId(id);
         sheep.setName(name);
         sheep.createDefaultDistributions();
 
-        for (Map.Entry<Category, GradePair> entry : genotypes.entrySet()) {
-            sheep.setGenotype(entry.getKey(), entry.getValue());
+        for (Map.Entry<Category, AlleleCodePair> entry : genotypes.entrySet()) {
+                Category category = entry.getKey();
+                AlleleCodePair codePair = entry.getValue();
+
+                setGenotypeFromCodes(sheep, category, codePair);
         }
 
         return sheep;
+    }
+
+    private <A extends Enum<A> & Allele> void setGenotypeFromCodes(
+        Sheep sheep,
+        Category category,
+        AlleleCodePair codePair
+    ) {
+        AlleleDomain<A> domain = CategoryDomains.typedDomainFor(category);
+
+        AllelePair<A> pair = codePair.toAllelePair(domain);
+
+        sheep.setGenotype(category, pair);
     }
 
     private Relationship relationship(int id, Sheep parent1, Sheep parent2) {
@@ -167,14 +185,14 @@ public class DemoGraphService {
         return relationship;
     }
 
-    private Map<Category, GradePair> genotypeMap(
-            GradePair swim,
-            GradePair fly,
-            GradePair run,
-            GradePair power,
-            GradePair stamina
+    private Map<Category, AlleleCodePair> genotypeMap(
+            AlleleCodePair swim,
+            AlleleCodePair fly,
+            AlleleCodePair run,
+            AlleleCodePair power,
+            AlleleCodePair stamina
     ) {
-        Map<Category, GradePair> map = new EnumMap<>(Category.class);
+        Map<Category, AlleleCodePair> map = new EnumMap<>(Category.class);
         map.put(Category.SWIM, swim);
         map.put(Category.FLY, fly);
         map.put(Category.RUN, run);

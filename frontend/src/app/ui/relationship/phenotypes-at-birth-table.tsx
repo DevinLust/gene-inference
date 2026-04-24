@@ -30,13 +30,13 @@ export default function PhenotypesAtBirthTable({ birthRecord }: {birthRecord: Bi
                                 <CategoryTag category={category as Category} />
                             </td>
                             <td className="sticky left-0 bg-transparent px-2 py-2 font-mono text-center">
-                                {phenotypes.parent1}
+                                {phenotypes.parent1Code}
                             </td>
                             <td className="sticky left-0 bg-transparent px-2 py-2 font-mono text-center">
-                                {phenotypes.parent2}
+                                {phenotypes.parent2Code}
                             </td>
                             <td className="sticky left-0 bg-transparent px-2 py-2 font-mono text-center">
-                                {phenotypes.child}
+                                {phenotypes.childCode}
                             </td>
                         </tr>
                     ))}
