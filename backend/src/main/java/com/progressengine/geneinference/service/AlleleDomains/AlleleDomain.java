@@ -103,4 +103,31 @@ public interface AlleleDomain<A extends Enum<A> & Allele> {
     default boolean canProduceChildPhenotype(A p1Phenotype, A p1Hidden, A p2Phenotype, A p2Hidden, A childPhenotype) {
         return possibleChildPhenotypesFromGenotypes(p1Phenotype, p1Hidden, p2Phenotype, p2Hidden).contains(childPhenotype);
     }
+
+    default boolean canProduceChildGenotype(
+            A p1Phenotype,
+            A p1Hidden,
+            A p2Phenotype,
+            A p2Hidden,
+            A childPhenotype,
+            A childHidden
+    ) {
+        Set<A> p1Alleles = EnumSet.of(p1Phenotype, p1Hidden);
+        Set<A> p2Alleles = EnumSet.of(p2Phenotype, p2Hidden);
+
+        for (A fromP1 : p1Alleles) {
+            for (A fromP2 : p2Alleles) {
+                double[] bias = expressionBias(fromP1, fromP2);
+
+                boolean sameOrder = fromP1 == childPhenotype && fromP2 == childHidden && bias[0] > 0.0;
+                boolean reverseOrder = fromP2 == childPhenotype && fromP1 == childHidden && bias[1] > 0.0;
+
+                if (sameOrder || reverseOrder) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
 }

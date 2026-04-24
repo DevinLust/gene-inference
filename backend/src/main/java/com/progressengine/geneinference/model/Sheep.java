@@ -86,8 +86,7 @@ public class Sheep {
 
 
     public void applyNewSheepRequest(
-            Map<Category, SheepGenotypeDTO> genotypes,
-            Map<Category, Map<String, Double>> distributions
+            Map<Category, SheepGenotypeDTO> genotypes
     ) {
         setGenotypes(genotypes);                 // validates and stores observed genotype/phenotype data
         syncPriorsFromObservedPhenotypes();       // derive priors from phenotype/genotype rules

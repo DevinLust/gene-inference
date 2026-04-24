@@ -12,33 +12,34 @@ export default function EditableSheepName({
     initialName: string;
 }) {
     const action = updateSheepName.bind(null, sheepId);
-    const [state, formAction, isPending] = useActionState<UpdateSheepState, FormData>(action, {});
+    const [state, formAction, isPending] = useActionState<UpdateSheepState, FormData>(
+        action,
+        { status: "idle" }
+    );
     const [editing, setEditing] = useState(false);
     const [dismissed, setDismissed] = useState(false);
 
     const prevPendingRef = useRef<boolean>(false);
 
     useEffect(() => {
-        const success = !!state?.success;
+        const success = state.status === "success";
 
-        // show error message if failed
         if (editing && !success && !isPending && prevPendingRef.current) {
             setDismissed(false);
         }
 
-        // close only when success JUST turned true
         if (editing && success && !isPending && prevPendingRef.current) {
             setEditing(false);
         }
 
         prevPendingRef.current = isPending;
-    }, [state?.success, isPending, editing]);
+    }, [state, isPending, editing]);
 
     useEffect(() => {
-        if (state?.message) {
-            setDismissed(false); // new message → show it
+        if ("message" in state && state.message) {
+            setDismissed(false);
         }
-    }, [state?.message]);
+    }, [state]);
 
     return (
         <div>
@@ -80,7 +81,7 @@ export default function EditableSheepName({
                         Cancel
                     </button>
 
-                    {state?.message && !dismissed && (
+                    {"message" in state && state.message && !dismissed && state.status === "error" && (
                         <div className="flex items-center gap-2">
                             <p className="text-sm text-red-400">{state.message}</p>
                             <button

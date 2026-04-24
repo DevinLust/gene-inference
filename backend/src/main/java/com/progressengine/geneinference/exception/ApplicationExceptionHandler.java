@@ -3,6 +3,7 @@ package com.progressengine.geneinference.exception;
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import com.progressengine.geneinference.dto.ErrorResponse;
 import com.progressengine.geneinference.model.ExcessAlleleViolation;
+import com.progressengine.geneinference.model.enums.GeneticViolationReason;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Path;
@@ -157,24 +158,29 @@ public class ApplicationExceptionHandler {
     public ErrorResponse handleExcessAlleleDiversity(
             ExcessAlleleDiversityException ex
     ) {
-
         Map<String, Object> categoryErrors = new LinkedHashMap<>();
 
         for (ExcessAlleleViolation v : ex.getViolations()) {
-            categoryErrors.put(
-                    v.category().name(),
-                    Map.of(
-                            "attemptedAllele", v.attemptedAllele(),
-                            "validAlleles", v.validAlleles()
-                    )
-            );
+            Map<String, Object> error = new LinkedHashMap<>();
+            error.put("reason", v.reason().name());
+            error.put("message", v.message());
+
+            if (v.reason() == GeneticViolationReason.PHENOTYPE_NOT_PRODUCIBLE) {
+                error.put("attemptedAllele", v.attemptedAllele());
+                error.put("validAlleles", v.validAlleles());
+            }
+
+            categoryErrors.put(v.category().name(), error);
         }
 
         return ErrorResponse.builder()
                 .error("GENETIC_CONSTRAINT_VIOLATION")
                 .message(ex.getMessage())
                 .errors(Map.of("genotypes", categoryErrors))
-                .suggestions(List.of("Choose one of the valid alleles listed.", "If you believe the new allele is correct, review earlier birth records to confirm phenotypes at birth."))
+                .suggestions(List.of(
+                        "Choose one of the valid phenotypes listed.",
+                        "If you believe the new genotype is correct, review earlier birth records to confirm phenotypes at birth."
+                ))
                 .build();
     }
 

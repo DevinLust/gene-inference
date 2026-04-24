@@ -95,7 +95,7 @@ function CategorySection({
                     return (
                         <div
                             key={c}
-                            className={`mb-2 border border-gray-500 rounded-lg ${
+                            className={`min-w-0 w-full overflow-hidden mb-2 border border-gray-500 rounded-lg ${
                                 isLocked ? "bg-blue-950/50 opacity-60" : "bg-blue-900"
                             }`}
                         >
@@ -162,21 +162,40 @@ function CategorySection({
                                 </select>
                             </div>
 
-                            <div id={`genotypes-${c}-error`} aria-live="polite" aria-atomic="true">
+                            <div
+                                id={`genotypes-${c}-error`}
+                                aria-live="polite"
+                                aria-atomic="true"
+                                className="min-w-0 max-w-full px-2 pb-2"
+                            >
                                 {categoryValidationErrors?.map((err) => (
-                                    <p key={err} className="ml-2 text-sm text-yellow-500">
+                                    <p
+                                        key={err}
+                                        className="text-sm text-yellow-500 whitespace-normal break-words [overflow-wrap:anywhere]"
+                                    >
                                         {err}
                                     </p>
                                 ))}
 
                                 {categoryConstraintViolation && (
-                                    <div className="ml-2">
-                                        <p className="text-sm text-yellow-500">
-                                            Attempted to record: {categoryConstraintViolation.attemptedAllele}
+                                    <div className="min-w-0 max-w-full">
+                                        {/* Main message (always shown) */}
+                                        <p className="text-sm text-yellow-500 whitespace-pre-line break-words">
+                                            {categoryConstraintViolation.message}
                                         </p>
-                                        <p className="text-sm text-yellow-500">
-                                            Possible alleles: {categoryConstraintViolation.validAlleles.join(", ")}
-                                        </p>
+
+                                        {/* Only show for phenotype-level errors */}
+                                        {categoryConstraintViolation.attemptedAllele && (
+                                            <p className="text-sm text-yellow-500 whitespace-normal break-words">
+                                                Attempted to record: {categoryConstraintViolation.attemptedAllele}
+                                            </p>
+                                        )}
+
+                                        {categoryConstraintViolation.validAlleles && (
+                                            <p className="text-sm text-yellow-500 whitespace-normal break-words">
+                                                Valid phenotypes: {categoryConstraintViolation.validAlleles.join(", ")}
+                                            </p>
+                                        )}
                                     </div>
                                 )}
                             </div>

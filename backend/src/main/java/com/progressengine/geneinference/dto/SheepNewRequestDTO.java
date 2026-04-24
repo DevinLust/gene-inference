@@ -14,9 +14,6 @@ public class SheepNewRequestDTO {
     @ValidGenotypes
     private Map<Category, SheepGenotypeDTO> genotypes;
 
-    @ValidDistribution
-    private Map<Category, Map<String, Double>> distributions;
-
 
     public String getName() {
         return name;
@@ -34,20 +31,11 @@ public class SheepNewRequestDTO {
         this.genotypes = genotypes;
     }
 
-    public Map<Category, Map<String, Double>> getDistributions() {
-        return distributions;
-    }
-
-    public void setDistributions(Map<Category, Map<String, Double>> distributions) {
-        this.distributions = distributions;
-    }
-
     @Override
     public String toString() {
         return "SheepDTO{" +
                 "name='" + name + '\'' +
                 ", genotypes=" + genotypes +
-                ", distributions=" + distributions +
                 '}';
     }
 }

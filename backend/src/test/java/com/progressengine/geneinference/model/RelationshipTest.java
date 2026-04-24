@@ -1,7 +1,9 @@
 package com.progressengine.geneinference.model;
 
+import com.progressengine.geneinference.dto.SheepGenotypeDTO;
 import com.progressengine.geneinference.exception.ExcessAlleleDiversityException;
 import com.progressengine.geneinference.model.enums.Category;
+import com.progressengine.geneinference.model.enums.Color;
 import com.progressengine.geneinference.model.enums.Grade;
 import com.progressengine.geneinference.model.enums.Tone;
 import com.progressengine.geneinference.testutil.DomainFixtures;
@@ -623,6 +625,63 @@ public class RelationshipTest {
 
         // Depending on your exact shiny-domain rules, either this should succeed or fail.
         // The point is to assert the rule explicitly once you settle the semantics.
+        assertThrows(
+                ExcessAlleleDiversityException.class,
+                () -> relationship.addChildToRelationship(child)
+        );
+    }
+
+    @Test
+    public void testAddChildToRelationship_colorRejectsChildGenotypeRequiringBothAllelesFromOneParent() {
+        Sheep parent1 = DomainFixtures.createTestSheep(Map.of(
+                Category.COLOR, Color.NORMAL.code()
+        ));
+
+        Sheep parent2 = DomainFixtures.createTestSheep(Map.of(
+                Category.COLOR, Color.RED.code()
+        ));
+
+        Map<Category, Map<AlleleCodePair, Map<String, Integer>>> phenotypeFrequencies = Map.of(
+                Category.COLOR, Map.of(
+                        new AlleleCodePair(Color.NORMAL, Color.RED),
+                        Map.of(Color.BLUE.code(), 1)
+                )
+        );
+
+        Relationship relationship = DomainFixtures.createPopulatedRelationship(
+                parent1,
+                parent2,
+                phenotypeFrequencies
+        );
+
+        Sheep child = DomainFixtures.createTestSheepWithFullGenotype(Map.of(
+                Category.COLOR,
+                new SheepGenotypeDTO(Color.RED.code(), Color.BLUE.code())
+        ));
+
+        assertThrows(
+                ExcessAlleleDiversityException.class,
+                () -> relationship.addChildToRelationship(child)
+        );
+    }
+
+    @Test
+    public void testAddChildToRelationship_colorRejectsChildGenotypeRequiringBothAllelesFromOneParentWithoutHistory() {
+        Sheep parent1 = DomainFixtures.createTestSheep(Map.of(
+                Category.COLOR, Color.NORMAL.code()
+        ));
+
+        Sheep parent2 = DomainFixtures.createTestSheep(Map.of(
+                Category.COLOR, Color.RED.code()
+        ));
+
+        Relationship relationship = DomainFixtures.createEmptyRelationship(parent1, parent2);
+
+        Sheep child = DomainFixtures.createTestSheepWithFullGenotype(Map.of(
+                Category.COLOR,
+                new SheepGenotypeDTO(Color.RED.code(), Color.BLUE.code())
+        ));
+
         assertThrows(
                 ExcessAlleleDiversityException.class,
                 () -> relationship.addChildToRelationship(child)

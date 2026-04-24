@@ -142,8 +142,9 @@ public class GenotypesValidator implements ConstraintValidator<ValidGenotypes, M
 
         if (!domain.isHiddenAllelePossible(phenotype, hidden)) {
             hctx.buildConstraintViolationWithTemplate(
-                            "Hidden allele is not compatible with phenotype for category "
-                                    + category + ": (" + phenotypeCode + ", " + hiddenCode + ")"
+                            "Hidden allele is inconsistent with the phenotype for category "
+                                    + category + ": (" + phenotypeCode + ", " + hiddenCode + "). "
+                                    + "The hidden allele would be expressed instead due to dominance rules."
                     )
                     .addBeanNode()
                     .inIterable().atKey(category)

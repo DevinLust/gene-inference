@@ -19,14 +19,11 @@ export type ChildState =
     | ({ status: "error" } & ValidationFailed)             // backend validation
     | ({ status: "error" } & GeneticConstraintViolation);  // backend genetic constraint
 
-export type UpdateSheepState = {
-    success?: boolean;
-    message?: string | null;
-    errors?: {
-        name?: string[];
-        genotypes?: Partial<Record<Category, string[]>>;
-    };
-};
+export type UpdateSheepState =
+    | { status: "idle" }
+    | { status: "success"; ok: true; message?: string }
+    | ({ status: "error" } & ValidationFailed)
+    | ({ status: "error" } & GeneticConstraintViolation);
 
 export type BreedState = {
     message?: string | null;
@@ -267,12 +264,18 @@ export async function updateSheep(
     sheepId: number,
     prevState: UpdateSheepState,
     formData: FormData
-) {
+): Promise<UpdateSheepState> {
     let updateDTO: SheepUpdateDTO;
+
     try {
         updateDTO = await formDataToSheepUpdateDTO(formData);
     } catch (err) {
-        return err instanceof Error && err.message ? { message: err.message, errors: {} } : { message: "Invalid form data", errors: {} };
+        return {
+            status: "error",
+            error: "VALIDATION_FAILED",
+            message: err instanceof Error && err.message ? err.message : "Invalid form data",
+            errors: {},
+        };
     }
 
     const res = await fetch(`${API_BASE_URL}/sheep/${sheepId}`, {
@@ -282,7 +285,12 @@ export async function updateSheep(
     });
 
     if (!res.ok) {
-        return await parseError(res);
+        const apiErr = await parseError(res);
+        // Wrap it with status:"error" so narrowing works everywhere
+        return {
+            status: "error",
+            ...apiErr,
+        } as UpdateSheepState;
     }
 
     revalidatePath("/sheep");
@@ -294,17 +302,27 @@ export async function updateSheepName(
     sheepId: number,
     prevState: UpdateSheepState,
     formData: FormData
-) {
+): Promise<UpdateSheepState> {
     let updateDTO: SheepUpdateDTO;
+
     try {
         updateDTO = await formDataToSheepUpdateDTO(formData);
     } catch (err) {
-        return err instanceof Error && err.message ? { message: err.message, errors: {} } : { message: "Invalid form data", errors: {} };
+        return {
+            status: "error",
+            error: "VALIDATION_FAILED",
+            message: err instanceof Error && err.message ? err.message : "Invalid form data",
+            errors: {},
+        };
     }
 
-    // only required while other fields are ignored for now
     if (!updateDTO.name) {
-        return { message: "Name is required", errors: { name: ["Name cannot be empty"] } };
+        return {
+            status: "error",
+            error: "VALIDATION_FAILED",
+            message: "Name is required",
+            errors: { name: ["Name cannot be empty"] },
+        };
     }
 
     const res = await fetch(`${API_BASE_URL}/sheep/${sheepId}`, {
@@ -319,8 +337,12 @@ export async function updateSheepName(
 
     revalidatePath("/sheep");
     revalidatePath(`/sheep/${sheepId}`);
-    // no redirect needed if you’re already on the detail page
-    return { success: true };
+
+    return {
+        status: "success",
+        ok: true,
+        message: "Sheep updated successfully",
+    };
 }
 
 

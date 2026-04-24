@@ -9,7 +9,7 @@ import { ControlledGenotypeMap } from "@/app/ui/genotype-fields";
 type GenotypePatch = Partial<ControlledGenotypeMap>;
 
 export default function EditSheepForm({ sheep }: { sheep: Sheep }) {
-    const initialState: UpdateSheepState = { message: null, errors: {} };
+    const initialState: UpdateSheepState = { status: "idle" };
     const updateSheepForThisSheep = updateSheep.bind(null, sheep.id);
     const [state, formAction, isPending] = useActionState<UpdateSheepState, FormData>(
         updateSheepForThisSheep,
@@ -23,6 +23,14 @@ export default function EditSheepForm({ sheep }: { sheep: Sheep }) {
     const changedName = buildChangedName(sheep.name, name);
     const genotypePatch = buildChangedGenotypePatch(initialGenotypes, genotypes);
     const isDirty = changedName !== null || genotypePatch !== null;
+
+    const errorState = isErrorState(state) ? state : null;
+
+    const validationErrors =
+        errorState && isValidationFailed(errorState) ? errorState.errors : null;
+
+    const constraintErrors =
+        errorState && isGeneticConstraint(errorState) ? errorState.errors : null;
 
     return (
         <form
@@ -58,7 +66,7 @@ export default function EditSheepForm({ sheep }: { sheep: Sheep }) {
             }}
             className="flex flex-col gap-6 p-4 max-w-lg bg-gray-600 rounded-lg"
         >
-            {state?.message && <ServerResponse state={state} />}
+            {errorState?.message && <ServerResponse state={state} />}
 
             <label className="flex flex-col">
                 <span className="font-medium">Sheep Name</span>
@@ -76,7 +84,8 @@ export default function EditSheepForm({ sheep }: { sheep: Sheep }) {
                 genotypes={genotypes}
                 setGenotypes={setGenotypes}
                 lockedCategories={sheep.lockedCategories}
-                validationErrors={state.errors?.genotypes}
+                validationErrors={validationErrors?.genotypes}
+                constraintViolations={constraintErrors?.genotypes}
             />
 
             <button
@@ -88,13 +97,25 @@ export default function EditSheepForm({ sheep }: { sheep: Sheep }) {
                 {isPending ? "Updating..." : "Update Sheep"}
             </button>
 
-            {state?.message && <ServerResponse state={state} />}
+            {errorState?.message && <ServerResponse state={state} />}
         </form>
     );
 }
 
 function ServerResponse({ state }: { state: UpdateSheepState }) {
-    return <p className="text-yellow-500 font-medium">{state.message}</p>;
+    if (state.status === "error") {
+        return state.message ? (
+            <p className="text-yellow-500 font-medium">{state.message}</p>
+        ) : null;
+    }
+
+    if (state.status === "success") {
+        return state.message ? (
+            <p className="text-green-400 font-medium">{state.message}</p>
+        ) : null;
+    }
+
+    return null;
 }
 
 function Spinner() {
@@ -176,4 +197,20 @@ function buildChangedGenotypePatch(
     }
 
     return Object.keys(patch).length > 0 ? patch : null;
+}
+
+function isErrorState(state: UpdateSheepState): state is Extract<UpdateSheepState, { status: "error" }> {
+    return state.status === "error";
+}
+
+function isValidationFailed(
+    state: Extract<UpdateSheepState, { status: "error" }>
+): state is Extract<UpdateSheepState, { status: "error"; error: "VALIDATION_FAILED" }> {
+    return state.error === "VALIDATION_FAILED";
+}
+
+function isGeneticConstraint(
+    state: Extract<UpdateSheepState, { status: "error" }>
+): state is Extract<UpdateSheepState, { status: "error"; error: "GENETIC_CONSTRAINT_VIOLATION" }> {
+    return state.error === "GENETIC_CONSTRAINT_VIOLATION";
 }

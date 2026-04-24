@@ -64,11 +64,11 @@ export default function RecordChildForm() {
                     formAction(formData)
                 })
             }}
-            className="flex flex-col gap-6 p-4 bg-gray-600 rounded-lg w-fit"
+            className="flex flex-col gap-6 p-4 bg-gray-600 rounded-lg w-full max-w-5xl"
         >
             <h2 className="text-lg font-semibold">Record External Event</h2>
 
-            <div className="flex justify-start gap-2">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 items-start">
             <div className="max-w-md">
                 {/* Parents */}
                 <div className={"grid grid-cols-1 gap-4"}>
@@ -203,12 +203,14 @@ export default function RecordChildForm() {
             </div>
 
             {/* Genotypes */}
-                <GenotypeFields
-                    genotypes={genotypes}
-                    setGenotypes={setGenotypes}
-                    validationErrors={validationErrors?.genotypes}
-                    constraintViolations={constraintErrors?.genotypes}
-                />
+                <div className="min-w-0 w-full">
+                    <GenotypeFields
+                        genotypes={genotypes}
+                        setGenotypes={setGenotypes}
+                        validationErrors={validationErrors?.genotypes}
+                        constraintViolations={constraintErrors?.genotypes}
+                    />
+                </div>
             </div>
         </form>
     );

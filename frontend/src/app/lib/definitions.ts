@@ -347,8 +347,10 @@ export type ValidationFailed = {
 };
 
 export type ExcessAlleleViolationDTO = {
-    attemptedAllele: AlleleCode;
-    validAlleles: AlleleCode[];
+    reason: string;
+    message: string;
+    attemptedAllele?: AlleleCode;
+    validAlleles?: AlleleCode[];
 };
 
 export type GeneticConstraintViolation = {

@@ -338,13 +338,13 @@ public class SheepService {
                 : sheep.getPhenotype(category);
 
         if (effectivePhenotype == null) {
-            throw new IllegalArgumentException(
+            throw new IllegalStateException(
                     "Cannot update hidden allele for category " + category + " because no phenotype exists"
             );
         }
 
         if (newHidden != null && !domain.isHiddenAllelePossible(effectivePhenotype, newHidden)) {
-            throw new IllegalArgumentException(
+            throw new IllegalStateException(
                     "Hidden allele " + newHidden.code()
                             + " is not compatible with phenotype "
                             + effectivePhenotype.code()

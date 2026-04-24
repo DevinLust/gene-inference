@@ -3,6 +3,7 @@ package com.progressengine.geneinference.model;
 import com.progressengine.geneinference.dto.SheepGenotypeDTO;
 import com.progressengine.geneinference.exception.ExcessAlleleDiversityException;
 import com.progressengine.geneinference.model.enums.Allele;
+import com.progressengine.geneinference.model.enums.GeneticViolationReason;
 import com.progressengine.geneinference.model.enums.Grade;
 import com.progressengine.geneinference.model.enums.Category;
 import com.progressengine.geneinference.service.InferenceMath;
@@ -461,6 +462,7 @@ public class Relationship {
 
         Map<AllelePair<A>, Map<A, Integer>> epochMap = getPhenotypeFrequencies(category);
 
+        // filter possible hidden assignments down based on history
         if (epochMap != null) {
             for (Map.Entry<AllelePair<A>, Map<A, Integer>> entry : epochMap.entrySet()) {
                 Map<A, Integer> childPhenotypes = entry.getValue();
@@ -486,7 +488,12 @@ public class Relationship {
             }
         }
 
-        Set<AllelePair<A>> afterProposed = feasibleAssignments.stream()
+        // filter down possible hidden based on proposed child phenotype and hidden allele if provided
+        A proposedHiddenAllele = childGenotype.hiddenAllele() == null
+                ? null
+                : domain.parse(childGenotype.hiddenAllele());
+
+        Set<AllelePair<A>> afterPhenotype = feasibleAssignments.stream()
                 .filter(assignment -> domain.canProduceChildPhenotype(
                         parent1Phenotype,
                         assignment.getFirst(),
@@ -496,18 +503,73 @@ public class Relationship {
                 ))
                 .collect(Collectors.toSet());
 
-        if (afterProposed.isEmpty()) {
-            Set<String> validAlleles = feasibleAssignments.stream()
-                    .flatMap(pair -> Stream.of(pair.getFirst(), pair.getSecond()))
-                    .map(Allele::code)
-                    .collect(Collectors.toSet());
+        if (afterPhenotype.isEmpty()) {
+            Set<String> validPhenotypes = validPhenotypes(
+                    feasibleAssignments,
+                    domain,
+                    parent1Phenotype,
+                    parent2Phenotype
+            );
 
             violations.add(new ExcessAlleleViolation(
                     category,
                     proposedChildPhenotype.code(),
-                    validAlleles
+                    validPhenotypes,
+                    GeneticViolationReason.PHENOTYPE_NOT_PRODUCIBLE,
+                    "This phenotype cannot be produced by these parents based on the offspring already recorded."
             ));
+            return;
         }
+
+        if (proposedHiddenAllele != null) {
+            Set<AllelePair<A>> afterGenotype = afterPhenotype.stream()
+                    .filter(assignment -> domain.canProduceChildGenotype(
+                            parent1Phenotype,
+                            assignment.getFirst(),
+                            parent2Phenotype,
+                            assignment.getSecond(),
+                            proposedChildPhenotype,
+                            proposedHiddenAllele
+                    ))
+                    .collect(Collectors.toSet());
+
+            if (afterGenotype.isEmpty()) {
+                Set<String> validPhenotypes = validPhenotypes(
+                        feasibleAssignments,
+                        domain,
+                        parent1Phenotype,
+                        parent2Phenotype
+                );
+
+                violations.add(new ExcessAlleleViolation(
+                        category,
+                        proposedChildPhenotype.code(),
+                        validPhenotypes,
+                        GeneticViolationReason.GENOTYPE_NOT_PRODUCIBLE,
+                        "This phenotype is possible, but the full genotype ("
+                                + proposedChildPhenotype.code() + ", " + proposedHiddenAllele.code()
+                                + ") cannot be produced by these parents. Each parent contributes one allele."
+                ));
+            }
+        }
+    }
+
+
+    private <A extends Enum<A> & Allele> Set<String> validPhenotypes(
+            Set<AllelePair<A>> feasibleAssignments,
+            AlleleDomain<A> domain,
+            A parent1Phenotype,
+            A parent2Phenotype
+    ) {
+        return feasibleAssignments.stream()
+                .flatMap(assignment -> domain.possibleChildPhenotypesFromGenotypes(
+                        parent1Phenotype,
+                        assignment.getFirst(),
+                        parent2Phenotype,
+                        assignment.getSecond()
+                ).stream())
+                .map(Allele::code)
+                .collect(Collectors.toSet());
     }
 
 

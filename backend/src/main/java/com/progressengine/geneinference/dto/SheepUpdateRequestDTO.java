@@ -1,6 +1,7 @@
 package com.progressengine.geneinference.dto;
 
 import com.progressengine.geneinference.model.enums.Category;
+import com.progressengine.geneinference.validation.ValidGenotypePatch;
 
 import java.util.Map;
 
@@ -8,6 +9,7 @@ public class SheepUpdateRequestDTO {
     private String name;
 
     // genotypes can be partial and phenotypes null here
+    @ValidGenotypePatch
     private Map<Category, SheepGenotypeDTO> genotypes;
 
 
