@@ -155,11 +155,16 @@ public class DemoGraphService {
         sheep.setName(name);
         sheep.createDefaultDistributions();
 
+        // set provided genotypes
         for (Map.Entry<Category, AlleleCodePair> entry : genotypes.entrySet()) {
-                Category category = entry.getKey();
-                AlleleCodePair codePair = entry.getValue();
+            setGenotypeFromCodes(sheep, entry.getKey(), entry.getValue());
+        }
 
-                setGenotypeFromCodes(sheep, category, codePair);
+        // fill missing categories
+        for (Category category : Category.values()) {
+            if (!sheep.hasGenotype(category)) {
+                sheep.initializeCategoryWithDefaults(category);
+            }
         }
 
         return sheep;
