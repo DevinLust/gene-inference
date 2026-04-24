@@ -94,13 +94,25 @@ public class RelationshipMessage extends Message {
     ) {
         Sheep child = (Sheep) message.getSource().getValue();
 
+        if (child.getBirthRecord() == null) {
+            return;
+        }
+
+        Map<Category, PhenotypeAtBirth> phenotypesAtBirth =
+                child.getBirthRecord().getPhenotypesAtBirthOrganized();
+
+        PhenotypeAtBirth phenotypeAtBirth = phenotypesAtBirth.get(category);
+
+        if (phenotypeAtBirth == null) {
+            return; // no evidence for this category
+        }
+
         AlleleDomain<A> domain = CategoryDomains.typedDomainFor(category);
-        Map<Category, PhenotypeAtBirth> phenotypesAtBirth = child.getBirthRecord().getPhenotypesAtBirthOrganized();
         Map<A, Double> childDistribution = message.getDistributionByCategory(category);
 
-        A childPhenotype = domain.parse(phenotypesAtBirth.get(category).childCode());
-        A phenotype1 = domain.parse(phenotypesAtBirth.get(category).parent1Code());
-        A phenotype2 = domain.parse(phenotypesAtBirth.get(category).parent2Code());
+        A childPhenotype = domain.parse(phenotypeAtBirth.childCode());
+        A phenotype1 = domain.parse(phenotypeAtBirth.parent1Code());
+        A phenotype2 = domain.parse(phenotypeAtBirth.parent2Code());
 
         for (Map.Entry<AllelePair<A>, Double> entry : jointDistribution.entrySet()) {
             AllelePair<A> pair = entry.getKey();
@@ -115,7 +127,6 @@ public class RelationshipMessage extends Message {
                             domain
                     );
 
-            // scaling factor = dot product of expected and actual
             double scalingFactor = 0.0;
             for (A allele : domain.getAlleles()) {
                 scalingFactor += expectedChildHidden.getOrDefault(allele, 0.0)

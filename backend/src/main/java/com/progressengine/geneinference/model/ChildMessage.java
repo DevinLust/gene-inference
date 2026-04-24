@@ -5,6 +5,7 @@ import com.progressengine.geneinference.model.enums.Allele;
 import com.progressengine.geneinference.service.InferenceMath;
 import com.progressengine.geneinference.service.AlleleDomains.AlleleDomain;
 import com.progressengine.geneinference.service.AlleleDomains.CategoryDomains;
+import com.progressengine.geneinference.service.SheepService;
 
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -199,15 +200,26 @@ public class ChildMessage extends RelationshipMessage {
             Sheep child
     ) {
         AlleleDomain<A> domain = CategoryDomains.typedDomainFor(category);
-        Map<A, Double> result = new EnumMap<>(domain.getAlleleType());
-        fillMissingWithZero(result, domain);
+
+        if (child.getBirthRecord() == null) {
+            return SheepService.createUniformDistribution(category);
+        }
 
         Map<Category, PhenotypeAtBirth> phenotypesAtBirth =
                 child.getBirthRecord().getPhenotypesAtBirthOrganized();
 
-        A childPhenotype = domain.parse(phenotypesAtBirth.get(category).childCode());
-        A parent1Phenotype = domain.parse(phenotypesAtBirth.get(category).parent1Code());
-        A parent2Phenotype = domain.parse(phenotypesAtBirth.get(category).parent2Code());
+        PhenotypeAtBirth phenotypeAtBirth = phenotypesAtBirth.get(category);
+
+        if (phenotypeAtBirth == null) {
+            return SheepService.createUniformDistribution(category);
+        }
+
+        Map<A, Double> result = new EnumMap<>(domain.getAlleleType());
+        fillMissingWithZero(result, domain);
+
+        A childPhenotype = domain.parse(phenotypeAtBirth.childCode());
+        A parent1Phenotype = domain.parse(phenotypeAtBirth.parent1Code());
+        A parent2Phenotype = domain.parse(phenotypeAtBirth.parent2Code());
 
         for (Map.Entry<AllelePair<A>, Double> entry : jointDistribution.entrySet()) {
             AllelePair<A> pair = entry.getKey();
