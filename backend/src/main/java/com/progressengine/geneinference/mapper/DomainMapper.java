@@ -7,9 +7,7 @@ import com.progressengine.geneinference.model.BirthRecord;
 import com.progressengine.geneinference.model.Relationship;
 import com.progressengine.geneinference.model.Sheep;
 
-import java.util.Arrays;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public class DomainMapper {
     public static Sheep fromRequestDTO(SheepNewRequestDTO dto) {

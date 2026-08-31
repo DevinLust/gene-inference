@@ -3,7 +3,6 @@ package com.progressengine.geneinference.service;
 import com.progressengine.geneinference.dto.*;
 import com.progressengine.geneinference.exception.ResourceNotFoundException;
 import com.progressengine.geneinference.mapper.DomainMapper;
-import com.progressengine.geneinference.model.AllelePair;
 import com.progressengine.geneinference.model.BirthRecord;
 import com.progressengine.geneinference.model.Relationship;
 import com.progressengine.geneinference.model.Sheep;

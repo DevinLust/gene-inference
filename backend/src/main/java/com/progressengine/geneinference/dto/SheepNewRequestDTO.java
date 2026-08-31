@@ -1,7 +1,6 @@
 package com.progressengine.geneinference.dto;
 
 import com.progressengine.geneinference.model.enums.Category;
-import com.progressengine.geneinference.validation.ValidDistribution;
 import com.progressengine.geneinference.validation.ValidGenotypes;
 import jakarta.validation.constraints.NotNull;
 
